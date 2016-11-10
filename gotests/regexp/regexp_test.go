@@ -1,4 +1,4 @@
-package octest
+package regexp_test
 
 import (
 	"flag"
