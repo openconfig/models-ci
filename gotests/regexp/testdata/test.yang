@@ -9,4 +9,8 @@ module regexp-test {
   leaf ip-address { type oct:ip-address; }
   leaf bgp-std-community { type ocbgpt:bgp-std-community-type; }
   leaf bgp-ext-community { type ocbgpt:bgp-ext-community-type; }
+  leaf ipv6-address { type oct:ipv6-address; }
+  leaf ipv4-prefix { type oct:ipv4-prefix; }
+  leaf ipv6-prefix { type oct:ipv6-prefix; }
+  leaf ip-prefix { type oct:ip-prefix; }
 }

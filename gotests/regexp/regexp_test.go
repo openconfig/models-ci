@@ -35,7 +35,7 @@ func TestRegexps(t *testing.T) {
 		leaf     YANGLeaf
 		testData []RegexpTest
 	}{{
-		name:    "simple ipv4 address",
+		name:    "ipv4 address",
 		modules: []string{"testdata/test.yang"},
 		leaf:    YANGLeaf{"regexp-test", "ipv4-address"},
 		testData: []RegexpTest{
@@ -44,11 +44,6 @@ func TestRegexps(t *testing.T) {
 			RegexpTest{`256.1.1.1%eth0`, false},
 		},
 	}, {
-		name:     "failing ipv4 address",
-		modules:  []string{"testdata/test.yang"},
-		leaf:     YANGLeaf{"regexp-test", "ipv4-address"},
-		testData: []RegexpTest{RegexpTest{"invalid-data", false}},
-	}, {
 		name:    "union ip address",
 		modules: []string{"testdata/test.yang"},
 		leaf:    YANGLeaf{"regexp-test", "ip-address"},
@@ -56,7 +51,6 @@ func TestRegexps(t *testing.T) {
 			RegexpTest{`255.255.255.255`, true},
 			RegexpTest{`2001:db8::1`, true},
 			RegexpTest{"invalid-data", false},
-			RegexpTest{`::FFFF:192.0.2.1`, true},
 			RegexpTest{`::1`, true},
 		},
 	}, {
@@ -72,6 +66,50 @@ func TestRegexps(t *testing.T) {
 			RegexpTest{`65536:1`, false},
 			RegexpTest{`1:65536`, false},
 			RegexpTest{`425353:comm`, false},
+		},
+	}, {
+		name:    "ipv4-prefix",
+		modules: []string{"testdata/test.yang"},
+		leaf:    YANGLeaf{"regexp-test", "ipv4-prefix"},
+		testData: []RegexpTest{
+			RegexpTest{`0.0.0.0/0`, true},
+			RegexpTest{`255.255.255.255/32`, true},
+			RegexpTest{`256.0.0.0/31`, false},
+			RegexpTest{`1.2.3.0/24`, true},
+			RegexpTest{`1.2.3.4/33`, false},
+		},
+	}, {
+		name:    "ipv6-prefix",
+		modules: []string{"testdata/test.yang"},
+		leaf:    YANGLeaf{"regexp-test", "ipv6-prefix"},
+		testData: []RegexpTest{
+			RegexpTest{`::/0`, true},
+			RegexpTest{`FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF/128`, true},
+			RegexpTest{`FFFF:FFFF:FFFF:NOTVALID:FFFF:FFFF:FFFF:FFFF/64`, false},
+			RegexpTest{`2001:DB8::/32`, true},
+			RegexpTest{`2001:4C20::/129`, false},
+		},
+	}, {
+		name:    "ip-prefix",
+		modules: []string{"testdata/test.yang"},
+		leaf:    YANGLeaf{"regexp-test", "ip-prefix"},
+		testData: []RegexpTest{
+			RegexpTest{"0.0.0.0/0", true},
+			RegexpTest{"192.0.2.1/32", true},
+			RegexpTest{"192.0.2.2/33", false},
+			RegexpTest{"FE80::CAFE/128", true},
+			RegexpTest{"FE81::CAFE:DEAD:BEEF/129", false},
+		},
+	}, {
+		name:    "ipv6-address",
+		modules: []string{"testdata/test.yang"},
+		leaf:    YANGLeaf{"regexp-test", "ipv6-address"},
+		testData: []RegexpTest{
+			RegexpTest{"2620::1000:3202:23e:e1ff:fec7:7112", true},
+			RegexpTest{"fe80::23e:e1ff:fec7:7112", true},
+			RegexpTest{"fe80::23e:NOTVALID:fec7:7112", false},
+			RegexpTest{"FFFF::NOTE::FFFF", false},
+			RegexpTest{"FFFF::1::42", false},
 		},
 	}, {
 		name:    "bgp-extended-community",
