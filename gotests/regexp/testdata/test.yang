@@ -1,0 +1,12 @@
+module regexp-test {
+  prefix "rt";
+  namespace "urn:openconfig-test";
+
+  import openconfig-types { prefix "oct"; }
+  import openconfig-bgp-types { prefix "ocbgpt"; }
+
+  leaf ipv4-address { type oct:ipv4-address; }
+  leaf ip-address { type oct:ip-address; }
+  leaf bgp-std-community { type ocbgpt:bgp-std-community-type; }
+
+}
