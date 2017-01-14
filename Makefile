@@ -6,7 +6,7 @@ get-deps:
 	git clone git@github.com:openconfig/models.git ${ROOT_DIR}/models
 
 lint:
-	cd ${ROOT_DIR}/models && git checkout ci
+	cd ${ROOT_DIR}/models
 	${ROOT_DIR}/linter/test.sh
 
 gotests: regexp-branch regexps
