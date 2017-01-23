@@ -9,7 +9,11 @@ lint:
 	cd ${ROOT_DIR}/models
 	${ROOT_DIR}/linter/test.sh
 
-gotests: regexp-branch regexps
+lint_html:
+	cd ${ROOT_DIR}/models
+	${ROOT_DIR}/linter/test.sh | ${ROOT_DIR}/linter/lint_to_md.py -m html
+
+gotests: regexps
 
 regexp-branch:
 	cd ${ROOT_DIR}/models && git checkout bgp-extcomm-262

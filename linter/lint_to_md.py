@@ -16,6 +16,7 @@ from __future__ import unicode_literals
 
 import sys
 import json
+import argparse
 
 # Build errors to be ignored based on the fact that they indicate a repo
 # setup issue, not an error to be reported to a user.
@@ -85,7 +86,7 @@ def process_message(msg, suppress_warnings=True):
         "".join(remaining_message).lstrip(" "))
 
 
-def main():
+def process_output(mode):
     # Linter input is read directly from stdin, this returns when the
     # stdin input finishes, which is the complete JSON document.
     lint_input = sys.stdin.read()
@@ -102,8 +103,14 @@ def main():
         testdir = "/".join(fn_to_model_dir(fn))
         if "status" in result:
             if result["message"] not in BUILD_ERRORS:
-                output.append("* :no_entry: **%s**: %s" % (testdir,
-                    result["message"]))
+                if mode == "markdown":
+                    output.append("* :no_entry: **%s**: %s" % (testdir,
+                      result["message"]))
+                else:
+                    output.extend(["<details>",
+                                   "  <summary>:no_entry: %s</summary>" % testdir,
+                                   "  %s" % result["message"],
+                                   "</details>"])
             continue
 
         any_failed = False
@@ -111,24 +118,58 @@ def main():
         for testname, test in result["tests"].iteritems():
             if not test["status"] == "pass":
                 any_failed = True
-                test_out.append("  * :no_entry: **%s**:" % testname)
+                if mode == "markdown":
+                    test_out.append("  * :no_entry: **%s**:" % testname)
+                else:
+                    test_out.extend(["<details>",
+                                     "  <summary>:no_entry: %s</summary>" % testname,
+                                     "  <ul>"])
+
                 for message in test["messages"]:
                     m = process_message(message)
                     if m is not None:
-                        test_out.append("       * %s" % m)
-            else:
-                test_out.append("  * :white_check_mark: **%s**" % testname)
+                        if mode == "markdown":
+                            test_out.append("       * %s" % m)
+                        else:
+                            test_out.append("   <li>%s</li>" % m)
 
-        if len(test_out):
-            if any_failed:
-                output.append("* :no_entry: **%s**:" % testdir)
+                if mode == "html":
+                    test_out.extend(["  </ul>",
+                                     "</details>"])
             else:
-                output.append("* :white_check_mark: **%s**" % testdir)
+                if mode == "markdown":
+                    test_out.append("  * :white_check_mark: **%s**" % testname)
+                else:
+                    test_out.extend(["<details>",
+                                     "  <summary>:white_check_mark: %s</summary>" % testname,
+                                     "  Tests Passed.",
+                                     "</details>"])
+        if len(test_out):
+            simg = ":white_check_mark:"
+            if any_failed:
+                simg = ":no_entry:"
+
+            if mode == "markdown":
+                output.append("* %s **%s**" % (simg,testdir))
+            else:
+                output.extend(["<details>",
+                               "  <summary>%s %s</summary>" % (simg, testdir)])
 
             for t in test_out:
                 output.append(t)
+
+            if mode == "html":
+                output.append("</details>")
+
+    print(output)
     print("\n".join(output))
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--mode", action="store", default="html")
+    args = parser.parse_args()
+    if args.mode.lower() not in ["html", "markdown"]:
+      print("Invalid mode specified: %s" % mode, file=sys.stderr)
+      sys.exit(1)
+    process_output(args.mode.lower())
