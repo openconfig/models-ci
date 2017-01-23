@@ -22,7 +22,7 @@ TESTDIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODELROOT=$TESTDIR/../models
 MODELDIR=$MODELROOT/yang
 CIROOT=$TESTDIR/..
-PLUGINFILE="openconfig_pyang-0.1.2-py2-none-any.whl"
+PLUGINFILE="openconfig_pyang-0.1.3-py2-none-any.whl"
 GETURL="http://rob.sh/files/"
 
 brancherr=$(
@@ -51,8 +51,8 @@ curl -o $TESTDIR/$PLUGINFILE $GETURL/$PLUGINFILE &>/dev/null
 pip install --user virtualenv &>/dev/null
 virtualenv $TESTDIR/pyvenv &>/dev/null
 source $TESTDIR/pyvenv/bin/activate &>/dev/null
-pip install -r $TESTDIR/requirements.txt &>/dev/null
-pip install $TESTDIR/$PLUGINFILE &>/dev/null
+pip install --no-cache-dir -r $TESTDIR/requirements.txt &>/dev/null
+pip install --no-cache-dir $TESTDIR/$PLUGINFILE &>/dev/null
 
 # Find the directory for the openconfig linter
 export PLUGIN_DIR=$(/usr/bin/env python -c \

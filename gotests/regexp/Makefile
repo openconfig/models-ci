@@ -1,11 +1,12 @@
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 GOPATH=${ROOT_DIR}/../../go
+GOBIN=/usr/local/go/bin
 OPENCONFIGDIR=${ROOT_DIR}/../../models/yang
 
 all: get-deps test
 
 get-deps:
-	go get github.com/openconfig/goyang
+	GOPATH=${GOPATH} ${GOBIN}/go get github.com/openconfig/goyang
 
 test:
-	go test --ocdir=${OPENCONFIGDIR}
+	GOPATH=${GOPATH} ${GOBIN}/go test --ocdir=${OPENCONFIGDIR}

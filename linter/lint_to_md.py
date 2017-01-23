@@ -51,7 +51,7 @@ def fn_to_model_dir(fn):
             model_parts.append(p)
     return model_parts
 
-def process_message(msg, suppress_warnings=True):
+def process_message(msg, suppress_warnings=True, html=False):
     """
     process_message
     """
@@ -82,11 +82,16 @@ def process_message(msg, suppress_warnings=True):
     if suppress_warnings and errorlevel.replace(" ", "") == "warning":
         return None
 
-    return "%s (%s): `%s`" % ("/".join(model), linenum,
-        "".join(remaining_message).lstrip(" "))
+    codestart, codeend = "`", "`"
+    if html:
+        codestart = "<pre>"
+        codeeng = "</pre>"
+
+    return "%s (%s): %s%s%s" % ("/".join(model), linenum, codestart,
+        "".join(remaining_message).lstrip(" "), codeend)
 
 
-def process_output(mode):
+def process_output(mode, fh):
     # Linter input is read directly from stdin, this returns when the
     # stdin input finishes, which is the complete JSON document.
     lint_input = sys.stdin.read()
@@ -98,6 +103,7 @@ def process_output(mode):
         sys.exit(1)
 
     output = []
+    overall_fail = False
     for fn, result in lint_json["tests"].iteritems():
 
         testdir = "/".join(fn_to_model_dir(fn))
@@ -111,6 +117,7 @@ def process_output(mode):
                                    "  <summary>:no_entry: %s</summary>" % testdir,
                                    "  %s" % result["message"],
                                    "</details>"])
+            overall_fail = True
             continue
 
         any_failed = False
@@ -126,7 +133,10 @@ def process_output(mode):
                                      "  <ul>"])
 
                 for message in test["messages"]:
-                    m = process_message(message)
+                    h = False
+                    if mode == "html":
+                      h = True
+                    m = process_message(message, html=h)
                     if m is not None:
                         if mode == "markdown":
                             test_out.append("       * %s" % m)
@@ -148,6 +158,7 @@ def process_output(mode):
             simg = ":white_check_mark:"
             if any_failed:
                 simg = ":no_entry:"
+                overall_failed = True
 
             if mode == "markdown":
                 output.append("* %s **%s**" % (simg,testdir))
@@ -160,16 +171,29 @@ def process_output(mode):
 
             if mode == "html":
                 output.append("</details>")
-
-    print(output)
-    print("\n".join(output))
+    
+    print("\n".join(output), file=fh)
+    return overall_failed
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mode", action="store", default="html")
+    parser.add_argument("-f", "--file", action="store", default="stdout")
+
     args = parser.parse_args()
     if args.mode.lower() not in ["html", "markdown"]:
-      print("Invalid mode specified: %s" % mode, file=sys.stderr)
-      sys.exit(1)
-    process_output(args.mode.lower())
+        print("Invalid mode specified: %s" % mode, file=sys.stderr)
+        sys.exit(1)
+
+    if args.file != "stdout":
+        try:
+            fh = open(args.file, 'w')
+        except IOError as e:
+            print("Invalid file specified: %s, error: %s", args.file, e)
+            sys.exit(1)
+    else:
+        fh = sys.stdout
+
+    if process_output(args.mode.lower(), fh):
+        sys.exit(1)
