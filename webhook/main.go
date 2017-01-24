@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -28,7 +29,7 @@ var (
 	}
 	// repoToRunIn ensures that tests only run in the specified repository to
 	// avoid false assumptions.
-	repoToRunIn = "robshakir/models"
+	repoToRunIn = "opeconfig/models"
 )
 
 // githubRequestHandler carries information relating to the GitHub session that
@@ -42,6 +43,10 @@ type githubRequestHandler struct {
 	// accessToken is the OAuth token that should be used for interactions with
 	// the GitHub API and to retrieve repo contents.
 	accessToken string
+	// goTestPath is the path to where the output of Go tests can be found.
+	goTestPath string
+	// lintTestPath is the path to where the output of the OC linter can be found.
+	lintTestPath string
 }
 
 // githubPullRequestHookInput is the JSON structure that is used as content
@@ -94,6 +99,20 @@ type githubPRUpdate struct {
 	Context     string
 }
 
+// decodeGitHubJSON takes an input http.Request and decodes the GitHub JSON
+// document that it contains, returning an error if it is not possible.
+func decodeGitHubJSON(r io.Reader) (*githubPullRequestHookInput, error) {
+	// Decode the JSON document that is returned by the webhook.
+	decoder := json.NewDecoder(r)
+
+	var ghIn *githubPullRequestHookInput
+
+	if err := decoder.Decode(&ghIn); err != nil {
+		return nil, fmt.Errorf("could not decode JSON input: %v", r)
+	}
+	return ghIn, nil
+}
+
 // pullRequestHandler handles an incoming pull request event from GitHub.
 // It takes an input http.ResponseWriter which is used to write to the HTTP
 // client (GitHub), and a pointer to the incoming HTTP request. The relevant
@@ -119,15 +138,12 @@ func (g *githubRequestHandler) pullRequestHandler(w http.ResponseWriter, r *http
 
 	glog.Infof("processing event %s, as it is a PR", reqID)
 
-	// Decode the JSON document taht is returned by the webhook.
-	decoder := json.NewDecoder(r.Body)
-	var ghIn *githubPullRequestHookInput
-
-	err := decoder.Decode(&ghIn)
-	if err != nil {
-		fmt.Fprintf(w, "error occurred: %v", err)
-	}
+	ghIn, err := decodeGitHubJSON(r.Body)
 	defer r.Body.Close()
+	if err != nil {
+		glog.Errorf("Could not successfully decode input from GitHub")
+		return
+	}
 
 	// Avoid trying to run CI for a repo that we don't know about.
 	if ghIn.PullRequest.Head.Repo.FullName != repoToRunIn {
@@ -265,7 +281,7 @@ func (g *githubRequestHandler) createCIOutputGist(runID, output string, lintOK, 
 	// TODO(robjs): should this be a dynamic filename so that we cannot inject
 	// any content into it? The exposure is low since this will just be written
 	// to GitHub.
-	lintOut, err := ioutil.ReadFile("/tmp/lint.out")
+	lintOut, err := ioutil.ReadFile(g.lintTestPath)
 	if err != nil {
 		return "", "", err
 	}
@@ -281,7 +297,7 @@ func (g *githubRequestHandler) createCIOutputGist(runID, output string, lintOK, 
 		return "", "", err
 	}
 
-	goTestOut, err := ioutil.ReadFile("/tmp/go-tests.out")
+	goTestOut, err := ioutil.ReadFile(g.goTestPath)
 	if err != nil {
 		return "", "", err
 	}
@@ -362,9 +378,11 @@ func newGitHubRequestHandler() (*githubRequestHandler, error) {
 		// If the environment variable GITHUB_SECRET was set then we store it in
 		// the struct, this is a secret that is used to calculate a hash of the
 		// message so that we can validate it.
-		hashSecret:  os.Getenv("GITHUB_SECRET"),
-		client:      client,
-		accessToken: accesstk,
+		hashSecret:   os.Getenv("GITHUB_SECRET"),
+		client:       client,
+		accessToken:  accesstk,
+		goTestPath:   "/tmp/go-tests.out",
+		lintTestPath: "/tmp/lint.out",
 	}, nil
 }
 
