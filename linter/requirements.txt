@@ -1,0 +1,4 @@
+wheel
+pyaml
+setuptools
+pyang==1.7.1
