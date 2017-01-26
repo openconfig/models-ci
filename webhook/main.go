@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -29,7 +30,7 @@ var (
 	}
 	// repoToRunIn ensures that tests only run in the specified repository to
 	// avoid false assumptions.
-	repoToRunIn = "opeconfig/models"
+	repoToRunIn = "openconfig/models"
 )
 
 // githubRequestHandler carries information relating to the GitHub session that
@@ -47,6 +48,11 @@ type githubRequestHandler struct {
 	goTestPath string
 	// lintTestPath is the path to where the output of the OC linter can be found.
 	lintTestPath string
+	// mu is a mutex used to ensure that only a single test goroutine runs
+	// concurrently. Because the unit tests require access to the same checked
+	// out version of the models repo, then this is the safest way to ensure
+	// that we do not tread on another CI test's toes.
+	mu sync.Mutex
 }
 
 // githubPullRequestHookInput is the JSON structure that is used as content
@@ -181,7 +187,13 @@ func (g *githubRequestHandler) pullRequestHandler(w http.ResponseWriter, r *http
 // Results are not returned, but rather written to a GitHub gist and the
 // status fields of the relevant commit.
 func (g *githubRequestHandler) runCI(runID, branch, user, repo, sha string) {
+	// Lock the mutex that we use to ensure a single test runs each time. Note
+	// that sync.Mutex.Lock() is blocking, so we essentially just spinlock
+	// until such time as we can acquire the lock.
+	g.mu.Lock()
 	g.runLintGoTests(runID, branch, user, repo, sha)
+	// Done with tests, unlock the mutex.
+	g.mu.Unlock()
 }
 
 // runLintGoTests runs the OpenConfig linter, and Go-based tests for the models
@@ -192,7 +204,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	// Run the tests using exec. Env variables are set for the branch that should
 	// be tested and the GitHub token.
 	lintCmd := exec.Command("make", "clean", "get-deps", "lint_html")
-	lintCmd.Dir = "/home/robshakir/models-ci"
+	lintCmd.Dir = "/home/ghci/models-ci"
 	envs := []string{
 		fmt.Sprintf("GITHUB_TOKEN=%s", g.accessToken),
 		fmt.Sprintf("BRANCH=%s", branch),
@@ -203,7 +215,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	glog.Infof("Lint test output: %s", out)
 
 	goCmd := exec.Command("make", "gotests")
-	goCmd.Dir = "/home/robshakir/models-ci"
+	goCmd.Dir = "/home/ghci/models-ci"
 	goCmd.Env = envs
 
 	goout, goErr := goCmd.CombinedOutput()
