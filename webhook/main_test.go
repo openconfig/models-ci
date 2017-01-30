@@ -7,7 +7,7 @@ import (
 	"github.com/kylelemons/godebug/pretty"
 )
 
-func TestDecodeGitHubJSON(t *testing.T) {
+func TestDecodeGitHubPullReqJSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		inFile  string
@@ -46,16 +46,16 @@ func TestDecodeGitHubJSON(t *testing.T) {
 			t.Errorf("%s: os.Open(%s): got: %s, want: no error", tt.name, tt.inFile, err)
 		}
 
-		got, err := decodeGitHubJSON(fh)
+		got, err := decodeGitHubPullReqJSON(fh)
 		if err != nil {
 			if !tt.wantErr {
-				t.Errorf("%s: decodeGitHubJSON(%s): got err: %s, want: no error", tt.name, tt.inFile, err)
+				t.Errorf("%s: decodeGitHubPullReqJSON(%s): got err: %s, want: no error", tt.name, tt.inFile, err)
 				continue
 			}
 		}
 
 		if diff := pretty.Compare(got, tt.wantOut); diff != "" {
-			t.Errorf("%s: decodeGitHubJSON(%s): diff(-got,+want):\n%s", tt.name, tt.inFile, diff)
+			t.Errorf("%s: decodeGitHubPullReqJSON(%s): diff(-got,+want):\n%s", tt.name, tt.inFile, diff)
 		}
 	}
 }

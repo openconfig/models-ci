@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,9 +29,33 @@ var (
 		"error":   true,
 		"failure": true,
 	}
+
+	// TODO(robjs): Many of these options can be converted to flags for the
+	// webhook binary.
+
 	// repoToRunIn ensures that tests only run in the specified repository to
-	// avoid false assumptions.
+	// avoid false assumptions. The default for this should be openconfig/models.
 	repoToRunIn = "openconfig/models"
+
+	// pushCIBranches is the set of branches that CI should be run on for
+	// every commit.
+	pushCIBranches = []string{"master"}
+
+	// The directory in which the CI testing repository is cloned on the host
+	// system. The default for this value should be /home/ghci/models-ci.
+	modelsDir = "/home/ghci/models-ci"
+
+	// goOutputPath stores the path at which the output of the Go tests is
+	// stored. By default this should be /tmp/go-tests.out.
+	goOutputPath = "/tmp/go-tests.out"
+
+	// lintOutputPath stores the path at which the output of the linter is stored.
+	// By default this should be /tmp/lint.out.
+	lintOutputPath = "/tmp/lint.out"
+
+	// listenSpec is the host and port that the hook should listen on. By default
+	// it should be :8080.
+	listenSpec = ":8080"
 )
 
 // githubRequestHandler carries information relating to the GitHub session that
@@ -93,6 +118,21 @@ type githubPullRequestHead struct {
 	Repo *githubPullRequestRepo `json:"repo"` // Repo is the repo that the commit is in.
 }
 
+// githubPushEvent decodes the interesting fields of the input JSON for a push
+// event from GitHub. This is used to determine where to run CI when pushes
+// are done to the master branch.
+type githubPushEvent struct {
+	After      string                `json:"after"`      // After is the commit ID after the push event.
+	Ref        string                `json:"ref"`        // Ref is the reference to the head, supplied as a branch
+	Repository *githubPushRepository `json:"repository"` // Repository is the repo that the push was associated with.
+}
+
+// githubPushRepository is the repo that a push was made to.
+type githubPushRepository struct {
+	Name     string `json:"name"`      // Name is the name of the repository.
+	FullName string `json:"full_name"` // FullName is the full name of the repository in the form owner/reponame.
+}
+
 // githubPRUpdate is used to specify how an update to the status of a PR should
 // be made with the updatePRStatus method.
 type githubPRUpdate struct {
@@ -105,18 +145,87 @@ type githubPRUpdate struct {
 	Context     string
 }
 
-// decodeGitHubJSON takes an input http.Request and decodes the GitHub JSON
+// decodeGitHubPullReqJSON takes an input http.Request and decodes the GitHub JSON
 // document that it contains, returning an error if it is not possible.
-func decodeGitHubJSON(r io.Reader) (*githubPullRequestHookInput, error) {
+func decodeGitHubPullReqJSON(r io.Reader) (*githubPullRequestHookInput, error) {
 	// Decode the JSON document that is returned by the webhook.
 	decoder := json.NewDecoder(r)
 
 	var ghIn *githubPullRequestHookInput
 
 	if err := decoder.Decode(&ghIn); err != nil {
-		return nil, fmt.Errorf("could not decode JSON input: %v", r)
+		return nil, fmt.Errorf("could not decode Pull Request JSON input: %v", r)
 	}
 	return ghIn, nil
+}
+
+// decodeGitHubPushJSON takes an input http.Request and decodes the GitHub JSON
+// document that it contains - with the format expected being that which GitHub
+// sends when a push happens to a repo.
+func decodeGitHubPushJSON(r io.Reader) (*githubPushEvent, error) {
+	decoder := json.NewDecoder(r)
+
+	var ghIn *githubPushEvent
+
+	if err := decoder.Decode(&ghIn); err != nil {
+		return nil, fmt.Errorf("could not decode Push JSON input: %v", r)
+	}
+	return ghIn, nil
+}
+
+func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Request) {
+	glog.Info("Received GitHub request:  ", r)
+
+	reqID := r.Header.Get("X-GitHub-Delivery")
+	if event := r.Header.Get("X-GitHub-Event"); event != "push" {
+		glog.Errorf("Not processing event %s as it is not a push, is: %s", reqID, event)
+	}
+
+	pushReq, err := decodeGitHubPushJSON(r.Body)
+	if err != nil {
+		glog.Errorf("Could not decode JSON for push event %s, err: %v", reqID, err)
+		return
+	}
+
+	if !strings.Contains(pushReq.Repository.FullName, "/") {
+		glog.Errorf("Could not resolve the repository name for event %s, got: %s", reqID, pushReq.Repository.FullName)
+		return
+	}
+
+	repop := strings.Split(pushReq.Repository.FullName, "/")
+	if len(repop) != 2 {
+		glog.Errorf("Could not determine owner and repo name for event %s, got: %v", reqID, repop)
+		return
+	}
+
+	repoOwner, repoName := repop[0], repop[1]
+
+	if !strings.HasPrefix(pushReq.Ref, "refs/heads/") {
+		glog.Errorf("Could not resolve the branch that the push event %s was for: %s", reqID, pushReq.Ref)
+		return
+	}
+
+	refp := strings.Split(pushReq.Ref, "/")
+	if len(refp) != 3 {
+		glog.Errorf("Could not parse the branch the push event %s was for: %v", reqID, refp)
+		return
+	}
+	branch := refp[2]
+
+	run := false
+	for _, s := range pushCIBranches {
+		if s == refp[2] {
+			run = true
+		}
+	}
+
+	if !run {
+		glog.Infof("Not running for branch %s since it was not in the selected branches", refp[2])
+		return
+	}
+
+	glog.Infof("Running CI for master with ref %s", reqID)
+	go g.runCI(reqID, branch, repoOwner, repoName, pushReq.After)
 }
 
 // pullRequestHandler handles an incoming pull request event from GitHub.
@@ -144,7 +253,7 @@ func (g *githubRequestHandler) pullRequestHandler(w http.ResponseWriter, r *http
 
 	glog.Infof("processing event %s, as it is a PR", reqID)
 
-	ghIn, err := decodeGitHubJSON(r.Body)
+	ghIn, err := decodeGitHubPullReqJSON(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		glog.Errorf("Could not successfully decode input from GitHub")
@@ -204,7 +313,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	// Run the tests using exec. Env variables are set for the branch that should
 	// be tested and the GitHub token.
 	lintCmd := exec.Command("make", "clean", "get-deps", "lint_html")
-	lintCmd.Dir = "/home/ghci/models-ci"
+	lintCmd.Dir = modelsDir
 	envs := []string{
 		fmt.Sprintf("GITHUB_TOKEN=%s", g.accessToken),
 		fmt.Sprintf("BRANCH=%s", branch),
@@ -215,7 +324,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	glog.Infof("Lint test output: %s", out)
 
 	goCmd := exec.Command("make", "gotests")
-	goCmd.Dir = "/home/ghci/models-ci"
+	goCmd.Dir = modelsDir
 	goCmd.Env = envs
 
 	goout, goErr := goCmd.CombinedOutput()
@@ -393,8 +502,8 @@ func newGitHubRequestHandler() (*githubRequestHandler, error) {
 		hashSecret:   os.Getenv("GITHUB_SECRET"),
 		client:       client,
 		accessToken:  accesstk,
-		goTestPath:   "/tmp/go-tests.out",
-		lintTestPath: "/tmp/lint.out",
+		goTestPath:   goOutputPath,
+		lintTestPath: lintOutputPath,
 	}, nil
 }
 
@@ -414,5 +523,6 @@ func main() {
 	// We only handle a single URL currently, which is a path for the
 	// continuous integration tests.
 	http.HandleFunc("/ci/pull_request", h.pullRequestHandler)
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/ci/repo_push", h.pushHandler)
+	http.ListenAndServe(listenSpec, nil)
 }
