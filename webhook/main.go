@@ -394,7 +394,9 @@ func (g *githubRequestHandler) createCIOutputGist(runID, output string, lintOK, 
 			"oc-ci-run": {Content: &output},
 		},
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel() // cancel context if the function returns before the timeout
+
 	gisto, _, err := g.client.Gists.Create(ctx, gist)
 	if err != nil {
 		return "", "", fmt.Errorf("could not create gist: %s", err)
@@ -458,7 +460,8 @@ func (g *githubRequestHandler) updatePRStatus(update *githubPRUpdate) error {
 		TargetURL:   &update.URL,
 		Description: &update.Description,
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel() // cancel context if the function returns before the timeout
 
 	// Context is an optional argument.
 	if update.Context != "" {
