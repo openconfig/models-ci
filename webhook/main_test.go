@@ -89,7 +89,7 @@ func TestNewGitHubRequestHandler(t *testing.T) {
 		}
 
 		if g.hashSecret != tt.wantHashSecret {
-			t.Errorf("%s: newGitHubRequestHandler(): did not get valid hash seret, got: %s, want: %s", tt.name, g.hashSecret, tt.wantHashSecret)
+			t.Errorf("%s: newGitHubRequestHandler(): did not get valid hash secret, got: %s, want: %s", tt.name, g.hashSecret, tt.wantHashSecret)
 		}
 	}
 }

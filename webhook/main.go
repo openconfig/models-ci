@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -419,7 +420,10 @@ func (g *githubRequestHandler) createCIOutputGist(runID, output string, lintOK, 
 			"oc-ci-run": {Content: &output},
 		},
 	}
-	gisto, _, err := g.client.Gists.Create(gist)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel() // cancel context if the function returns before the timeout
+
+	gisto, _, err := g.client.Gists.Create(ctx, gist)
 	if err != nil {
 		return "", "", fmt.Errorf("could not create gist: %s", err)
 	}
@@ -440,7 +444,7 @@ func (g *githubRequestHandler) createCIOutputGist(runID, output string, lintOK, 
 		lintSymbol = ":no_entry:"
 	}
 	s := fmt.Sprintf("# %s Lint\n%s", lintSymbol, string(lintOut))
-	if _, _, err = g.client.Gists.CreateComment(*gisto.ID, &github.GistComment{Body: &s}); err != nil {
+	if _, _, err = g.client.Gists.CreateComment(ctx, *gisto.ID, &github.GistComment{Body: &s}); err != nil {
 		return "", "", err
 	}
 
@@ -455,7 +459,7 @@ func (g *githubRequestHandler) createCIOutputGist(runID, output string, lintOK, 
 	}
 	goOut := fmt.Sprintf("```\n%s\n```", goTestOut)
 	x := fmt.Sprintf("# %s Go Tests\n%s", goSymbol, goOut)
-	if _, _, err = g.client.Gists.CreateComment(*gisto.ID, &github.GistComment{Body: &x}); err != nil {
+	if _, _, err = g.client.Gists.CreateComment(ctx, *gisto.ID, &github.GistComment{Body: &x}); err != nil {
 		return "", "", err
 	}
 
@@ -482,6 +486,8 @@ func (g *githubRequestHandler) updatePRStatus(update *githubPRUpdate) error {
 		TargetURL:   &update.URL,
 		Description: &update.Description,
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel() // cancel context if the function returns before the timeout
 
 	// Context is an optional argument.
 	if update.Context != "" {
@@ -492,7 +498,7 @@ func (g *githubRequestHandler) updatePRStatus(update *githubPRUpdate) error {
 		status.Description = &update.Description
 	}
 
-	if _, _, err := g.client.Repositories.CreateStatus(update.Owner, update.Repo, update.Ref, status); err != nil {
+	if _, _, err := g.client.Repositories.CreateStatus(ctx, update.Owner, update.Repo, update.Ref, status); err != nil {
 		return err
 	}
 	return nil
