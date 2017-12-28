@@ -212,6 +212,10 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 	}
 	branch := refp[2]
 
+	//TODO(aashaikh): consider moving docs generation to another handler / path
+	glog.Infof("Generating updated docs for branch %s", branch)
+	go g.runGenDocs(branch)
+
 	run := false
 	for _, s := range pushCIBranches {
 		if s == refp[2] {
@@ -370,6 +374,28 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	}
 }
 
+// runGenDocs runs the documentation generation plugin for the
+// branch specified in the push request.
+func (g *githubRequestHandler) runGenDocs(branch string) {
+
+	docsCmd := exec.Command("gen_docs_branch")
+	docsCmd.Dir = modelsDir
+	envs := []string{
+		fmt.Sprintf("GITHUB_ACCESS_TOKEN=%s", g.accessToken),
+		fmt.Sprintf("BRANCH=%s", branch),
+	}
+	docsCmd.Env = envs
+
+	out, docsErr := docsCmd.CombinedOutput()
+	glog.Infof("Doc gen output: %s", out)
+
+	if docsErr != nil {
+		glog.Errorf("Doc gen failed: %s", docsErr)
+		return
+	}
+
+}
+
 // createCIOutputGist creates a GitHub Gist, and appends comment output to it.
 // In this case, the runID is used as the title for the Gist (to identify the
 // changes), output is the stdout/stderr output of the CI test, and success
@@ -481,7 +507,7 @@ func (g *githubRequestHandler) updatePRStatus(update *githubPRUpdate) error {
 func newGitHubRequestHandler() (*githubRequestHandler, error) {
 	accesstk := os.Getenv("GITHUB_ACCESS_TOKEN")
 	if accesstk == "" {
-		return nil, errors.New("invalid access token environmental variable set")
+		return nil, errors.New("invalid access token environment variable set")
 	}
 
 	ts := oauth2.StaticTokenSource(
