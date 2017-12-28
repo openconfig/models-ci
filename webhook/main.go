@@ -42,10 +42,6 @@ var (
 	// every commit.
 	pushCIBranches = []string{"master"}
 
-	// The directory in which the CI testing repository is cloned on the host
-	// system. The default for this value should be /home/ghci/models-ci.
-	modelsDir = "/home/ghci/models-ci"
-
 	// goOutputPath stores the path at which the output of the Go tests is
 	// stored. By default this should be /tmp/go-tests.out.
 	goOutputPath = "/tmp/go-tests.out"
@@ -54,9 +50,17 @@ var (
 	// By default this should be /tmp/lint.out.
 	lintOutputPath = "/tmp/lint.out"
 
+	// The directory in which the CI testing repository is cloned on the host
+	// system. The default for this value should be /home/ghci/models-ci.
+	modelsDir = flag.String("mdir", "/home/ghci/models-ci", "directory where CI testing repo is cloned")
+
 	// listenSpec is the host and port that the hook should listen on. By default
 	// it should be :8080.
-	listenSpec = ":8080"
+	listenSpec = flag.String("listen", ":8080", "host and port to listen on (<hostname>:<port>)")
+
+	// docGenLoc is the directory where the master doc gen script can be found.  By default
+	// it is in /home/ghci/models-ci/bin
+	docGenLoc = flag.String("docgendir", "/home/ghci/models-ci/bin", "location of the doc gen script")
 )
 
 // githubRequestHandler carries information relating to the GitHub session that
@@ -79,6 +83,10 @@ type githubRequestHandler struct {
 	// out version of the models repo, then this is the safest way to ensure
 	// that we do not tread on another CI test's toes.
 	mu sync.Mutex
+	// docsmu is a mutex used to ensure that a single docs generation goroutine
+	// runs concurrently.  This serves primarily to protect against two concurrent
+	// requests for the same branch.
+	docsmu sync.Mutex
 }
 
 // githubPullRequestHookInput is the JSON structure that is used as content
@@ -318,7 +326,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	// Run the tests using exec. Env variables are set for the branch that should
 	// be tested and the GitHub token.
 	lintCmd := exec.Command("make", "clean", "get-deps", "lint_html")
-	lintCmd.Dir = modelsDir
+	lintCmd.Dir = *modelsDir
 	envs := []string{
 		fmt.Sprintf("GITHUB_TOKEN=%s", g.accessToken),
 		fmt.Sprintf("BRANCH=%s", branch),
@@ -329,7 +337,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	glog.Infof("Lint test output: %s", out)
 
 	goCmd := exec.Command("make", "gotests")
-	goCmd.Dir = modelsDir
+	goCmd.Dir = *modelsDir
 	goCmd.Env = envs
 
 	goout, goErr := goCmd.CombinedOutput()
@@ -375,15 +383,23 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	}
 }
 
+// runGenDocs is a wrapper script that calls the docs generation
+// scripts within a mutex lock.
+func (g *githubRequestHandler) runGenDocs(branch string) {
+	g.docsmu.Lock()
+	g.generateDocs(branch)
+	g.docsmu.Unlock()
+}
+
 // runGenDocs runs the documentation generation plugin for the
 // branch specified in the push request.
-func (g *githubRequestHandler) runGenDocs(branch string) {
+func (g *githubRequestHandler) generateDocs(branch string) {
 
-	docsCmd := exec.Command("gen_docs_branch")
-	docsCmd.Dir = modelsDir
+	docsCmd := exec.Command(*docGenLoc + "/gen_docs_branch.sh")
+	//docsCmd.Dir = *docGenLoc
 	envs := []string{
 		fmt.Sprintf("GITHUB_ACCESS_TOKEN=%s", g.accessToken),
-		fmt.Sprintf("BRANCH=%s", branch),
+		fmt.Sprintf("PUSH_BRANCH=%s", branch),
 	}
 	docsCmd.Env = envs
 
@@ -556,5 +572,5 @@ func main() {
 	// continuous integration tests.
 	http.HandleFunc("/ci/pull_request", h.pullRequestHandler)
 	http.HandleFunc("/ci/repo_push", h.pushHandler)
-	http.ListenAndServe(listenSpec, nil)
+	http.ListenAndServe(*listenSpec, nil)
 }

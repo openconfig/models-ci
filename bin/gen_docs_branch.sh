@@ -21,4 +21,17 @@ OC_STAGE_DIR=/home/ghci/oc-tools/oc-stage
 OC_PYANG_PLUGINS=/home/ghci/oc-pyang/openconfig_pyang/plugins
 DOC_OUTPUT=/opt/nginx/nginx/html/branches
 
-./oc-tools/oc-stage/oc-stage.sh -r ./oc-tools/oc-stage -p ./oc-pyang/openconfig_pyang/plugins -o /opt/nginx/nginx/html/branches -b master
+
+if [ -z ${GITHUB_ACCESS_TOKEN} ]
+then
+  echo "GITHUB_ACCESS_TOKEN not set" >&2
+  exit 1
+fi
+
+if [ -z ${PUSH_BRANCH} ]
+then
+  echo "PUSH_BRANCH variable not set" >&2
+  exit 1
+fi
+
+$OC_STAGE_DIR/oc-stage.sh -r $OC_STAGE_DIR -p $OC_PYANG_PLUGINS -o $DOC_OUTPUT -b $PUSH_BRANCH
