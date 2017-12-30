@@ -61,6 +61,8 @@ var (
 	// docGenLoc is the directory where the master doc gen script can be found.  By default
 	// it is in /home/ghci/models-ci/bin
 	docGenLoc = flag.String("docgendir", "/home/ghci/models-ci/bin", "location of the doc gen script")
+
+	// TODO(aashaikh): add an cmd line flag to supply parameters to the docgen script
 )
 
 // githubRequestHandler carries information relating to the GitHub session that
@@ -396,7 +398,6 @@ func (g *githubRequestHandler) runGenDocs(branch string) {
 func (g *githubRequestHandler) generateDocs(branch string) {
 
 	docsCmd := exec.Command(*docGenLoc + "/gen_docs_branch.sh")
-	//docsCmd.Dir = *docGenLoc
 	envs := []string{
 		fmt.Sprintf("GITHUB_ACCESS_TOKEN=%s", g.accessToken),
 		fmt.Sprintf("PUSH_BRANCH=%s", branch),
