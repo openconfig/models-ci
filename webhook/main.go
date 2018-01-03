@@ -50,7 +50,7 @@ var (
 	// By default this should be /tmp/lint.out.
 	lintOutputPath = "/tmp/lint.out"
 
-	// The directory in which the CI testing repository is cloned on the host
+	// modelsDir is the directory in which the CI testing repository is cloned on the host
 	// system. The default for this value should be /home/ghci/models-ci.
 	modelsDir = flag.String("mdir", "/home/ghci/models-ci", "directory where CI testing repo is cloned")
 
@@ -62,7 +62,7 @@ var (
 	// it is in /home/ghci/models-ci/bin
 	docGenLoc = flag.String("docgendir", "/home/ghci/models-ci/bin", "location of the doc gen script")
 
-	// TODO(aashaikh): add an cmd line flag to supply parameters to the docgen script
+	// TODO(aashaikh): add a cmd line flag to supply parameters to the docgen script
 )
 
 // githubRequestHandler carries information relating to the GitHub session that
@@ -317,7 +317,7 @@ func (g *githubRequestHandler) runCI(runID, branch, user, repo, sha string) {
 	g.mu.Lock()
 	g.runLintGoTests(runID, branch, user, repo, sha)
 	// Done with tests, unlock the mutex.
-	g.mu.Unlock()
+	defer g.mu.Unlock()
 }
 
 // runLintGoTests runs the OpenConfig linter, and Go-based tests for the models
@@ -390,14 +390,20 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 func (g *githubRequestHandler) runGenDocs(branch string) {
 	g.docsmu.Lock()
 	g.generateDocs(branch)
-	g.docsmu.Unlock()
+	defer g.docsmu.Unlock()
 }
 
 // runGenDocs runs the documentation generation plugin for the
 // branch specified in the push request.
 func (g *githubRequestHandler) generateDocs(branch string) {
 
-	docsCmd := exec.Command(*docGenLoc + "/gen_docs_branch.sh")
+	scriptfile := *docGenLoc + "/gen_docs_branch.sh"
+	_, err := os.Stat(scriptfile)
+	if os.IsNotExist(err) {
+		glog.Errorf("Doc gen script does not exist at %s: %s", scriptfile, err)
+		return
+	}
+	docsCmd := exec.Command(scriptfile)
 	envs := []string{
 		fmt.Sprintf("GITHUB_ACCESS_TOKEN=%s", g.accessToken),
 		fmt.Sprintf("PUSH_BRANCH=%s", branch),
