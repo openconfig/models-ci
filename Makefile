@@ -3,7 +3,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 all: get-deps lint gotests clean
 
 get-deps:
-	git clone https://${GITHUB_TOKEN}@github.com/robshakir/models.git 2>&1 >/dev/null
+	git clone https://${GITHUB_TOKEN}@github.com/openconfig/models.git 2>&1 >/dev/null
 
 lint:
 	cd ${ROOT_DIR}/models

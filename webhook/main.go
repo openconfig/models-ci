@@ -190,6 +190,7 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 	reqID := r.Header.Get("X-GitHub-Delivery")
 	if event := r.Header.Get("X-GitHub-Event"); event != "push" {
 		glog.Errorf("Not processing event %s as it is not a push, is: %s", reqID, event)
+		return
 	}
 
 	pushReq, err := decodeGitHubPushJSON(r.Body)
@@ -393,14 +394,13 @@ func (g *githubRequestHandler) runGenDocs(branch string) {
 	defer g.docsmu.Unlock()
 }
 
-// runGenDocs runs the documentation generation plugin for the
+// generateDocs runs the documentation generation plugin for the
 // branch specified in the push request.
 func (g *githubRequestHandler) generateDocs(branch string) {
 
 	scriptfile := *docGenLoc + "/gen_docs_branch.sh"
-	_, err := os.Stat(scriptfile)
-	if os.IsNotExist(err) {
-		glog.Errorf("Doc gen script does not exist at %s: %s", scriptfile, err)
+	if _, err := os.Stat(scriptfile); err != nil {
+		glog.Errorf("Doc gen script not accessible at %s: %s", scriptfile, err)
 		return
 	}
 	docsCmd := exec.Command(scriptfile)
