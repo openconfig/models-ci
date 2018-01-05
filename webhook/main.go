@@ -42,10 +42,6 @@ var (
 	// every commit.
 	pushCIBranches = []string{"master"}
 
-	// The directory in which the CI testing repository is cloned on the host
-	// system. The default for this value should be /home/ghci/models-ci.
-	modelsDir = "/home/ghci/models-ci"
-
 	// goOutputPath stores the path at which the output of the Go tests is
 	// stored. By default this should be /tmp/go-tests.out.
 	goOutputPath = "/tmp/go-tests.out"
@@ -54,9 +50,19 @@ var (
 	// By default this should be /tmp/lint.out.
 	lintOutputPath = "/tmp/lint.out"
 
+	// modelsDir is the directory in which the CI testing repository is cloned on the host
+	// system. The default for this value should be /home/ghci/models-ci.
+	modelsDir = flag.String("mdir", "/home/ghci/models-ci", "directory where CI testing repo is cloned")
+
 	// listenSpec is the host and port that the hook should listen on. By default
 	// it should be :8080.
-	listenSpec = ":8080"
+	listenSpec = flag.String("listen", ":8080", "host and port to listen on (<hostname>:<port>)")
+
+	// docGenLoc is the directory where the master doc gen script can be found.  By default
+	// it is in /home/ghci/models-ci/bin
+	docGenLoc = flag.String("docgendir", "/home/ghci/models-ci/bin", "location of the doc gen script")
+
+	// TODO(aashaikh): add a cmd line flag to supply parameters to the docgen script
 )
 
 // githubRequestHandler carries information relating to the GitHub session that
@@ -79,6 +85,10 @@ type githubRequestHandler struct {
 	// out version of the models repo, then this is the safest way to ensure
 	// that we do not tread on another CI test's toes.
 	mu sync.Mutex
+	// docsmu is a mutex used to ensure that a single docs generation goroutine
+	// runs concurrently.  This serves primarily to protect against two concurrent
+	// requests for the same branch.
+	docsmu sync.Mutex
 }
 
 // githubPullRequestHookInput is the JSON structure that is used as content
@@ -180,6 +190,7 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 	reqID := r.Header.Get("X-GitHub-Delivery")
 	if event := r.Header.Get("X-GitHub-Event"); event != "push" {
 		glog.Errorf("Not processing event %s as it is not a push, is: %s", reqID, event)
+		return
 	}
 
 	pushReq, err := decodeGitHubPushJSON(r.Body)
@@ -212,6 +223,10 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	branch := refp[2]
+
+	//TODO(aashaikh): consider moving docs generation to another handler / path
+	glog.Infof("Generating updated docs for branch %s", branch)
+	go g.runGenDocs(branch)
 
 	run := false
 	for _, s := range pushCIBranches {
@@ -303,7 +318,7 @@ func (g *githubRequestHandler) runCI(runID, branch, user, repo, sha string) {
 	g.mu.Lock()
 	g.runLintGoTests(runID, branch, user, repo, sha)
 	// Done with tests, unlock the mutex.
-	g.mu.Unlock()
+	defer g.mu.Unlock()
 }
 
 // runLintGoTests runs the OpenConfig linter, and Go-based tests for the models
@@ -314,7 +329,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	// Run the tests using exec. Env variables are set for the branch that should
 	// be tested and the GitHub token.
 	lintCmd := exec.Command("make", "clean", "get-deps", "lint_html")
-	lintCmd.Dir = modelsDir
+	lintCmd.Dir = *modelsDir
 	envs := []string{
 		fmt.Sprintf("GITHUB_TOKEN=%s", g.accessToken),
 		fmt.Sprintf("BRANCH=%s", branch),
@@ -325,7 +340,7 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	glog.Infof("Lint test output: %s", out)
 
 	goCmd := exec.Command("make", "gotests")
-	goCmd.Dir = modelsDir
+	goCmd.Dir = *modelsDir
 	goCmd.Env = envs
 
 	goout, goErr := goCmd.CombinedOutput()
@@ -369,6 +384,40 @@ func (g *githubRequestHandler) runLintGoTests(runID, branch, user, repo, sha str
 	if uperr := g.updatePRStatus(prUpdate); uperr != nil {
 		glog.Errorf("couldn't update PR to succeeded: %s", uperr)
 	}
+}
+
+// runGenDocs is a wrapper script that calls the docs generation
+// scripts within a mutex lock.
+func (g *githubRequestHandler) runGenDocs(branch string) {
+	g.docsmu.Lock()
+	g.generateDocs(branch)
+	defer g.docsmu.Unlock()
+}
+
+// generateDocs runs the documentation generation plugin for the
+// branch specified in the push request.
+func (g *githubRequestHandler) generateDocs(branch string) {
+
+	scriptfile := *docGenLoc + "/gen_docs_branch.sh"
+	if _, err := os.Stat(scriptfile); err != nil {
+		glog.Errorf("Doc gen script not accessible at %s: %s", scriptfile, err)
+		return
+	}
+	docsCmd := exec.Command(scriptfile)
+	envs := []string{
+		fmt.Sprintf("GITHUB_ACCESS_TOKEN=%s", g.accessToken),
+		fmt.Sprintf("PUSH_BRANCH=%s", branch),
+	}
+	docsCmd.Env = envs
+
+	out, docsErr := docsCmd.CombinedOutput()
+	glog.Infof("Doc gen output: %s", out)
+
+	if docsErr != nil {
+		glog.Errorf("Doc gen failed: %s", docsErr)
+		return
+	}
+
 }
 
 // createCIOutputGist creates a GitHub Gist, and appends comment output to it.
@@ -487,7 +536,7 @@ func (g *githubRequestHandler) updatePRStatus(update *githubPRUpdate) error {
 func newGitHubRequestHandler() (*githubRequestHandler, error) {
 	accesstk := os.Getenv("GITHUB_ACCESS_TOKEN")
 	if accesstk == "" {
-		return nil, errors.New("invalid access token environmental variable set")
+		return nil, errors.New("invalid access token environment variable set")
 	}
 
 	ts := oauth2.StaticTokenSource(
@@ -530,5 +579,5 @@ func main() {
 	// continuous integration tests.
 	http.HandleFunc("/ci/pull_request", h.pullRequestHandler)
 	http.HandleFunc("/ci/repo_push", h.pushHandler)
-	http.ListenAndServe(listenSpec, nil)
+	http.ListenAndServe(*listenSpec, nil)
 }
