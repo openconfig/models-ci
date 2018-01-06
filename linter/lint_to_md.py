@@ -117,7 +117,9 @@ def process_output(mode, fh):
                                    "  <summary>:no_entry: %s</summary>" % testdir,
                                    "  %s" % result["message"],
                                    "</details>"])
-            overall_failed = True
+                overall_failed = True
+            # The only time that "status" is in the top level result is during a
+            # failure.
             continue
 
         any_failed = False
