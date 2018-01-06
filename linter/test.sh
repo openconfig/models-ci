@@ -51,6 +51,7 @@ curl -o $TESTDIR/$PLUGINFILE $GETURL/$PLUGINFILE &>/dev/null
 pip install --user virtualenv &>/dev/null
 virtualenv $TESTDIR/pyvenv &>/dev/null
 source $TESTDIR/pyvenv/bin/activate &>/dev/null
+pip install -U pip &>/dev/null
 pip install --no-cache-dir -r $TESTDIR/requirements.txt &>/dev/null
 pip install --no-cache-dir $TESTDIR/$PLUGINFILE &>/dev/null
 

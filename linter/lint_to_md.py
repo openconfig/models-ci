@@ -103,7 +103,7 @@ def process_output(mode, fh):
         sys.exit(1)
 
     output = []
-    overall_fail = False
+    overall_failed = False
     for fn, result in lint_json["tests"].iteritems():
 
         testdir = "/".join(fn_to_model_dir(fn))
@@ -117,7 +117,9 @@ def process_output(mode, fh):
                                    "  <summary>:no_entry: %s</summary>" % testdir,
                                    "  %s" % result["message"],
                                    "</details>"])
-            overall_fail = True
+                overall_failed = True
+            # The only time that "status" is in the top level result is during a
+            # failure.
             continue
 
         any_failed = False
