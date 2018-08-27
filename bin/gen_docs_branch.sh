@@ -40,8 +40,7 @@ check_args () {
 
   if [ -z ${PUSH_BRANCH} ]
   then
-    echo "PUSH_BRANCH variable not set" >&2
-    exit 1
+    echo "PUSH_BRANCH variable not set - will build all branches"
   fi
 
   if [ ! -d ${OC_STAGE_DIR} ]
@@ -89,4 +88,9 @@ shift $((OPTIND-1))
 
 check_args
 
-$OC_STAGE_DIR/oc-stage.sh -r $OC_STAGE_DIR -p $OC_PYANG_PLUGINS -o $DOC_OUTPUT -b $PUSH_BRANCH
+if [ -z ${PUSH_BRANCH} ]
+then
+  $OC_STAGE_DIR/oc-stage.sh -r $OC_STAGE_DIR -p $OC_PYANG_PLUGINS -o $DOC_OUTPUT -t -g models
+else
+  $OC_STAGE_DIR/oc-stage.sh -r $OC_STAGE_DIR -p $OC_PYANG_PLUGINS -o $DOC_OUTPUT -b $PUSH_BRANCH -t -g models
+fi
