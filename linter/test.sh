@@ -1,9 +1,8 @@
 #!/bin/bash
 
 cleanup(){
-  (cd $MODELROOT && git checkout master &>/dev/null)
-  rm -rf $TESTDIR/ietf-yang $TESTDIR/pyvenv
-  rm $TESTDIR/$PLUGINFILE
+  rm -rf $MODELROOT/third_party/ietf-yang $TESTDIR/pyvenv
+  rm -rf $PLUGINDIR
 }
 
 escape() {
@@ -13,39 +12,13 @@ escape() {
 }
 
 
-BRANCH="master"
-if [ $# -eq 1 ]; then
-  BRANCH=$1
-fi
-
-TESTDIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODELROOT=$TESTDIR/../models
-MODELDIR=$MODELROOT/yang
+TESTDIR=$TRAVIS_BUILD_DIR/models-ci/linter
+MODELROOT=$TESTDIR/../../
+MODELDIR=$OCDIR
 CIROOT=$TESTDIR/..
-PLUGINFILE="openconfig_pyang-0.1.3-py2-none-any.whl"
-GETURL="http://rob.sh/files/"
+PLUGINDIR=$TESTDIR/oc-pyang
 
-brancherr=$(
-  cd $MODELROOT;
-  git pull &>/dev/null;
-  git checkout $BRANCH &>/dev/null;
-  if [ $? -ne 0 ]; then
-    echo "ERR"
-  fi
-  git pull &>/dev/null;
-)
-if [ "$brancherr" == "ERR" ]; then
-  cleanup
-  echo -n '{"status":"fail", "message": "could not check branch'
-  echo -n "$BRANCH"
-  echo 'out"}'
-  exit
-fi
-
-# This is a repo that contains the minimum required modules
-# for OpenConfig build that are external dependencies.
-git clone https://github.com/robshakir/yang.git $TESTDIR/ietf-yang &>/dev/null
-curl -o $TESTDIR/$PLUGINFILE $GETURL/$PLUGINFILE &>/dev/null
+git clone https://github.com/openconfig/oc-pyang $PLUGINDIR &>/dev/null
 
 # Check that we have virtualenv available
 pip install --user virtualenv &>/dev/null
@@ -53,13 +26,15 @@ virtualenv $TESTDIR/pyvenv &>/dev/null
 source $TESTDIR/pyvenv/bin/activate &>/dev/null
 pip install -U pip &>/dev/null
 pip install --no-cache-dir -r $TESTDIR/requirements.txt &>/dev/null
-pip install --no-cache-dir $TESTDIR/$PLUGINFILE &>/dev/null
+export PYTHONPATH=$PLUGINDIR
+pip install enum34 &>/dev/null
+pip install jinja2 &>/dev/null
 
 # Find the directory for the openconfig linter
 export PLUGIN_DIR=$(/usr/bin/env python -c \
           'import openconfig_pyang; import os; \
-           print "%s/plugins" % \
-           os.path.dirname(openconfig_pyang.__file__)')
+           print("%s/plugins" % \
+           os.path.dirname(openconfig_pyang.__file__))')
 
 /usr/bin/env python -c 'import openconfig_pyang' &>/dev/null
 if [ $? -ne 0 ]; then
@@ -68,7 +43,7 @@ if [ $? -ne 0 ]; then
   exit 127
 fi
 
-PYANGCMD="$TESTDIR/pyvenv/bin/pyang --plugindir $PLUGIN_DIR -p $MODELDIR -p /tmp/ietf-yang"
+PYANGCMD="$TESTDIR/pyvenv/bin/pyang --plugindir $PLUGIN_DIR -p $MODELDIR -p $MODELROOT/third_party/ietf-yang"
 PYANGCMD="$PYANGCMD --openconfig --ignore-error=OC_RELATIVE_PATH"
 
 FAIL=0

@@ -27,27 +27,24 @@ BUILD_ERRORS = [
 def fn_to_model_dir(fn):
     """
     fn_to_model_dir takes an input file path, and outputs the sections of the
-    path that comes after "models/yang" in the path. This gives the elements of
+    path that comes after "yang" in the path. This gives the elements of
     the path that allow localisation of the OpenConfig model.
 
     Input:
         - fn (string) - the file path to be considered
     Output:
         - model_parts (list) - the parts of the file path that follow
-          "models/yang"
+          "yang"
     """
     parts = fn.split("/")
     model_parts = []
-    in_models, in_yang = False, False
+    in_yang = False
     for p in parts:
-        if p == "models":
-            in_models = True
-            continue
-        elif p == "yang":
+        if p == "yang":
             in_yang = True
             continue
 
-        if in_yang and in_models:
+        if in_yang:
             model_parts.append(p)
     return model_parts
 
@@ -173,7 +170,7 @@ def process_output(mode, fh):
 
             if mode == "html":
                 output.append("</details>")
-    
+
     print("\n".join(output), file=fh)
     return overall_failed
 
