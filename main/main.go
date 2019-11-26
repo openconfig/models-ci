@@ -92,7 +92,6 @@ func (g *githubCIHandler) runLintTests() {
 	if travisRepoSlug == "" {
 		// TODO(wenbli): We should continue to lint without posting to a PR for pushes in case someone pushes.
 		glog.Info("Skip linting for push request")
-		os.Exit(1)
 		return
 	} else if travisRepoSlug != repoInfo.repoSlug {
 		// Ensure that we're running in the expected repo as requested by the build script.
