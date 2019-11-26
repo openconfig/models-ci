@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,7 +14,6 @@ import (
 
 	"golang.org/x/oauth2"
 
-	glog "github.com/golang/glog"
 	"github.com/google/go-github/github"
 )
 
@@ -31,11 +31,6 @@ var (
 	ciName = "OpenConfig CI Experimental"
 
 	repoSlug = flag.String("repo-slug", "openconfig/public", "repo where CI is run")
-
-	// repoInfo contains the description of the expected repo to be tested
-	// under CI. This information is parsed from the input flag, and is
-	// verified against the Travis environment variable TRAVIS_PULL_REQUEST_SLUG
-	repoInfo RepoInfo
 
 	// lintOutputPath stores the path at which the output of the linter is stored.
 	// By default this should be /tmp/lint.out.
@@ -87,24 +82,12 @@ type githubPRUpdate struct {
 // runLintTests runs lint tests for a pull request on Travis-CI.
 // list of current (lint test / result location):
 // - openconfig_pyang extensions / PR gist.
-func (g *githubCIHandler) runLintTests() {
-	travisRepoSlug := os.Getenv("TRAVIS_PULL_REQUEST_SLUG")
-	if travisRepoSlug == "" {
-		// TODO(wenbli): We should continue to lint without posting to a PR for pushes in case someone pushes.
-		glog.Info("Skip linting for push request")
-		return
-	} else if travisRepoSlug != repoInfo.repoSlug {
-		// Ensure that we're running in the expected repo as requested by the build script.
-		glog.Errorf("Not processing pull request for %q as it is not the expected input repo %q", travisRepoSlug, repoInfo.repoSlug)
-		os.Exit(1)
-		return
-	}
-
+func (g *githubCIHandler) runLintTests(repoInfo RepoInfo) {
 	commitSHA := os.Getenv("TRAVIS_PULL_REQUEST_SHA")
 	branch := os.Getenv("TRAVIS_PULL_REQUEST_BRANCH")
 	// Update the status to pending so that the user can see that we have received
 	// this request and are ready to run the CI.
-	glog.Infof("run CI for commit %s, branch %s", commitSHA, branch)
+	log.Printf("run CI for commit %s, branch %s\n", commitSHA, branch)
 	update := &githubPRUpdate{
 		Owner:       repoInfo.owner,
 		Repo:        repoInfo.repo,
@@ -114,40 +97,25 @@ func (g *githubCIHandler) runLintTests() {
 		Context:     ciName,
 	}
 	if err := g.updatePRStatus(update); err != nil {
-		glog.Errorf("couldn't update PR: %s", err)
+		log.Printf("error: couldn't update PR: %s\n", err)
 	}
 
 	// Launch a go routine to run the PR CI.
-	g.runLintGoTests(repoInfo, commitSHA)
+	g.runLintAndUpdatePR(repoInfo, commitSHA)
 }
 
-// runLintGoTests runs the OpenConfig linter, and Go-based tests for the models
+// runLintAndUpdatePR runs the OpenConfig linter, and Go-based tests for the models
 // repo. The results are written to a GitHub Gist, and into the PR that was
 // modified, associated with the commit reference SHA.
-func (g *githubCIHandler) runLintGoTests(repoInfo RepoInfo, sha string) {
+func (g *githubCIHandler) runLintAndUpdatePR(repoInfo RepoInfo, sha string) {
 
-	// Run the tests using exec.
-	lintCmd := exec.Command("make", "clean", "lint_html")
-
-	out, ciErr := lintCmd.CombinedOutput()
-	glog.Infof("Lint test output: %s", out)
-
-	lintOK := true
-	if ciErr != nil {
-		lintOK = false
-	}
-
-	output := fmt.Sprintf("%s", string(out))
-	url, _, err := g.createCIOutputGist(output, lintOK)
-	if err != nil {
-		glog.Errorf("couldn't create gist: %s", err)
-	}
+	gistUrl, out, ciErr := g.runLint()
 
 	prUpdate := &githubPRUpdate{
 		Owner:   repoInfo.owner,
 		Repo:    repoInfo.repo,
 		Ref:     sha,
-		URL:     url,
+		URL:     gistUrl,
 		Context: ciName,
 	}
 
@@ -156,7 +124,7 @@ func (g *githubCIHandler) runLintGoTests(repoInfo RepoInfo, sha string) {
 		prUpdate.Description = ciName + " Failed"
 
 		if uperr := g.updatePRStatus(prUpdate); uperr != nil {
-			glog.Errorf("couldn't update PR to failed: %s\nerror: %s", out, uperr)
+			log.Printf("error: couldn't update PR to failed: %s\nerror: %s\n", out, uperr)
 		}
 		return
 	}
@@ -164,8 +132,29 @@ func (g *githubCIHandler) runLintGoTests(repoInfo RepoInfo, sha string) {
 	prUpdate.NewStatus = "success"
 	prUpdate.Description = ciName + " Succeeded"
 	if uperr := g.updatePRStatus(prUpdate); uperr != nil {
-		glog.Errorf("couldn't update PR to succeeded: %s", uperr)
+		log.Printf("error: couldn't update PR to succeeded: %s\n", uperr)
 	}
+}
+
+// runLint runs lint and returns the URL to a gist of its processed html
+// output, the html output, as well as its stderr indicating whether lint
+// passed.
+func (g *githubCIHandler) runLint() (string, []byte, error) {
+	// Run the tests using exec.
+	lintCmd := exec.Command("make", "clean", "lint_html")
+
+	out, ciErr := lintCmd.CombinedOutput()
+	log.Printf("Lint test output: %s\n", out)
+
+	lintOK := ciErr == nil
+
+	output := fmt.Sprintf("%s", string(out))
+	url, _, err := g.createCIOutputGist(output, lintOK)
+	if err != nil {
+		log.Printf("error: couldn't create gist: %s\n", err)
+	}
+
+	return url, out, ciErr
 }
 
 // createCIOutputGist creates a GitHub Gist, and appends comment output to it.
@@ -291,13 +280,33 @@ func newGitHubCIHandler() (*githubCIHandler, error) {
 
 func main() {
 	flag.Parse()
-	repoInfo = newRepoInfo(*repoSlug)
 
-	h, err := newGitHubCIHandler()
+	g, err := newGitHubCIHandler()
 	if err != nil {
-		glog.Errorf("Could not initialise GitHub client: %v", err)
+		log.Fatalf("error: Could not initialise GitHub client: %v", err)
 		return
 	}
 
-	h.runLintTests()
+	// Travis environment variable TRAVIS_PULL_REQUEST_SLUG tells us what to do.
+	switch travisRepoSlug := os.Getenv("TRAVIS_PULL_REQUEST_SLUG"); travisRepoSlug {
+	case "": // push
+		gistUrl, out, ciErr := g.runLint()
+
+		// Show lint results as long as URL was retrieved.
+		switch {
+		case ciErr == nil:
+			log.Printf("lint passed, results link: %s", gistUrl)
+		case gistUrl != "":
+			log.Printf("lint failed, results link: %s", gistUrl)
+		}
+
+		if ciErr != nil {
+			log.Fatalf("error while running lint: %v\n\nlint output:\n%s", ciErr, out)
+		}
+	case *repoSlug:
+		g.runLintTests(newRepoInfo(*repoSlug))
+	default: // Repo under test doesn't match input repo
+		// Ensure that we're running in the expected repo as requested by the build script.
+		log.Fatalf("error: Not processing pull request for %q as it does not match the input repo %q", travisRepoSlug, *repoSlug)
+	}
 }
