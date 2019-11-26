@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 """
     lint_to_md takes an input OpenConfig linter document and outputs GFM.
@@ -101,7 +101,7 @@ def process_output(mode, fh):
 
     output = []
     overall_failed = False
-    for fn, result in lint_json["tests"].iteritems():
+    for fn, result in lint_json["tests"].items():
 
         testdir = "/".join(fn_to_model_dir(fn))
         if "status" in result:
@@ -121,7 +121,7 @@ def process_output(mode, fh):
 
         any_failed = False
         test_out = []
-        for testname, test in result["tests"].iteritems():
+        for testname, test in result["tests"].items():
             if not test["status"] == "pass":
                 any_failed = True
                 if mode == "markdown":

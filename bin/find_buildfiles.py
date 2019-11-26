@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
   find_buildfiles extracts the YANG modules required to build an OC model
 
