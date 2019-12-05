@@ -1,4 +1,4 @@
 wheel
 pyaml
 setuptools
-pyang==1.7.1
+pyang==1.7.8

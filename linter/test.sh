@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cleanup(){
-  rm -rf $MODELROOT/third_party/ietf-yang $TESTDIR/pyvenv
+  rm -rf $TESTDIR/pyvenv
   rm -rf $PLUGINDIR
 }
 
@@ -19,24 +19,28 @@ CIROOT=$TESTDIR/..
 PLUGINDIR=$TESTDIR/oc-pyang
 
 git clone https://github.com/openconfig/oc-pyang $PLUGINDIR &>/dev/null
+cd $PLUGINDIR
+git checkout wenbli-dev
+cd -
 
 # Check that we have virtualenv available
-pip install --user virtualenv &>/dev/null
+pip3 install --user virtualenv &>/dev/null
 virtualenv $TESTDIR/pyvenv &>/dev/null
 source $TESTDIR/pyvenv/bin/activate &>/dev/null
-pip install -U pip &>/dev/null
-pip install --no-cache-dir -r $TESTDIR/requirements.txt &>/dev/null
+#pip3 install --user -U pip #&>/dev/null
+#pip3 install --no-cache-dir -r $TESTDIR/requirements.txt #&>/dev/null
+pip3 install -r $TESTDIR/requirements.txt &>/dev/null
 export PYTHONPATH=$PLUGINDIR
-pip install enum34 &>/dev/null
-pip install jinja2 &>/dev/null
+#pip3 install enum34 #&>/dev/null
+pip3 install jinja2 &>/dev/null
 
 # Find the directory for the openconfig linter
-export PLUGIN_DIR=$(/usr/bin/env python -c \
+export PLUGIN_DIR=$(/usr/bin/env python3 -c \
           'import openconfig_pyang; import os; \
            print("%s/plugins" % \
            os.path.dirname(openconfig_pyang.__file__))')
 
-/usr/bin/env python -c 'import openconfig_pyang' &>/dev/null
+/usr/bin/env python3 -c 'import openconfig_pyang' &>/dev/null
 if [ $? -ne 0 ]; then
   echo '{"status": "fail", "message": "could not install pyang plugin"}'
   cleanup
