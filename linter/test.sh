@@ -20,8 +20,8 @@ PLUGINDIR=$TESTDIR/oc-pyang
 
 git clone https://github.com/openconfig/oc-pyang $PLUGINDIR &>/dev/null
 cd $PLUGINDIR
-git checkout wenbli-dev
-cd -
+git checkout wenbli-dev &> /dev/null
+cd - &> /dev/null
 
 # Check that we have virtualenv available
 pip3 install --user virtualenv &>/dev/null
