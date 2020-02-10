@@ -240,8 +240,8 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	glog.Infof("Running CI for master with ref %s", reqID)
-	go g.runCI(reqID, branch, repoOwner, repoName, pushReq.After)
+	// glog.Infof("Running CI for master with ref %s", reqID)
+	// go g.runCI(reqID, branch, repoOwner, repoName, pushReq.After)
 }
 
 // pullRequestHandler handles an incoming pull request event from GitHub.
@@ -577,7 +577,9 @@ func main() {
 
 	// We only handle a single URL currently, which is a path for the
 	// continuous integration tests.
-	http.HandleFunc("/ci/pull_request", h.pullRequestHandler)
+
+	// CI is to be handled by GCB.
+	// http.HandleFunc("/ci/pull_request", h.pullRequestHandler)
 	http.HandleFunc("/ci/repo_push", h.pushHandler)
 	http.ListenAndServe(*listenSpec, nil)
 }
