@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/wenovus/models-ci/commonci"
+	"github.com/openconfig/models-ci/commonci"
 )
 
 var (

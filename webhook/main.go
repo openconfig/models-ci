@@ -210,7 +210,7 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	repoOwner, repoName := repop[0], repop[1]
+	// repoOwner, repoName := repop[0], repop[1]
 
 	if !strings.HasPrefix(pushReq.Ref, "refs/heads/") {
 		glog.Errorf("Could not resolve the branch that the push event %s was for: %s", reqID, pushReq.Ref)

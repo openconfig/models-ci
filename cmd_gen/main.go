@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wenovus/models-ci/commonci"
+	"github.com/openconfig/models-ci/commonci"
 	"gopkg.in/yaml.v3"
 )
 

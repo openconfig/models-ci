@@ -42,7 +42,7 @@ run-pyang-version() {
   source $VENVDIR/bin/activate
   pip3 install pyang==$1
   (bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/wenovus/models-ci/post_results/main.go -validator=pyang -version=$1 -modelRoot=/workspace/release/yang -repo-slug=wenovus/oc-experimental -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA)
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA)
 }
 
 if stat $PYANG_RESULTSDIR; then
@@ -58,13 +58,13 @@ if stat $PYANG_RESULTSDIR; then
   pip3 install pyang
 
   (bash $PYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang > $PYANG_RESULTSDIR/$OUTFILE_NAME 2> $PYANG_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/wenovus/models-ci/post_results/main.go -validator=pyang -modelRoot=/workspace/release/yang -repo-slug=wenovus/oc-experimental -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
 fi
 
 ########################## OC-PYANG #############################
 OCPYANG_RESULTSDIR=$ROOT_DIR/results/oc-pyang
 OCPYANG_REPO=$TESTDIR/oc-pyang-repo
-OCPYANG_DIR=/go/src/github.com/wenovus/models-ci/oc-pyang
+OCPYANG_DIR=/go/src/github.com/openconfig/models-ci/oc-pyang
 
 if stat $OCPYANG_RESULTSDIR; then
   if [ $SETUP_DONE -eq 0 ]; then
@@ -92,7 +92,7 @@ if stat $OCPYANG_RESULTSDIR; then
   fi
 
   (bash $OCPYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR > $OCPYANG_RESULTSDIR/$OUTFILE_NAME 2> $OCPYANG_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/wenovus/models-ci/post_results/main.go -validator=oc-pyang -modelRoot=/workspace/release/yang -repo-slug=wenovus/oc-experimental -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
 fi
 
 ########################## PYANGBIND #############################
@@ -111,7 +111,7 @@ if stat $PYANGBIND_RESULTSDIR; then
     'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
 
   (bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/wenovus/models-ci/post_results/main.go -validator=pyangbind -modelRoot=/workspace/release/yang -repo-slug=wenovus/oc-experimental -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
 fi
 
 ########################## COMMON CLEANUP #############################

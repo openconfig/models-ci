@@ -10,7 +10,7 @@ import (
 
 	"log"
 
-	"github.com/wenovus/models-ci/commonci"
+	"github.com/openconfig/models-ci/commonci"
 )
 
 const (

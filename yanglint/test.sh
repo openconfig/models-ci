@@ -22,4 +22,4 @@ apt install $DEB_FILE
 # apt-get install libyang
 
 bash $YANGLINT_RESULTSDIR/script.sh > $YANGLINT_RESULTSDIR/$OUTFILE_NAME 2> $YANGLINT_RESULTSDIR/$FAILFILE_NAME
-go run /go/src/github.com/wenovus/models-ci/post_results/main.go -validator=yanglint -modelRoot=/workspace/release/yang -repo-slug=wenovus/oc-experimental -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=yanglint -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
