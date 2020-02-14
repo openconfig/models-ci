@@ -98,23 +98,23 @@ func parseModels(modelRoot string) (OpenConfigModelMap, error) {
 func createFmtStr(validatorId string) string {
 	switch validatorId {
 	case "pyang":
-		return `if ! $@ -p %s -p %s/../../third_party/ietf %s &> %s; then
+		return `if ! $@ -p %s -p %s/third_party/ietf %s &> %s; then
   mv %s %s
 fi
 `
 	case "oc-pyang":
-		return `if ! $@ -p %s -p %s/../../third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH %s &> %s; then
+		return `if ! $@ -p %s -p %s/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH %s &> %s; then
   mv %s %s
 fi
 `
 	case "pyangbind":
-		return `if ! $@ -p %s -p %s/../../third_party/ietf -f pybind -o binding.py %s &> %s; then
+		return `if ! $@ -p %s -p %s/third_party/ietf -f pybind -o binding.py %s &> %s; then
   mv %s %s
 fi
 `
 	case "goyang-ygot":
 		return `if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
--path=%s,%s/../../third_party/ietf \
+-path=%s,%s/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
@@ -124,7 +124,7 @@ fi
 fi
 `
 	case "yanglint":
-		return `if ! yanglint -p %s -p %s/../../third_party/ietf %s &> %s; then
+		return `if ! yanglint -p %s -p %s/third_party/ietf %s &> %s; then
   mv %s %s
 fi
 `
@@ -156,7 +156,7 @@ func genOpenConfigLinterCmd(g *commonci.GithubRequestHandler, validatorId, folde
 			}
 			outputFile := filepath.Join(folderPath, fmt.Sprintf("%s==%s==pass", modelDirName, modelInfo.Name))
 			failFile := filepath.Join(folderPath, fmt.Sprintf("%s==%s==fail", modelDirName, modelInfo.Name))
-			builder.WriteString(fmt.Sprintf(fmtStr, modelMap.ModelRoot, modelMap.ModelRoot, strings.Join(modelInfo.BuildFiles, " "), outputFile, outputFile, failFile))
+			builder.WriteString(fmt.Sprintf(fmtStr, modelMap.ModelRoot, commonci.RootDir, strings.Join(modelInfo.BuildFiles, " "), outputFile, outputFile, failFile))
 		}
 	}
 

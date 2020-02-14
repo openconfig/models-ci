@@ -18,6 +18,7 @@ import (
 // commonci contains definitions common to the cmd_gen and post_result scripts.
 
 const (
+	RootDir        = "/workspace"
 	ResultsDir     = "/workspace/results"
 	ScriptFileName = "script.sh"
 	FailFileName   = "fail"
@@ -340,7 +341,7 @@ func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo stri
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
-	// Label very well already exist within the repo, so skip creation if we see it.
+	// Label may very well already exist within the repo, so skip creation if we see it.
 	_, _, err := g.client.Issues.GetLabel(ctx, owner, repo, labelName)
 	if err != nil {
 		Retry(5, "creating label", func() error {

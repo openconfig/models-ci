@@ -116,13 +116,13 @@ func TestOpenConfigLinterCmd(t *testing.T) {
 		inValidatorName: "pyang",
 		want: `#!/bin/bash
 mkdir -p /workspace/results/pyang
-if ! $@ -p testdata -p testdata/../../third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/pyang/acl==openconfig-acl==pass /workspace/results/pyang/acl==openconfig-acl==fail
 fi
-if ! $@ -p testdata -p testdata/../../third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
 fi
-if ! $@ -p testdata -p testdata/../../third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
 `,
@@ -132,13 +132,13 @@ fi
 		inValidatorName: "oc-pyang",
 		want: `#!/bin/bash
 mkdir -p /workspace/results/oc-pyang
-if ! $@ -p testdata -p testdata/../../third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/oc-pyang/acl==openconfig-acl==pass /workspace/results/oc-pyang/acl==openconfig-acl==fail
 fi
-if ! $@ -p testdata -p testdata/../../third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==fail
 fi
-if ! $@ -p testdata -p testdata/../../third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
 `,
@@ -148,13 +148,13 @@ fi
 		inValidatorName: "pyangbind",
 		want: `#!/bin/bash
 mkdir -p /workspace/results/pyangbind
-if ! $@ -p testdata -p testdata/../../third_party/ietf -f pybind -o binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
   mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
 fi
-if ! $@ -p testdata -p testdata/../../third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==fail
 fi
-if ! $@ -p testdata -p testdata/../../third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
 fi
 `,
@@ -165,7 +165,7 @@ fi
 		want: `#!/bin/bash
 mkdir -p /workspace/results/goyang-ygot
 if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
--path=testdata,testdata/../../third_party/ietf \
+-path=testdata,/workspace/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
@@ -174,7 +174,7 @@ testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /
   mv /workspace/results/goyang-ygot/acl==openconfig-acl==pass /workspace/results/goyang-ygot/acl==openconfig-acl==fail
 fi
 if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
--path=testdata,testdata/../../third_party/ietf \
+-path=testdata,/workspace/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
@@ -183,7 +183,7 @@ testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/resul
   mv /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==pass /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==fail
 fi
 if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
--path=testdata,testdata/../../third_party/ietf \
+-path=testdata,/workspace/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
@@ -198,13 +198,13 @@ fi
 		inValidatorName: "yanglint",
 		want: `#!/bin/bash
 mkdir -p /workspace/results/yanglint
-if ! yanglint -p testdata -p testdata/../../third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/yanglint/acl==openconfig-acl==pass; then
+if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/yanglint/acl==openconfig-acl==pass; then
   mv /workspace/results/yanglint/acl==openconfig-acl==pass /workspace/results/yanglint/acl==openconfig-acl==fail
 fi
-if ! yanglint -p testdata -p testdata/../../third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/yanglint/optical-transport==openconfig-optical-amplifier==pass; then
+if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/yanglint/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/yanglint/optical-transport==openconfig-optical-amplifier==pass /workspace/results/yanglint/optical-transport==openconfig-optical-amplifier==fail
 fi
-if ! yanglint -p testdata -p testdata/../../third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass; then
+if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==fail
 fi
 `,
