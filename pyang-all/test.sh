@@ -70,7 +70,7 @@ if stat $OCPYANG_RESULTSDIR; then
   if [ $SETUP_DONE -eq 0 ]; then
     setup
   fi
-  git clone -b py3-conv https://github.com/openconfig/oc-pyang $OCPYANG_REPO
+  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
 
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
   pip3 install enum34
