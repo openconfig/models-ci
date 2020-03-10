@@ -146,10 +146,11 @@ func genOpenConfigLinterCmd(g *commonci.GithubRequestHandler, validatorId, folde
 
 	for _, modelDirName := range modelDirNames {
 		for _, modelInfo := range modelMap.ModelInfoMap[modelDirName] {
+			// First check whether to skip CI.
 			if !modelInfo.RunCi || len(modelInfo.BuildFiles) == 0 {
-				// Skip CI in these cases
 				continue
 			} else if disabledModelPaths[modelDirName] {
+				log.Infof("skipping disabled model directory %s", modelDirName)
 				g.PostLabel("skipped: "+modelDirName, commonci.LabelColors["orange"], owner, repo, prNumber)
 				continue
 			}
@@ -255,11 +256,4 @@ func main() {
 			log.Fatalf("error while writing extra versions file %q", extraVersionFile)
 		}
 	}
-
-	// if err := h.DeleteLabel("test:labelTest", owner, repo, prNumber); err != nil {
-	// 	log.Fatalf("error while deleting label: %v", err)
-	// }
-	// if err := h.PostLabel("test:labelTest2", "ffe200", owner, repo, prNumber); err != nil {
-	// 	log.Fatalf("error while posting label: %v", err)
-	// }
 }
