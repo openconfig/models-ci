@@ -23,9 +23,8 @@ var (
 	extraPV   string
 
 	// derived flags
-	owner         string
-	repo          string
-	extraVersions = map[string][]string{}
+	owner string
+	repo  string
 
 	// disabledModelPaths are the paths whose models should not undergo CI.
 	// These should be temporary.
@@ -163,30 +162,29 @@ func genOpenConfigLinterCmd(g *commonci.GithubRequestHandler, validatorId, folde
 	return builder.String()
 }
 
-func postPendingStatuses(g *commonci.GithubRequestHandler, prApproved bool) []error {
+func postPendingStatuses(g *commonci.GithubRequestHandler, validatorId string, versions []string, prApproved bool) []error {
 	var errs []error
-	for validatorId, validator := range commonci.Validators {
-		for _, version := range extraVersions[validatorId] {
-			validatorName := validator.Name + version
-			// Update the status to pending so that the user can see that we have received
-			// this request and are ready to run the CI.
-			update := &commonci.GithubPRUpdate{
-				Owner:       owner,
-				Repo:        repo,
-				Ref:         commitSHA,
-				Description: validatorName + " Running",
-				NewStatus:   "pending",
-				Context:     validatorName,
-			}
-			if !prApproved && !validator.RunBeforeApproval {
-				update.Description = validatorName + " Skipped (PR not approved)"
-				update.NewStatus = "error"
-			}
+	validator := commonci.Validators[validatorId]
+	for _, version := range versions {
+		validatorName := validator.Name + version
+		// Update the status to pending so that the user can see that we have received
+		// this request and are ready to run the CI.
+		update := &commonci.GithubPRUpdate{
+			Owner:       owner,
+			Repo:        repo,
+			Ref:         commitSHA,
+			Description: validatorName + " Running",
+			NewStatus:   "pending",
+			Context:     validatorName,
+		}
+		if !prApproved && !validator.RunBeforeApproval {
+			update.Description = validatorName + " Skipped (PR not approved)"
+			update.NewStatus = "error"
+		}
 
-			if err := g.UpdatePRStatus(update); err != nil {
-				log.Printf("error: couldn't update PR: %s", err)
-				errs = append(errs, err)
-			}
+		if err := g.UpdatePRStatus(update); err != nil {
+			log.Printf("error: couldn't update PR: %s", err)
+			errs = append(errs, err)
 		}
 	}
 	return errs
@@ -217,25 +215,26 @@ func main() {
 		prApproved = true
 	}
 
-	// Populate the list of extra pyang versions to be run.
-	if extraPV != "" {
-		// Note: strings.Split("", ",") returns the empty string as an element.
-		extraVersions["pyang"] = append(strings.Split(extraPV, ","), "")
-	}
-
+	versionsToRun := map[string][]string{}
 	for validatorId, validator := range commonci.Validators {
+		switch validatorId {
+		case "pyang":
+			versionsToRun["pyang"] = append([]string{""}, strings.Split(extraPV, ",")...)
+		default:
+			// Empty string is the "head" version, which is always run.
+			versionsToRun[validatorId] = []string{""}
+		}
+
+		if errs := postPendingStatuses(h, validatorId, versionsToRun[validatorId], prApproved); errs != nil {
+			log.Fatal(errs)
+		}
+
 		if !prApproved && !validator.RunBeforeApproval {
 			// We don't run less important and long tests until PR is approved.
 			continue
 		}
-
-		versions := extraVersions[validatorId]
-		// Always ensure to run the latest version (i.e. without the version string)
-		if versions == nil {
-			versions = append(versions, "")
-		}
-		extraVersions[validatorId] = versions
-		for _, version := range versions {
+		// Generate validation commands for the validator.
+		for _, version := range versionsToRun[validatorId] {
 			validatorResultPath := filepath.Join(commonci.ResultsDir, validatorId+version)
 			if err := os.MkdirAll(validatorResultPath, 0644); err != nil {
 				log.Fatalf("error while creating directory %q: %v", validatorResultPath, err)
@@ -250,16 +249,13 @@ func main() {
 		}
 	}
 
-	for validatorId, extraVersions := range extraVersions {
-		extraVersionsFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
-		if err := ioutil.WriteFile(extraVersionsFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
-			log.Fatalf("error while writing extra versions file %q", extraVersionsFile)
+	for validatorId, versions := range versionsToRun {
+		extraVersionFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
+		if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(versions, " ")), 0444); err != nil {
+			log.Fatalf("error while writing extra versions file %q", extraVersionFile)
 		}
 	}
 
-	if errs := postPendingStatuses(h, prApproved); errs != nil {
-		log.Fatal(errs)
-	}
 	// if err := h.DeleteLabel("test:labelTest", owner, repo, prNumber); err != nil {
 	// 	log.Fatalf("error while deleting label: %v", err)
 	// }
