@@ -150,7 +150,7 @@ func genOpenConfigLinterCmd(g *commonci.GithubRequestHandler, validatorId, folde
 			if !modelInfo.RunCi || len(modelInfo.BuildFiles) == 0 {
 				continue
 			} else if disabledModelPaths[modelDirName] {
-				log.Infof("skipping disabled model directory %s", modelDirName)
+				log.Printf("skipping disabled model directory %s", modelDirName)
 				g.PostLabel("skipped: "+modelDirName, commonci.LabelColors["orange"], owner, repo, prNumber)
 				continue
 			}
