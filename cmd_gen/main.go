@@ -242,6 +242,10 @@ func main() {
 		prApproved = true
 	}
 
+	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
+		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
+	}
+
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
 		// Empty string is the "head" version, which is always run.
@@ -253,7 +257,7 @@ func main() {
 		// Write a list of the extra validator versions into a file.
 		extraVersionFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
 		if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(versionsToRun, " ")), 0444); err != nil {
-			log.Fatalf("error while writing extra versions file %q", extraVersionFile)
+			log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
 		}
 
 		if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
