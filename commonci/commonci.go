@@ -64,9 +64,11 @@ var (
 			RunBeforeApproval: true,
 		},
 		"goyang-ygot": &Validator{
-			Name:              "goyang/ygot",
-			IsPerModel:        true,
-			RunBeforeApproval: false,
+			Name:       "goyang/ygot",
+			IsPerModel: true,
+			// This is ideally false, but GCB can't rebuild GitHub App builds more than 3
+			// days ago, so the current way of asking users to rebuild doesn't work.
+			RunBeforeApproval: true,
 		},
 		"yanglint": &Validator{
 			Name:              "yanglint",
