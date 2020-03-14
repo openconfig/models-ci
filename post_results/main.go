@@ -263,7 +263,8 @@ func postResult() {
 		log.Fatalf("error, couldn't parse results: %v", err)
 	}
 
-	validatorName := validatorId + version
+	// Get the display name of the validator.
+	validatorName := commonci.Validators[validatorId].Name + version
 	g.AddGistComment(gistID, outString, fmt.Sprintf("%s %s", lintSymbol(pass), validatorName))
 
 	prUpdate := &commonci.GithubPRUpdate{

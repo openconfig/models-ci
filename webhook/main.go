@@ -210,6 +210,7 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// CI is now handled by GCB
 	// repoOwner, repoName := repop[0], repop[1]
 
 	if !strings.HasPrefix(pushReq.Ref, "refs/heads/") {
@@ -240,6 +241,7 @@ func (g *githubRequestHandler) pushHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// CI is now handled by GCB
 	// glog.Infof("Running CI for master with ref %s", reqID)
 	// go g.runCI(reqID, branch, repoOwner, repoName, pushReq.After)
 }
@@ -578,7 +580,7 @@ func main() {
 	// We only handle a single URL currently, which is a path for the
 	// continuous integration tests.
 
-	// CI is to be handled by GCB.
+	// CI is now handled by GCB
 	// http.HandleFunc("/ci/pull_request", h.pullRequestHandler)
 	http.HandleFunc("/ci/repo_push", h.pushHandler)
 	http.ListenAndServe(*listenSpec, nil)
