@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestProcessOcPyangOutput(t *testing.T) {
+func TestProcessAnyPyangOutput(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
 	tests := []struct {
@@ -126,34 +126,36 @@ func TestProcessOcPyangOutput(t *testing.T) {
 	}
 }
 
-func TestParseResultsMd(t *testing.T) {
+func TestParseModelResultsHTML(t *testing.T) {
+	modelRoot = "/workspace/release/yang"
+
 	tests := []struct {
 		name                 string
 		inValidatorResultDir string
 		validatorId          string
 		wantPass             bool
-		wantMd               string
+		wantOut              string
 	}{{
 		name:                 "basic pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
 		validatorId:          "oc-pyang",
 		wantPass:             true,
-		wantMd: `<details>
+		wantOut: `<details>
   <summary>:white_check_mark: acl</summary>
 <details>
   <summary>:white_check_mark: openconfig-acl</summary>
-  Passed.
+Passed.
 </details>
 </details>
 <details>
   <summary>:white_check_mark: optical-transport</summary>
 <details>
   <summary>:white_check_mark: openconfig-optical-amplifier</summary>
-  Passed.
+Passed.
 </details>
 <details>
   <summary>:white_check_mark: openconfig-transport-line-protection</summary>
-  Passed.
+Passed.
 <ul>
   <li>warning foo</li>
 </ul>
@@ -165,40 +167,116 @@ func TestParseResultsMd(t *testing.T) {
 		inValidatorResultDir: "testdata/oc-pyang",
 		validatorId:          "goyang-ygot",
 		wantPass:             true,
-		wantMd: `<details>
+		wantOut: `<details>
   <summary>:white_check_mark: acl</summary>
 <details>
   <summary>:white_check_mark: openconfig-acl</summary>
-  Passed.
+Passed.
 </details>
 </details>
 <details>
   <summary>:white_check_mark: optical-transport</summary>
 <details>
   <summary>:white_check_mark: openconfig-optical-amplifier</summary>
-  Passed.
+Passed.
 </details>
 <details>
   <summary>:white_check_mark: openconfig-transport-line-protection</summary>
-  Passed.
+Passed.
 warning foo<br>
 </details>
 </details>
 `,
-		// TODO(wenbli): Add more tests to cover all cases.
+	}, {
+		name:                 "pyang with pass and fails",
+		inValidatorResultDir: "testdata/pyang-with-invalid-files",
+		validatorId:          "pyang",
+		wantPass:             false,
+		wantOut: `<details>
+  <summary>:no_entry: acl</summary>
+<details>
+  <summary>:no_entry: openconfig-acl</summary>
+<ul>
+  <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B</pre></li>
+</ul>
+</details>
+</details>
+<details>
+  <summary>:no_entry: optical-transport</summary>
+<details>
+  <summary>:no_entry: openconfig-optical-amplifier</summary>
+Failed.
+</details>
+<details>
+  <summary>:white_check_mark: openconfig-transport-line-protection</summary>
+Passed.
+<ul>
+  <li>warning foo</li>
+</ul>
+</details>
+</details>
+`,
+	}, {
+		name:                 "non-pyang with pass and fails",
+		inValidatorResultDir: "testdata/pyang-with-invalid-files",
+		validatorId:          "yanglint",
+		wantPass:             false,
+		wantOut: `<details>
+  <summary>:no_entry: acl</summary>
+<details>
+  <summary>:no_entry: openconfig-acl</summary>
+/workspace/release/yang/wifi/mac/openconfig-wifi-mac.yang:1244: error: enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B<br>
+</details>
+</details>
+<details>
+  <summary>:no_entry: optical-transport</summary>
+<details>
+  <summary>:no_entry: openconfig-optical-amplifier</summary>
+Failed.
+</details>
+<details>
+  <summary>:white_check_mark: openconfig-transport-line-protection</summary>
+Passed.
+warning foo<br>
+</details>
+</details>
+`,
+	}, {
+		name:                 "non-per-model pass -- no fail file",
+		inValidatorResultDir: "testdata/regexp-tests",
+		validatorId:          "regexp",
+		wantPass:             true,
+		wantOut:              `Test passed`,
+	}, {
+		name:                 "non-per-model pass -- empty fail file",
+		inValidatorResultDir: "testdata/regexp-tests2",
+		validatorId:          "regexp",
+		wantPass:             true,
+		wantOut:              `Test passed`,
+	}, {
+		name:                 "non-per-model fail",
+		inValidatorResultDir: "testdata/regexp-tests-fail",
+		validatorId:          "regexp",
+		wantPass:             false,
+		wantOut:              "I failed\n",
+	}, {
+		name:                 "pyang script fail",
+		inValidatorResultDir: "testdata/oc-pyang-script-fail",
+		validatorId:          "oc-pyang",
+		wantPass:             false,
+		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			validatorId = tt.validatorId
-			gotMd, gotPass, err := parseResultsMd(tt.inValidatorResultDir)
+			gotOut, gotPass, err := getResult(tt.validatorId, tt.inValidatorResultDir)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if gotPass != tt.wantPass {
 				t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
 			}
-			if diff := cmp.Diff(strings.Split(tt.wantMd, "\n"), strings.Split(gotMd, "\n")); diff != "" {
+			if diff := cmp.Diff(strings.Split(tt.wantOut, "\n"), strings.Split(gotOut, "\n")); diff != "" {
 				t.Errorf("(-want, +got):\n%s", diff)
 			}
 		})

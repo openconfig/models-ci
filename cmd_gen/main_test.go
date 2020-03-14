@@ -1,12 +1,10 @@
 package main
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/openconfig/models-ci/commonci"
 )
 
 var (
@@ -104,17 +102,29 @@ func TestParseModels(t *testing.T) {
 	}
 }
 
-func TestOpenConfigLinterCmd(t *testing.T) {
+// Fake LabelPoster for testing.
+type postLabelRecorder struct {
+	labels []string
+}
+
+func (p *postLabelRecorder) PostLabel(labelName, labelColor, owner, repo string, prNumber int) error {
+	p.labels = append(p.labels, labelName)
+	return nil
+}
+
+func TsetGenOpenConfigLinterScript(t *testing.T) {
 	tests := []struct {
-		name            string
-		inValidatorName string
-		in              OpenConfigModelMap
-		want            string
+		name                 string
+		inValidatorName      string
+		inModelMap           OpenConfigModelMap
+		inDisabledModelPaths map[string]bool
+		wantCmd              string
+		wantSkipLabels       []string
 	}{{
 		name:            "basic pyang",
-		in:              basicModelMap,
+		inModelMap:      basicModelMap,
 		inValidatorName: "pyang",
-		want: `#!/bin/bash
+		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyang
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/pyang/acl==openconfig-acl==pass /workspace/results/pyang/acl==openconfig-acl==fail
@@ -127,10 +137,25 @@ if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/op
 fi
 `,
 	}, {
+		name:                 "basic pyang with model to be skipped",
+		inModelMap:           basicModelMap,
+		inValidatorName:      "pyang",
+		inDisabledModelPaths: map[string]bool{"acl": true, "dne": true},
+		wantSkipLabels:       []string{"skipped: acl"},
+		wantCmd: `#!/bin/bash
+mkdir -p /workspace/results/pyang
+if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
+  mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
+fi
+if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
+  mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
+fi
+`,
+	}, {
 		name:            "basic oc-pyang",
-		in:              basicModelMap,
+		inModelMap:      basicModelMap,
 		inValidatorName: "oc-pyang",
-		want: `#!/bin/bash
+		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/oc-pyang
 if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/oc-pyang/acl==openconfig-acl==pass /workspace/results/oc-pyang/acl==openconfig-acl==fail
@@ -144,9 +169,9 @@ fi
 `,
 	}, {
 		name:            "basic pyangbind",
-		in:              basicModelMap,
+		inModelMap:      basicModelMap,
 		inValidatorName: "pyangbind",
-		want: `#!/bin/bash
+		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyangbind
 if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
   mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
@@ -160,9 +185,9 @@ fi
 `,
 	}, {
 		name:            "basic goyang-ygot",
-		in:              basicModelMap,
+		inModelMap:      basicModelMap,
 		inValidatorName: "goyang-ygot",
-		want: `#!/bin/bash
+		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/goyang-ygot
 if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
 -path=testdata,/workspace/third_party/ietf \
@@ -194,9 +219,9 @@ fi
 `,
 	}, {
 		name:            "basic yanglint",
-		in:              basicModelMap,
+		inModelMap:      basicModelMap,
 		inValidatorName: "yanglint",
-		want: `#!/bin/bash
+		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/yanglint
 if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/yanglint/acl==openconfig-acl==pass; then
   mv /workspace/results/yanglint/acl==openconfig-acl==pass /workspace/results/yanglint/acl==openconfig-acl==fail
@@ -212,9 +237,16 @@ fi
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := genOpenConfigLinterCmd(nil, tt.inValidatorName, filepath.Join(commonci.ResultsDir, tt.inValidatorName), tt.in)
-			if diff := cmp.Diff(strings.Split(tt.want, "\n"), strings.Split(got, "\n")); diff != "" {
+			labelRecorder := &postLabelRecorder{}
+			disabledModelPaths = tt.inDisabledModelPaths
+
+			got := genOpenConfigValidatorScript(labelRecorder, tt.inValidatorName, "", tt.inModelMap)
+			if diff := cmp.Diff(strings.Split(tt.wantCmd, "\n"), strings.Split(got, "\n")); diff != "" {
 				t.Errorf("(-want, +got):\n%s", diff)
+			}
+
+			if diff := cmp.Diff(tt.wantSkipLabels, labelRecorder.labels); diff != "" {
+				t.Errorf("skipped models (-want, +got):\n%s", diff)
 			}
 		})
 	}

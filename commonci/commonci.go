@@ -15,7 +15,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// commonci contains definitions common to the cmd_gen and post_result scripts.
+// commonci contains definitions and constants common to the CI process in
+// general (esp. cmd_gen and post_result scripts).
 
 const (
 	RootDir        = "/workspace"
@@ -25,6 +26,13 @@ const (
 	OutFileName    = "out"
 )
 
+// ValidatorResultsDir determines where a particular validator's results are
+// stored.
+func ValidatorResultsDir(validatorId, version string) string {
+	return filepath.Join(ResultsDir, validatorId+version)
+}
+
+// Validator describes a validation tool.
 type Validator struct {
 	// The longer name of the validator.
 	Name string
@@ -72,6 +80,7 @@ var (
 		},
 	}
 
+	// LabelColors are some helper hex colours for posting to GitHub.
 	LabelColors = map[string]string{
 		"yellow": "ffe200",
 		"red":    "ff0000",
@@ -79,8 +88,7 @@ var (
 		"blue":   "00bfff",
 	}
 
-	// validStatuses are the status codes that are valid in the GitHub UI for a
-	// pull request status.
+	// validStatuses are the valid pull request status codes that are valid in the GitHub UI.
 	validStatuses = map[string]bool{
 		"pending": true,
 		"success": true,
@@ -103,59 +111,6 @@ type GithubRequestHandler struct {
 	labels      map[string]bool
 }
 
-// githubPullRequestHookInput is the JSON structure that is used as content
-// when a GitHub WebHook calls the server specified in this file. Only the
-// relevant fields are included for JSON unmarshalling.
-type githubPullRequestHookInput struct {
-	Number      int64              `json:"number"`       // Nunber of the pull request
-	PullRequest *githubPullRequest `json:"pull_request"` // PullRequest contains the details of the PR.
-}
-
-// githubPullRequest is the contents of the "pull_request" object of the
-// JSON document used by GitHub's when a PR change is made
-type githubPullRequest struct {
-	ID    int64                  `json:"id"`    // ID is the identifier for the pull request.
-	State string                 `json:"state"` // State is whether the PR is open/closed etc.
-	Head  *githubPullRequestHead `json:"head"`  // Head describes the top-most commit in the PR.
-}
-
-// githubPullRequestRepo contains the details of the repository with which the
-// PR webhook is associated.
-type githubPullRequestRepo struct {
-	FullName string           `json:"full_name"` // The full name of the repo in the form user/repo.
-	Name     string           `json:"name"`      // The name of the repo.
-	Owner    *githubRepoOwner `json:"owner"`     // Details of the owner of the repository.
-}
-
-// githubRepoOwner provides details of the owner of the repo that is associated
-// with the pull request.
-type githubRepoOwner struct {
-	Login string `json:"login"` // Login is the owner's GitHub username.
-}
-
-// githubPullRequestHead is the details of the Head of the repo for the PR that
-// has been opened.
-type githubPullRequestHead struct {
-	Ref  string                 `json:"ref"`  // Ref is the reference to the Head - usually a branch.
-	SHA  string                 `json:"sha"`  // SHA is the commit reference.
-	Repo *githubPullRequestRepo `json:"repo"` // Repo is the repo that the commit is in.
-}
-
-// githubPushEvent decodes the interesting fields of the input JSON for a push
-// event from GitHub. This is used to determine where to run CI when pushes
-// are done to the master branch.
-type githubPushEvent struct {
-	After      string                `json:"after"`      // After is the commit ID after the push event.
-	Ref        string                `json:"ref"`        // Ref is the reference to the head, supplied as a branch
-	Repository *githubPushRepository `json:"repository"` // Repository is the repo that the push was associated with.
-}
-
-// githubPushRepository is the repo that a push was made to.
-type githubPushRepository struct {
-	Name     string `json:"name"`      // Name is the name of the repository.
-	FullName string `json:"full_name"` // FullName is the full name of the repository in the form owner/reponame.
-}
-
 // GithubPRUpdate is used to specify how an update to the status of a PR should
 // be made with the UpdatePRStatus method.
 type GithubPRUpdate struct {
@@ -169,6 +124,9 @@ type GithubPRUpdate struct {
 }
 
 // Retry retries a function maxN times or when it returns true.
+// In between each retry there is a small delay.
+// This is intended to be used for posting results to GitHub from GCB, which
+// frequently experiences errors likely due to connection issues.
 func Retry(maxN uint, name string, f func() error) {
 	for i := uint(0); i != maxN; i++ {
 		err := f()
@@ -189,11 +147,10 @@ func Retry(maxN uint, name string, f func() error) {
 // returns the URL and ID of the Gist that was created, its ID or the error
 // experienced during processing.
 func (g *GithubRequestHandler) CreateCIOutputGist(validatorId, version string) (string, string, error) {
-	validatorFolderName := validatorId + version
 	d := fmt.Sprintf(Validators[validatorId].Name + version + " Test Run Script")
 	public := false
 
-	outBytes, err := ioutil.ReadFile(filepath.Join(ResultsDir, validatorFolderName, OutFileName))
+	outBytes, err := ioutil.ReadFile(filepath.Join(ValidatorResultsDir(validatorId, version), OutFileName))
 	if err != nil {
 		return "", "", err
 	}
@@ -215,7 +172,7 @@ func (g *GithubRequestHandler) CreateCIOutputGist(validatorId, version string) (
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
 
-	Retry(5, fmt.Sprintf("gist creation for %s with content\n%s\n", validatorFolderName, outString), func() error {
+	Retry(5, fmt.Sprintf("gist creation for %s with content\n%s\n", validatorId+version, outString), func() error {
 		gist, _, err = g.client.Gists.Create(ctx, gist)
 		return err
 	})
@@ -225,6 +182,7 @@ func (g *GithubRequestHandler) CreateCIOutputGist(validatorId, version string) (
 	return *gist.HTMLURL, *gist.ID, nil
 }
 
+// AddGistComment adds a comment to a gist.
 func (g *GithubRequestHandler) AddGistComment(gistID string, output string, title string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
@@ -306,6 +264,7 @@ func (g *GithubRequestHandler) UpdatePRStatus(update *GithubPRUpdate) error {
 	return err
 }
 
+// IsPRApproved checks whether a PR is approved or not.
 func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
@@ -331,6 +290,7 @@ func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (b
 	return false, nil
 }
 
+// PostLabel posts the given label to the PR. It is idempotent.
 func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo string, prNumber int) error {
 	if g.labels[labelName] {
 		// Label already exists.
@@ -364,6 +324,8 @@ func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo stri
 	return err
 }
 
+// DeleteLabel removes the given label from the PR. It does not remove the
+// label from the repo.
 func (g *GithubRequestHandler) DeleteLabel(labelName, owner, repo string, prNumber int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
