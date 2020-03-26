@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,14 +18,20 @@ import (
 // general (esp. cmd_gen and post_result scripts).
 
 const (
-	RootDir        = "/workspace"
-	ResultsDir     = "/workspace/results"
+	// RootDir is the base directory of the CI, which in GCB is /workspace.
+	RootDir = "/workspace"
+	// ResultsDir contains all results of the CI process.
+	ResultsDir = "/workspace/results"
+	// ScriptFileName by convention is the script with the validator commands.
 	ScriptFileName = "script.sh"
-	FailFileName   = "fail"
-	OutFileName    = "out"
+	// OutFileName by convention contains the stdout of the script file.
+	OutFileName = "out"
+	// FailFileName by convention contains the stderr of the script file.
+	FailFileName = "fail"
 )
 
-// ValidatorResultsDir determines where a particular validator's results are
+// ValidatorResultsDir determines where a particular validator and version's
+// results are
 // stored.
 func ValidatorResultsDir(validatorId, version string) string {
 	return filepath.Join(ResultsDir, validatorId+version)
@@ -42,6 +47,14 @@ type Validator struct {
 	// RunBeforeApproval means to run the test on a PR even before approval
 	// status. Longer tests are best be omitted from this category.
 	RunBeforeApproval bool
+}
+
+// StatusName determines the status description for the version of the validator.
+func (v *Validator) StatusName(version string) string {
+	if v == nil {
+		return ""
+	}
+	return v.Name + version
 }
 
 var (
@@ -66,8 +79,13 @@ var (
 		"goyang-ygot": &Validator{
 			Name:       "goyang/ygot",
 			IsPerModel: true,
-			// This is ideally false, but GCB can't rebuild GitHub App builds more than 3
-			// days ago, so the current way of asking users to rebuild doesn't work.
+			// RunBeforeApproval is ideally false here so that we can delay this long (goyang-ygot)
+			// check until after the PR is approved; however, this has 2 practical problems:
+			// 1. It is inconvenient to force the user to always re-invoke the build, that is to
+			// run each build twice, if the changes were trivial .
+			// 2. GCB can't rebuild GitHub App builds more than 3 days ago, so the current way of
+			// asking users to rebuild doesn't work as it requires the user to re-invoke the build
+			// less than 3 days later, which may not be the case.
 			RunBeforeApproval: true,
 		},
 		"yanglint": &Validator{
@@ -129,76 +147,61 @@ type GithubPRUpdate struct {
 // In between each retry there is a small delay.
 // This is intended to be used for posting results to GitHub from GCB, which
 // frequently experiences errors likely due to connection issues.
-func Retry(maxN uint, name string, f func() error) {
-	for i := uint(0); i != maxN; i++ {
-		err := f()
-		if err == nil {
-			return
+func Retry(maxN uint, name string, f func() error) error {
+	var err error
+	for i := uint(0); i <= maxN; i++ {
+		if err = f(); err == nil {
+			return nil
 		}
 		log.Printf("Retry %d of %s, error: %v", i, name, err)
 		time.Sleep(250 * time.Millisecond)
 	}
+	return err
 }
 
-// CreateCIOutputGist creates a GitHub Gist, and appends comment output to it.
-// In this case, the runID is used as the title for the Gist (to identify the
-// changes), output is the stdout/stderr output of the CI test, and success
-// indicates whether it was a successful test. The output of the /tmp/lint.out
-// file is taken and this is posted as a Gist comment, along with the contents
-// of the /tmp/go-tests.out file which contains other unit tests. The function
-// returns the URL and ID of the Gist that was created, its ID or the error
-// experienced during processing.
-func (g *GithubRequestHandler) CreateCIOutputGist(validatorId, version string) (string, string, error) {
-	d := fmt.Sprintf(Validators[validatorId].Name + version + " Test Run Script")
+// CreateCIOutputGist creates a GitHub Gist, and appends a comment with the
+// result of the validator into it.  The function returns the URL and ID of the
+// Gist that was created, and an error if experienced during processing.
+func (g *GithubRequestHandler) CreateCIOutputGist(description, content string) (string, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel() // cancel context if the function returns before the timeout
+
 	public := false
-
-	outBytes, err := ioutil.ReadFile(filepath.Join(ValidatorResultsDir(validatorId, version), OutFileName))
-	if err != nil {
-		return "", "", err
-	}
-	outString := string(outBytes)
-	if outString == "" {
-		outString = "No output"
-	}
-
 	// Create a new Gist struct - the description is used as the tag-line of
 	// the created content, and the GistFilename (within the Files map) as
 	// the input filename in the GitHub UI.
 	gist := &github.Gist{
-		Description: &d,
+		Description: &description,
 		Public:      &public,
 		Files: map[github.GistFilename]github.GistFile{
-			"oc-ci-run": {Content: &outString},
+			"oc-ci-run": {Content: &content},
 		},
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel() // cancel context if the function returns before the timeout
 
-	Retry(5, fmt.Sprintf("gist creation for %s with content\n%s\n", validatorId+version, outString), func() error {
+	if err := Retry(5, fmt.Sprintf("gist creation for %s with content\n%s\n", description, content), func() error {
+		var err error
 		gist, _, err = g.client.Gists.Create(ctx, gist)
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		return "", "", fmt.Errorf("could not create gist: %s", err)
 	}
 	return *gist.HTMLURL, *gist.ID, nil
 }
 
 // AddGistComment adds a comment to a gist.
-func (g *GithubRequestHandler) AddGistComment(gistID string, output string, title string) error {
+func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
 
-	s := fmt.Sprintf("# %s\n%s", title, output)
+	gistComment := fmt.Sprintf("# %s\n%s", title, output)
 
-	var err error
-	Retry(5, "gist comment creation", func() error {
-		_, _, err = g.client.Gists.CreateComment(ctx, gistID, &github.GistComment{Body: &s})
+	return Retry(5, "gist comment creation", func() error {
+		_, _, err := g.client.Gists.CreateComment(ctx, gistID, &github.GistComment{Body: &gistComment})
 		return err
 	})
-	return err
 
 	// XXX: Unfortunately check runs are currently unsupported by GCB.
+	//      Keeping this code here in case GCB supports it in the future.
 	//      Check runs is a better UI than posting gists as statuses.
 	//      https://groups.google.com/g/google-cloud-dev/c/fON-kDlykLc
 	// status := "completed"
@@ -215,10 +218,10 @@ func (g *GithubRequestHandler) AddGistComment(gistID string, output string, titl
 	// 		Text:    &output,
 	// 	},
 	// }
-
+	//
 	// ctx2, cancel2 := context.WithTimeout(context.Background(), 30*time.Second)
 	// defer cancel2() // cancel context if the function returns before the timeout
-
+	//
 	// checkRun, resp, err := g.client.Checks.CreateCheckRun(ctx2, owner, repo, checkRunOpts)
 	// log.Print(resp)
 	// log.Print(*resp.Response)
@@ -235,8 +238,7 @@ func (g *GithubRequestHandler) UpdatePRStatus(update *GithubPRUpdate) error {
 	}
 
 	if update.NewStatus == "" || update.Repo == "" || update.Ref == "" || update.Owner == "" {
-		return fmt.Errorf("must specify required fields (status (%s), repo (%s), reference (%s) and owner (%s)) for update",
-			update.NewStatus, update.Repo, update.Ref, update.Owner)
+		return fmt.Errorf("must specify required fields (status (%s), repo (%s), reference (%s) and owner (%s)) for update", update.NewStatus, update.Repo, update.Ref, update.Owner)
 	}
 
 	// The go-github library takes string pointers within the struct, and hence
@@ -258,25 +260,25 @@ func (g *GithubRequestHandler) UpdatePRStatus(update *GithubPRUpdate) error {
 		status.Description = &update.Description
 	}
 
-	var err error
-	Retry(5, "PR status update", func() error {
+	return Retry(5, "PR status update", func() error {
 		_, _, err := g.client.Repositories.CreateStatus(ctx, update.Owner, update.Repo, update.Ref, status)
 		return err
 	})
-	return err
 }
 
 // IsPRApproved checks whether a PR is approved or not.
+// TODO(wenbli): If the RunBeforeApproval feature is used, this function should
+// undergo testing due to having some logic.
+// unit tests can be created based onon actual models-ci repo data that's sent back for a particular PR.
 func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
-	var err error
 	var reviews []*github.PullRequestReview
-	Retry(5, "get PR reviews list", func() error {
+	if err := Retry(5, "get PR reviews list", func() error {
+		var err error
 		reviews, _, err = g.client.PullRequests.ListReviews(ctx, owner, repo, prNumber, nil)
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		return false, err
 	}
 
@@ -293,6 +295,7 @@ func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (b
 }
 
 // PostLabel posts the given label to the PR. It is idempotent.
+// unit tests can be created based onon actual models-ci repo data that's sent back.
 func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo string, prNumber int) error {
 	if g.labels[labelName] {
 		// Label already exists.
@@ -306,16 +309,15 @@ func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo stri
 	// Label may very well already exist within the repo, so skip creation if we see it.
 	_, _, err := g.client.Issues.GetLabel(ctx, owner, repo, labelName)
 	if err != nil {
-		Retry(5, "creating label", func() error {
+		if err := Retry(5, "creating label", func() error {
 			_, _, err = g.client.Issues.CreateLabel(ctx, owner, repo, label)
 			return err
-		})
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 	}
 
-	Retry(5, "adding label to PR", func() error {
+	err = Retry(5, "adding label to PR", func() error {
 		_, _, err = g.client.Issues.AddLabelsToIssue(ctx, owner, repo, prNumber, []string{labelName})
 		return err
 	})
@@ -331,39 +333,30 @@ func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo stri
 func (g *GithubRequestHandler) DeleteLabel(labelName, owner, repo string, prNumber int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
-	var err error
-	Retry(5, "removing label from PR", func() error {
-		_, err = g.client.Issues.RemoveLabelForIssue(ctx, owner, repo, prNumber, labelName)
+	if err := Retry(5, "removing label from PR", func() error {
+		_, err := g.client.Issues.RemoveLabelForIssue(ctx, owner, repo, prNumber, labelName)
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
-	// Do not delete the label from the repo as that deletes the label from all PRs.
+	// Do not take the second step to delete the label from the repo as
+	// we're only interested in deleting the label from the PR.
 
 	delete(g.labels, labelName)
 	return nil
 }
 
-func NewGitHubRequestHandler() *GithubRequestHandler {
-	h, err := newGitHubRequestHandler()
-	if err != nil {
-		log.Fatalf("error: Could not initialise GitHub client: %v", err)
-	}
-	return h
-}
-
-// newGitHubRequestHandler sets up a new GithubRequestHandler struct which
+// NewGitHubRequestHandler sets up a new GithubRequestHandler struct which
 // creates an oauth2 client with a GitHub access token (as specified by the
 // GITHUB_ACCESS_TOKEN environment variable), and a connection to the GitHub
 // API through the github.com/google/go-github/github library. It returns the
 // initialised GithubRequestHandler struct, or an error as to why the
 // initialisation failed.
-func newGitHubRequestHandler() (*GithubRequestHandler, error) {
+func NewGitHubRequestHandler() (*GithubRequestHandler, error) {
 	accesstk := os.Getenv("GITHUB_ACCESS_TOKEN")
 	if accesstk == "" {
-		return nil, errors.New("invalid access token environment variable set")
+		return nil, errors.New("newGitHubRequestHandler: invalid access token environment variable set")
 	}
 
 	ts := oauth2.StaticTokenSource(

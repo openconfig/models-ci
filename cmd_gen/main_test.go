@@ -112,7 +112,7 @@ func (p *postLabelRecorder) PostLabel(labelName, labelColor, owner, repo string,
 	return nil
 }
 
-func TsetGenOpenConfigLinterScript(t *testing.T) {
+func TestGenOpenConfigLinterScript(t *testing.T) {
 	tests := []struct {
 		name                 string
 		inValidatorName      string
@@ -120,6 +120,7 @@ func TsetGenOpenConfigLinterScript(t *testing.T) {
 		inDisabledModelPaths map[string]bool
 		wantCmd              string
 		wantSkipLabels       []string
+		wantErr              bool
 	}{{
 		name:            "basic pyang",
 		inModelMap:      basicModelMap,
@@ -233,6 +234,11 @@ if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transp
   mv /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==fail
 fi
 `,
+	}, {
+		name:            "unrecognized validatorID",
+		inModelMap:      basicModelMap,
+		inValidatorName: "foo",
+		wantErr:         true,
 	}}
 
 	for _, tt := range tests {
@@ -240,7 +246,10 @@ fi
 			labelRecorder := &postLabelRecorder{}
 			disabledModelPaths = tt.inDisabledModelPaths
 
-			got := genOpenConfigValidatorScript(labelRecorder, tt.inValidatorName, "", tt.inModelMap)
+			got, err := genOpenConfigValidatorScript(labelRecorder, tt.inValidatorName, "", tt.inModelMap)
+			if got := err != nil; got != tt.wantErr {
+				t.Fatalf("got error %v,	wantErr: %v", err, tt.wantErr)
+			}
 			if diff := cmp.Diff(strings.Split(tt.wantCmd, "\n"), strings.Split(got, "\n")); diff != "" {
 				t.Errorf("(-want, +got):\n%s", diff)
 			}

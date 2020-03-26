@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/openconfig/gnmi/errdiff"
 )
 
 func TestProcessAnyPyangOutput(t *testing.T) {
@@ -126,19 +127,19 @@ func TestProcessAnyPyangOutput(t *testing.T) {
 	}
 }
 
-func TestParseModelResultsHTML(t *testing.T) {
+func TestGetResult(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
 	tests := []struct {
 		name                 string
 		inValidatorResultDir string
-		validatorId          string
+		inValidatorId        string
 		wantPass             bool
 		wantOut              string
 	}{{
 		name:                 "basic pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
-		validatorId:          "oc-pyang",
+		inValidatorId:        "oc-pyang",
 		wantPass:             true,
 		wantOut: `<details>
   <summary>:white_check_mark: acl</summary>
@@ -165,7 +166,7 @@ Passed.
 	}, {
 		name:                 "basic non-pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
-		validatorId:          "goyang-ygot",
+		inValidatorId:        "goyang-ygot",
 		wantPass:             true,
 		wantOut: `<details>
   <summary>:white_check_mark: acl</summary>
@@ -190,7 +191,7 @@ warning foo<br>
 	}, {
 		name:                 "pyang with pass and fails",
 		inValidatorResultDir: "testdata/pyang-with-invalid-files",
-		validatorId:          "pyang",
+		inValidatorId:        "pyang",
 		wantPass:             false,
 		wantOut: `<details>
   <summary>:no_entry: acl</summary>
@@ -219,7 +220,7 @@ Passed.
 	}, {
 		name:                 "non-pyang with pass and fails",
 		inValidatorResultDir: "testdata/pyang-with-invalid-files",
-		validatorId:          "yanglint",
+		inValidatorId:        "yanglint",
 		wantPass:             false,
 		wantOut: `<details>
   <summary>:no_entry: acl</summary>
@@ -244,32 +245,32 @@ warning foo<br>
 	}, {
 		name:                 "non-per-model pass -- no fail file",
 		inValidatorResultDir: "testdata/regexp-tests",
-		validatorId:          "regexp",
+		inValidatorId:        "regexp",
 		wantPass:             true,
 		wantOut:              `Test passed`,
 	}, {
 		name:                 "non-per-model pass -- empty fail file",
 		inValidatorResultDir: "testdata/regexp-tests2",
-		validatorId:          "regexp",
+		inValidatorId:        "regexp",
 		wantPass:             true,
 		wantOut:              `Test passed`,
 	}, {
 		name:                 "non-per-model fail",
 		inValidatorResultDir: "testdata/regexp-tests-fail",
-		validatorId:          "regexp",
+		inValidatorId:        "regexp",
 		wantPass:             false,
 		wantOut:              "I failed\n",
 	}, {
 		name:                 "pyang script fail",
 		inValidatorResultDir: "testdata/oc-pyang-script-fail",
-		validatorId:          "oc-pyang",
+		inValidatorId:        "oc-pyang",
 		wantPass:             false,
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotOut, gotPass, err := getResult(tt.validatorId, tt.inValidatorResultDir)
+			gotOut, gotPass, err := getResult(tt.inValidatorId, tt.inValidatorResultDir)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -278,6 +279,58 @@ warning foo<br>
 			}
 			if diff := cmp.Diff(strings.Split(tt.wantOut, "\n"), strings.Split(gotOut, "\n")); diff != "" {
 				t.Errorf("(-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGetGistInfo(t *testing.T) {
+	tests := []struct {
+		name                 string
+		inValidatorResultDir string
+		inValidatorId        string
+		inVersion            string
+		wantDescription      string
+		wantContent          string
+		wantErrSubstr        string
+	}{{
+		name:                 "oc-pyang with output",
+		inValidatorResultDir: "testdata/oc-pyang",
+		inValidatorId:        "oc-pyang",
+		wantDescription:      "OpenConfig Linter Test Run Script",
+		wantContent:          "foo\n",
+	}, {
+		name:                 "invalid validator name",
+		inValidatorResultDir: "testdata/oc-pyang",
+		inValidatorId:        "oc-pyin",
+		wantErrSubstr:        `validator "oc-pyin" not found`,
+	}, {
+		name:                 "regexp with no output",
+		inValidatorResultDir: "testdata/regexp-tests",
+		inValidatorId:        "regexp",
+		wantDescription:      "regexp tests Test Run Script",
+		wantContent:          "No output",
+	}, {
+		name:                 "pyang with missing output file",
+		inValidatorResultDir: "testdata/pyang-with-invalid-files",
+		inValidatorId:        "pyang",
+		wantErrSubstr:        "no such file",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDescription, gotContent, err := getGistInfo(tt.inValidatorId, tt.inVersion, tt.inValidatorResultDir)
+			if err != nil {
+				if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
+					t.Fatalf("did not get expected error, %s", diff)
+				}
+				return
+			}
+			if gotDescription != tt.wantDescription {
+				t.Errorf("gotDescription %q, want %q", gotDescription, tt.wantDescription)
+			}
+			if gotContent != tt.wantContent {
+				t.Errorf("gotContent %v, want %v", gotContent, tt.wantContent)
 			}
 		})
 	}

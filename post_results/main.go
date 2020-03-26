@@ -28,12 +28,12 @@ const (
 
 var (
 	// flags
-	validatorId  string
-	modelRoot    string
-	repoSlug     string
+	validatorId  string // validatorId is the unique name identifying the validator (see commonci for all of them)
+	modelRoot    string // modelRoot is the root directory of the models.
+	repoSlug     string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	prBranchName string
 	commitSHA    string
-	version      string
+	version      string // version is a specific version of the validator that's being run (empty means latest).
 
 	// derived flags
 	owner string
@@ -43,10 +43,10 @@ var (
 func init() {
 	flag.StringVar(&validatorId, "validator", "", "unique name of the validator")
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
-	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
+	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
 	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
-	flag.StringVar(&version, "version", "", "version of the validator tool")
+	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
 }
 
 func lintSymbol(pass bool) string {
@@ -212,6 +212,11 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 // directory, and returns the string to be put in a GitHub gist comment as well
 // as the status (i.e. pass or fail).
 func getResult(validatorId, resultsDir string) (string, bool, error) {
+	validator, ok := commonci.Validators[validatorId]
+	if !ok {
+		return "", false, fmt.Errorf("validator %q not found!", validatorId)
+	}
+
 	var outString string
 	pass := true
 
@@ -228,11 +233,11 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 	case scriptFailOutString != "":
 		outString = scriptFailOutString
 		// For per-model validators, a failure here is distinct from a validation failure.
-		if commonci.Validators[validatorId].IsPerModel {
+		if validator.IsPerModel {
 			outString = "Validator script failed -- infra bug?\n" + outString
 		}
 		pass = false
-	case !commonci.Validators[validatorId].IsPerModel:
+	case !validator.IsPerModel:
 		outString = "Test passed"
 	default:
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
@@ -241,59 +246,97 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 	return outString, pass, err
 }
 
+// getGistInfo gets the description and content of the result gist for the
+// given validator from its script output file. The "description" is the title
+// of the gist, and "content" is the script execution output.
+// NOTE: The parsed test result output (distinct from the script execution
+// output) should be attached as a comment on the same gist.
+func getGistInfo(validatorId, version, resultsDir string) (string, string, error) {
+	validator, ok := commonci.Validators[validatorId]
+	if !ok {
+		return "", "", fmt.Errorf("getGistInfo: validator %q not found!", validatorId)
+	}
+
+	description := fmt.Sprintf(validator.StatusName(version) + " Test Run Script")
+
+	outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.OutFileName))
+	if err != nil {
+		return "", "", err
+	}
+	content := string(outBytes)
+	if content == "" {
+		content = "No output"
+	}
+
+	return description, content, nil
+}
+
 // postResult runs the OpenConfig linter, and Go-based tests for the models
 // repo. The results are written to a GitHub Gist, and into the PR that was
 // modified, associated with the commit reference SHA.
-func postResult() {
+func postResult(validatorId, version string) error {
+	validator, ok := commonci.Validators[validatorId]
+	if !ok {
+		return fmt.Errorf("postResult: validator %q not found!", validatorId)
+	}
+
 	var url, gistID string
 	var err error
 	var g *commonci.GithubRequestHandler
-	commonci.Retry(5, "CreateCIOutputGist", func() error {
-		g = commonci.NewGitHubRequestHandler()
-		url, gistID, err = g.CreateCIOutputGist(validatorId, version)
-		return err
-	})
-	if err != nil {
-		log.Fatalf("error: couldn't create gist: %v", err)
-	}
 
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
-	outString, pass, err := getResult(validatorId, resultsDir)
+
+	// Create gist representing test results. The "description" is the
+	// title of the gist, and "content" is the script execution output.
+	description, content, err := getGistInfo(validatorId, version, resultsDir)
 	if err != nil {
-		log.Fatalf("error, couldn't parse results: %v", err)
+		return fmt.Errorf("postResult: %v", err)
+	}
+	if err := commonci.Retry(5, "CreateCIOutputGist", func() error {
+		g, err = commonci.NewGitHubRequestHandler()
+		if err != nil {
+			return err
+		}
+		url, gistID, err = g.CreateCIOutputGist(description, content)
+		return err
+	}); err != nil {
+		return fmt.Errorf("postResult: couldn't create gist: %v", err)
 	}
 
-	// Get the display name of the validator.
-	validatorName := commonci.Validators[validatorId].Name + version
-	g.AddGistComment(gistID, outString, fmt.Sprintf("%s %s", lintSymbol(pass), validatorName))
+	// Post parsed test results as a gist comment.
+	testResultString, pass, err := getResult(validatorId, resultsDir)
+	if err != nil {
+		return fmt.Errorf("postResult: couldn't parse results: %v", err)
+	}
+	validatorStatusName := validator.StatusName(version)
+	g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorStatusName), testResultString)
 
 	prUpdate := &commonci.GithubPRUpdate{
 		Owner:   owner,
 		Repo:    repo,
 		Ref:     commitSHA,
 		URL:     url,
-		Context: validatorName,
+		Context: validatorStatusName,
 	}
-
-	if !pass {
+	if pass {
+		prUpdate.NewStatus = "success"
+		prUpdate.Description = validatorStatusName + " Succeeded"
+	} else {
 		prUpdate.NewStatus = "failure"
-		prUpdate.Description = validatorName + " Failed"
-
-		if uperr := g.UpdatePRStatus(prUpdate); uperr != nil {
-			log.Printf("error: couldn't update PR to failed, error: %s", uperr)
-		}
-		return
+		prUpdate.Description = validatorStatusName + " Failed"
 	}
 
-	prUpdate.NewStatus = "success"
-	prUpdate.Description = validatorName + " Succeeded"
 	if uperr := g.UpdatePRStatus(prUpdate); uperr != nil {
-		log.Printf("error: couldn't update PR to succeeded: %s", uperr)
+		return fmt.Errorf("postResult: couldn't update PR: %s", uperr)
 	}
+	return nil
 }
 
 func main() {
 	flag.Parse()
+	if repoSlug == "" {
+		log.Fatalf("no repo slug input")
+	}
 	repoSplit := strings.Split(repoSlug, "/")
 	owner = repoSplit[0]
 	repo = repoSplit[1]
@@ -304,9 +347,7 @@ func main() {
 		log.Fatalf("no PR branch name supplied")
 	}
 
-	if _, ok := commonci.Validators[validatorId]; !ok {
-		log.Fatalf("validator %q not found!", validatorId)
+	if err := postResult(validatorId, version); err != nil {
+		log.Fatal(err)
 	}
-
-	postResult()
 }

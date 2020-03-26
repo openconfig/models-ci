@@ -15,19 +15,26 @@ import (
 )
 
 var (
-	// flags
-	modelRoot string
-	repoSlug  string
-	commitSHA string
-	prNumber  int
-	extraPV   string
+	// Commandline flags
+	modelRoot          string // modelRoot is the root directory of the models.
+	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
+	commitSHA          string
+	prNumber           int
+	extraPyangVersions string // e.g. "1.2.3,3.4.5"
 
-	// derived flags (easier to use)
+	// Derived flags (for ease of use)
 	owner string
 	repo  string
 
+	// local run flags
+	local             bool   // local run toggle
+	localResultsDir   string // folder into which the command outputs its results
+	localValidatorId  string
+	localModelDirName string // a model directory (e.g. network-instance, aft)
+
 	// disabledModelPaths are the paths whose models should not undergo CI.
 	// These should be temporary -- they're only here to help the transition to CI.
+	// To represent a multi-level directory, use ":" instead of "/" as the delimiter.
 	disabledModelPaths = map[string]bool{
 		"wifi:access-points": true,
 		"wifi:ap-manager":    true,
@@ -37,11 +44,18 @@ var (
 )
 
 func init() {
+	// GCB-required flags
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
-	flag.StringVar(&extraPV, "extra-pyang-versions", "", "Extra pyang versions to run")
+	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
+
+	// Local run flags
+	flag.BoolVar(&local, "local", false, "use with validator, modelDirName, resultsDir to get a particular model's command")
+	flag.StringVar(&localResultsDir, "resultsDir", "~/tmp/ci-results", "root directory to OpenConfig models")
+	flag.StringVar(&localValidatorId, "validator", "", "")
+	flag.StringVar(&localModelDirName, "modelDirName", "", "")
 }
 
 // ModelInfo represents the yaml model of an OpenConfig .spec.yml file.
@@ -86,8 +100,7 @@ func parseModels(modelRoot string) (OpenConfigModelMap, error) {
 				}
 			}
 
-			parentPath := filepath.Dir(path)
-			relPath, err := filepath.Rel(modelRoot, parentPath)
+			relPath, err := filepath.Rel(modelRoot, filepath.Dir(path))
 			if err != nil {
 				return fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q): %v\n", path, modelRoot, err)
 			}
@@ -103,23 +116,23 @@ func parseModels(modelRoot string) (OpenConfigModelMap, error) {
 
 // createValidatorFmtStr creates the customized format string to invoke the
 // given validator on a model.
-func createValidatorFmtStr(validatorId string) string {
+func createValidatorFmtStr(validatorId string) (string, error) {
 	switch validatorId {
 	case "pyang":
 		return `if ! $@ -p %s -p %s/third_party/ietf %s &> %s; then
   mv %s %s
 fi
-`
+`, nil
 	case "oc-pyang":
 		return `if ! $@ -p %s -p %s/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH %s &> %s; then
   mv %s %s
 fi
-`
+`, nil
 	case "pyangbind":
 		return `if ! $@ -p %s -p %s/third_party/ietf -f pybind -o binding.py %s &> %s; then
   mv %s %s
 fi
-`
+`, nil
 	case "goyang-ygot":
 		return `if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
 -path=%s,%s/third_party/ietf \
@@ -130,14 +143,33 @@ fi
 %s &> %s; then
   mv %s %s
 fi
-`
+`, nil
 	case "yanglint":
 		return `if ! yanglint -p %s -p %s/third_party/ietf %s &> %s; then
   mv %s %s
 fi
-`
+`, nil
 	}
-	return ""
+	return "", fmt.Errorf("createValidatorFmtStr: unrecognized validatorId %q", validatorId)
+}
+
+// genValidatorCommandForModelDir generates the validator command for a single modelDir.
+func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string, modelMap OpenConfigModelMap) (string, error) {
+	var builder strings.Builder
+	fmtStr, err := createValidatorFmtStr(validatorId)
+	if err != nil {
+		return "", err
+	}
+	for _, modelInfo := range modelMap.ModelInfoMap[modelDirName] {
+		// First check whether to skip CI.
+		if !modelInfo.RunCi || len(modelInfo.BuildFiles) == 0 {
+			continue
+		}
+		outputFile := filepath.Join(resultsDir, fmt.Sprintf("%s==%s==pass", modelDirName, modelInfo.Name))
+		failFile := filepath.Join(resultsDir, fmt.Sprintf("%s==%s==fail", modelDirName, modelInfo.Name))
+		builder.WriteString(fmt.Sprintf(fmtStr, modelMap.ModelRoot, commonci.RootDir, strings.Join(modelInfo.BuildFiles, " "), outputFile, outputFile, failFile))
+	}
+	return builder.String(), nil
 }
 
 // labelPoster is an interface with just a function for posting a GitHub label to a PR.
@@ -153,7 +185,9 @@ type labelPoster interface {
 //  2. Thus, a validation command and result is provided for each model.
 //  2. A file indicating pass/fail is output for each model into the given result directory.
 // Files names follow the "modelDir==model==status" format with no file extensions.
-func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, modelMap OpenConfigModelMap) string {
+// The local flag indicates to run this as a helper to generate the script,
+// rather than running it within GCB.
+func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, modelMap OpenConfigModelMap) (string, error) {
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 	var builder strings.Builder
 
@@ -165,31 +199,29 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	}
 	sort.Strings(modelDirNames)
 
-	fmtStr := createValidatorFmtStr(validatorId)
-
 	for _, modelDirName := range modelDirNames {
-		for _, modelInfo := range modelMap.ModelInfoMap[modelDirName] {
-			// First check whether to skip CI.
-			if !modelInfo.RunCi || len(modelInfo.BuildFiles) == 0 {
-				continue
-			} else if disabledModelPaths[modelDirName] {
-				log.Printf("skipping disabled model directory %s", modelDirName)
-				g.PostLabel("skipped: "+modelDirName, commonci.LabelColors["orange"], owner, repo, prNumber)
-				continue
-			}
-			outputFile := filepath.Join(resultsDir, fmt.Sprintf("%s==%s==pass", modelDirName, modelInfo.Name))
-			failFile := filepath.Join(resultsDir, fmt.Sprintf("%s==%s==fail", modelDirName, modelInfo.Name))
-			builder.WriteString(fmt.Sprintf(fmtStr, modelMap.ModelRoot, commonci.RootDir, strings.Join(modelInfo.BuildFiles, " "), outputFile, outputFile, failFile))
+		if disabledModelPaths[modelDirName] {
+			log.Printf("skipping disabled model directory %s", modelDirName)
+			g.PostLabel("skipped: "+modelDirName, commonci.LabelColors["orange"], owner, repo, prNumber)
+			continue
 		}
+		cmdStr, err := genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName, modelMap)
+		if err != nil {
+			return "", err
+		}
+		builder.WriteString(cmdStr)
 	}
 
-	return builder.String()
+	return builder.String(), nil
 }
 
 // postInitialStatuses posts the initial status for all versions of a validator.
 func postInitialStatuses(g *commonci.GithubRequestHandler, validatorId string, versions []string, prApproved bool) []error {
 	var errs []error
-	validator := commonci.Validators[validatorId]
+	validator, ok := commonci.Validators[validatorId]
+	if !ok {
+		return append(errs, fmt.Errorf("validator %q not recognized", validatorId))
+	}
 	for _, version := range versions {
 		validatorName := validator.Name + version
 		// Update the status to pending so that the user can see that we have received
@@ -218,6 +250,35 @@ func postInitialStatuses(g *commonci.GithubRequestHandler, validatorId string, v
 func main() {
 	// Parse derived flags.
 	flag.Parse()
+
+	if modelRoot == "" {
+		log.Fatalf("Must supply modelRoot path")
+	}
+
+	// Populate information necessary for validation script generation.
+	modelMap, err := parseModels(modelRoot)
+	if err != nil {
+		log.Fatalf("CI flow failed due to error encountered while parsing spec files, parseModels: %v", err)
+	}
+
+	// Handle local call case.
+	if local {
+		if localModelDirName == "" {
+			log.Fatalf("no modelDirName specified")
+		}
+		if localValidatorId == "" {
+			log.Fatalf("no validator specified")
+		}
+		cmdStr, err := genValidatorCommandForModelDir(localValidatorId, localResultsDir, localModelDirName, modelMap)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf(cmdStr)
+		return
+	} else if localModelDirName != "" || localValidatorId != "" {
+		log.Fatalf("modelDirName and validator can only be specified for local cmd generation")
+	}
+
 	repoSplit := strings.Split(repoSlug, "/")
 	owner = repoSplit[0]
 	repo = repoSplit[1]
@@ -228,13 +289,10 @@ func main() {
 		log.Fatalf("no PR number")
 	}
 
-	// Populate information necessary for validation script generation.
-	modelMap, err := parseModels(modelRoot)
+	h, err := commonci.NewGitHubRequestHandler()
 	if err != nil {
-		log.Fatalf("CI flow failed due to error encountered while parsing spec files, parseModels: %v", err)
+		log.Fatal(err)
 	}
-
-	h := commonci.NewGitHubRequestHandler()
 
 	prApproved, err := h.IsPRApproved(owner, repo, prNumber)
 	if err != nil {
@@ -250,11 +308,12 @@ func main() {
 	for validatorId, validator := range commonci.Validators {
 		// Empty string is the "head" version, which is always run.
 		versionsToRun := []string{""}
-		switch validatorId {
-		case "pyang":
-			versionsToRun = append(versionsToRun, strings.Split(extraPV, ",")...)
+		if validatorId == "pyang" {
+			versionsToRun = append(versionsToRun, strings.Split(extraPyangVersions, ",")...)
 		}
-		// Write a list of the extra validator versions into a file.
+		// Write a list of the extra validator versions into the
+		// designated extra versions file in order to be relayed to the
+		// corresponding test.sh (next stage of the CI pipeline).
 		extraVersionFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
 		if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(versionsToRun, " ")), 0444); err != nil {
 			log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
@@ -275,10 +334,13 @@ func main() {
 			}
 			log.Printf("Created results directory %q", validatorResultsDir)
 
-			scriptStr := genOpenConfigValidatorScript(h, validatorId, version, modelMap)
+			scriptStr, err := genOpenConfigValidatorScript(h, validatorId, version, modelMap)
+			if err != nil {
+				log.Fatalf("error while generating validator script: %v", err)
+			}
 			scriptPath := filepath.Join(validatorResultsDir, commonci.ScriptFileName)
 			if err := ioutil.WriteFile(scriptPath, []byte(scriptStr), 0744); err != nil {
-				log.Printf("error while writing script to path %q: %v", scriptPath, err)
+				log.Fatalf("error while writing script to path %q: %v", scriptPath, err)
 			}
 		}
 	}

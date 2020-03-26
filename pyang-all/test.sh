@@ -23,6 +23,8 @@ setup() {
 }
 
 teardown(){
+  # This was an effort to try re-using pyangvenv from the previous run -- it doesn't
+  # save much time.
   # -czf $ROOT_DIR/pyangvenv.tar.gz $VENVDIR
   rm -rf $VENVDIR
   rm -rf $OCPYANG_REPO
