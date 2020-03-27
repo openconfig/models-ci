@@ -268,8 +268,6 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 		}
 	}
 
-	description := fmt.Sprintf(validatorDesc + " Test Run Script")
-
 	outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.OutFileName))
 	if err != nil {
 		return "", "", err
@@ -279,7 +277,7 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 		content = "No output"
 	}
 
-	return description, content, nil
+	return validatorDesc, content, nil
 }
 
 // postResult runs the OpenConfig linter, and Go-based tests for the models
@@ -297,9 +295,9 @@ func postResult(validatorId, version string) error {
 
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
-	// Create gist representing test results. The "description" is the
+	// Create gist representing test results. The "validatorDesc" is the
 	// title of the gist, and "content" is the script execution output.
-	description, content, err := getGistInfo(validatorId, version, resultsDir)
+	validatorDesc, content, err := getGistInfo(validatorId, version, resultsDir)
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
@@ -308,7 +306,7 @@ func postResult(validatorId, version string) error {
 		if err != nil {
 			return err
 		}
-		url, gistID, err = g.CreateCIOutputGist(description, content)
+		url, gistID, err = g.CreateCIOutputGist(validatorDesc, content)
 		return err
 	}); err != nil {
 		return fmt.Errorf("postResult: couldn't create gist: %v", err)
@@ -319,22 +317,21 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
-	validatorStatusName := validator.StatusName(version)
-	g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorStatusName), testResultString)
+	g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString)
 
 	prUpdate := &commonci.GithubPRUpdate{
 		Owner:   owner,
 		Repo:    repo,
 		Ref:     commitSHA,
 		URL:     url,
-		Context: validatorStatusName,
+		Context: validator.StatusName(version),
 	}
 	if pass {
 		prUpdate.NewStatus = "success"
-		prUpdate.Description = validatorStatusName + " Succeeded"
+		prUpdate.Description = validatorDesc + " Succeeded"
 	} else {
 		prUpdate.NewStatus = "failure"
-		prUpdate.Description = validatorStatusName + " Failed"
+		prUpdate.Description = validatorDesc + " Failed"
 	}
 
 	if uperr := g.UpdatePRStatus(prUpdate); uperr != nil {

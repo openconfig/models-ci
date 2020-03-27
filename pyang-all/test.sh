@@ -109,7 +109,7 @@ if stat $PYANGBIND_RESULTSDIR; then
   git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
   pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
   pip3 install pyangbind
-  pip3 show pyangbind | grep pyangbind > $PYANGBIND_RESULTSDIR/latest-version.txt
+  pip3 list | grep pyangbind > $PYANGBIND_RESULTSDIR/latest-version.txt
 
   export PYANGBIND_PLUGIN_DIR=`/usr/bin/env python3 -c \
     'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`

@@ -297,7 +297,7 @@ func TestGetGistInfo(t *testing.T) {
 		name:                 "oc-pyang with output and latest-version.txt file",
 		inValidatorResultDir: "testdata/oc-pyang",
 		inValidatorId:        "oc-pyang",
-		wantDescription:      "yanglint SO 1.5.5 Test Run Script",
+		wantDescription:      "yanglint SO 1.5.5",
 		wantContent:          "foo\n",
 	}, {
 		name:                 "invalid validator name",
@@ -308,7 +308,7 @@ func TestGetGistInfo(t *testing.T) {
 		name:                 "regexp with no output and no latest-version.txt file",
 		inValidatorResultDir: "testdata/regexp-tests",
 		inValidatorId:        "regexp",
-		wantDescription:      "regexp tests Test Run Script",
+		wantDescription:      "regexp tests",
 		wantContent:          "No output",
 	}, {
 		name:                 "pyang with missing output file",

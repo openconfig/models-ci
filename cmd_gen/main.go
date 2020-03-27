@@ -223,7 +223,7 @@ func postInitialStatuses(g *commonci.GithubRequestHandler, validatorId string, v
 		return append(errs, fmt.Errorf("validator %q not recognized", validatorId))
 	}
 	for _, version := range versions {
-		validatorName := validator.Name + version
+		validatorName := validator.StatusName(version)
 		// Update the status to pending so that the user can see that we have received
 		// this request and are ready to run the CI.
 		update := &commonci.GithubPRUpdate{
