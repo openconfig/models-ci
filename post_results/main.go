@@ -257,7 +257,17 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 		return "", "", fmt.Errorf("getGistInfo: validator %q not found!", validatorId)
 	}
 
-	description := fmt.Sprintf(validator.StatusName(version) + " Test Run Script")
+	validatorDesc := validator.StatusName(version)
+	// If version is latest, then get the concrete version output by the tool if it exists.
+	if version == "" {
+		outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName))
+		if err == nil {
+			// Get the first line of the version output as the tool's display title.
+			validatorDesc = strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 1)[0])
+		}
+	}
+
+	description := fmt.Sprintf(validatorDesc + " Test Run Script")
 
 	outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.OutFileName))
 	if err != nil {

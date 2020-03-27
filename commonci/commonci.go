@@ -24,6 +24,11 @@ const (
 	ResultsDir = "/workspace/results"
 	// ScriptFileName by convention is the script with the validator commands.
 	ScriptFileName = "script.sh"
+	// LatestVersionFileName by convention contains the version description
+	// of the tool as output by the tool during the build.
+	// Whenever the "latest" version of a tool has a version, it should
+	// exist, and for now, it should be output into this file for display.
+	LatestVersionFileName = "latest-version.txt"
 	// OutFileName by convention contains the stdout of the script file.
 	OutFileName = "out"
 	// FailFileName by convention contains the stderr of the script file.

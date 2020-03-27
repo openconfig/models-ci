@@ -57,8 +57,9 @@ if stat $PYANG_RESULTSDIR; then
     run-pyang-version "$version" &
   done
 
+  # Run latest pyang
   pip3 install pyang
-
+  pyang --version > $PYANG_RESULTSDIR/latest-version.txt
   (bash $PYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang > $PYANG_RESULTSDIR/$OUTFILE_NAME 2> $PYANG_RESULTSDIR/$FAILFILE_NAME;
   go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
 fi
