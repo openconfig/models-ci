@@ -16,12 +16,12 @@ and comply with the RFCs.
 
 ## Categories of CI Validators
 
-1.  Per-Model Validators
+-   Per-Model Validators
 
 Validators that are run once per model (per entry in each model's `.spec.yml`).
 e.g. pyang
 
-1.  Non Per-Model validators
+-   Non Per-Model validators
 
 Validators that are run directly in a simple command on the entire repository.
 e.g. regexp tests
@@ -58,23 +58,23 @@ No matter which way, the results are put into a `/workspace/results/<validator
 tool>` directory to be processed into a human-readable format. Here `/workspace`
 is the root directory for all GCB builds.
 
-| Special File Within Results | Meaning                                       |
-: Directory                   :                                               :
-| --------------------------- | --------------------------------------------- |
-| `script.sh`                 | per-model validator execution script name.    |
-| `out`                       | Stores stdout of validator execution.         |
-:                             : **required** to be present to indicate that   :
-:                             : the script ran.                               :
-| `fail`                      | Stores stderr of validator execution. A       |
-:                             : non-existent or an empty fail file is a pass. :
-| `latest-version.txt`        | Stores the name+version of the @latest        |
-:                             : validator to display to the user.             :
-| `modelDir==model==status`   | Each model has a file of this format created  |
-:                             : by the per-model validator execution script.  :
-:                             : `post_results` understands this format, and   :
-:                             : scans all of these in order to output the     :
-:                             : hierarchical results output to the user for   :
-:                             : per-model validators.                         :
+##### Special File Within Results Directory and Their Meaning
+
+`script.sh`: per-model validator execution script name.
+
+`out`: Stores stdout of validator execution. **required** to be present to
+indicate that the script ran.
+
+`fail`: Stores stderr of validator execution. A non-existent or an empty fail
+file is a pass.
+
+`latest-version.txt`: Stores the name+version of the @latest validator to
+display to the user.
+
+`modelDir==model==status`: Each model has a file of this format created by the
+per-model validator execution script. `post_results` understands this format,
+and scans all of these in order to output the hierarchical results output to the
+user for per-model validators.
 
 #### 3 `post_results`
 
