@@ -30,14 +30,11 @@ e.g. regexp tests
 
 CI has 3 steps:
 
-1.  Validator script generation (`cmd_gen` Go script)
-2.  Validator script execution
+1.  Generate validator scripts (`cmd_gen` Go script)
+2.  Execute each validator script
 3.  Parse and post results (`post_results` Go script)
 
-, the scripts are run by minimal per-validator `test.sh` files, and
-`post_results` is then able to parse the results of every validator.
-
-#### 1 `cmd_gen`
+### 1 `cmd_gen`
 
 `cmd_gen` only needs to be run once. It creates a `script.sh` for each validator
 which contains the validator commands ready to be invoked. Each validator's
@@ -45,7 +42,7 @@ which contains the validator commands ready to be invoked. Each validator's
 pyang requires the path to the pyang executable and some environment variables
 to be passed in as an arugment.
 
-#### 2 Validator script execution
+### 2 Validator Script Execution
 
 Per-model validators each have a minimal `test.sh` that can be invoked directly
 during CI that takes care of all the task of running the script. These bash
@@ -58,7 +55,7 @@ No matter which way, the results are put into a `/workspace/results/<validator
 tool>` directory to be processed into a human-readable format. Here `/workspace`
 is the root directory for all GCB builds.
 
-##### Special File Within Results Directory and Their Meaning
+#### Special File Within Each Validator's Results Directory and Their Meanings
 
 `script.sh`: per-model validator execution script name.
 
@@ -76,7 +73,7 @@ per-model validator execution script. `post_results` understands this format,
 and scans all of these in order to output the hierarchical results output to the
 user for per-model validators.
 
-#### 3 `post_results`
+### 3 `post_results`
 
 This script is aware of the results format outputted from each validator. It
 parses each result uniquely for each validator, and posts the information on the
@@ -84,18 +81,19 @@ GitHub PR.
 
 ## How Each Validator is Installed
 
-Validator     | Installation
-------------- | -----------------------------------------------------
-regexp        | Files are moved into gopath during CI build
-pyang-related | pip and git clone for oc-pyang
-goyang/ygot   | go get
-yanglint      | Debian package periodically uploaded to cloud storage
+Validator         | Installation
+----------------- | -----------------------------------------------------------
+regexp            | Files are moved into GOPATH from its folder during CI build
+pyang & pyangbind | pip
+oc-pyang          | git clone
+goyang/ygot       | go get
+yanglint          | Debian package periodically uploaded to cloud storage
 
 ## Setting Up GCB
 
 models-ci is written to be ran on Google Cloud Build (GCB) on a GitHub
-OpenConfig repository. While it is possible for it to be adapted for other CI
-infrastructures, it was not written with that in mind.
+OpenConfig models repository. While it is possible for it to be adapted for
+other CI infrastructures, it was not written with that in mind.
 
 In particular, models-ci assumes a corresponding
 [`cloudbuild.yaml`](https://cloud.google.com/cloud-build/docs/automating-builds/run-builds-on-github#preparing_a_github_repository_with_source_files)
