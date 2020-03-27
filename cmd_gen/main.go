@@ -136,7 +136,7 @@ fi
 	case "goyang-ygot":
 		return `if ! /go/bin/generator \
 -path=%s,%s/third_party/ietf \
--output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
+-output_file=` + commonci.ResultsDir + `/goyang-ygot/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \

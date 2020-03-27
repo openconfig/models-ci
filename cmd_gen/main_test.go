@@ -192,7 +192,7 @@ fi
 mkdir -p /workspace/results/goyang-ygot
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
--output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
+-output_file=/workspace/results/goyang-ygot/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
@@ -201,7 +201,7 @@ testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /
 fi
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
--output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
+-output_file=/workspace/results/goyang-ygot/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
@@ -210,7 +210,7 @@ testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/resul
 fi
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
--output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
+-output_file=/workspace/results/goyang-ygot/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
