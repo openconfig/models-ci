@@ -190,7 +190,7 @@ fi
 		inValidatorName: "goyang-ygot",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/goyang-ygot
-if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
+if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
@@ -199,7 +199,7 @@ if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
 testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/goyang-ygot/acl==openconfig-acl==pass; then
   mv /workspace/results/goyang-ygot/acl==openconfig-acl==pass /workspace/results/goyang-ygot/acl==openconfig-acl==fail
 fi
-if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
+if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
@@ -208,7 +208,7 @@ if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
 testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==pass /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==fail
 fi
-if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
+if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \

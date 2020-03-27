@@ -134,7 +134,7 @@ fi
 fi
 `, nil
 	case "goyang-ygot":
-		return `if ! go run /go/src/github.com/openconfig/ygot/generator/generator.go \
+		return `if ! /go/bin/generator \
 -path=%s,%s/third_party/ietf \
 -output_file=/go/src/github.com/openconfig/ygot/exampleoc/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \

@@ -260,10 +260,11 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 	validatorDesc := validator.StatusName(version)
 	// If version is latest, then get the concrete version output by the tool if it exists.
 	if version == "" {
-		outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName))
-		if err == nil {
-			// Get the first line of the version output as the tool's display title.
-			validatorDesc = strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 1)[0])
+		if outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName)); err != nil {
+			log.Printf("did not read latest version for %s: %v", validatorId, err)
+		} else {
+			// Get the first line of the version output as the tool's display title, with extra spacing in between words removed.
+			validatorDesc = strings.Join(strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 1)[0])), " ")
 		}
 	}
 
