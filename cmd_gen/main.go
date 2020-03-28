@@ -306,21 +306,26 @@ func main() {
 
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
-		// Empty string is the "head" version, which is always run.
-		versionsToRun := []string{""}
+		var extraVersions []string
 		if validatorId == "pyang" {
 			// pyang also runs a HEAD version.
-			versionsToRun = append(versionsToRun, "-head")
-			versionsToRun = append(versionsToRun, strings.Split(extraPyangVersions, ",")...)
+			extraVersions = strings.Split(extraPyangVersions, ",")
 		}
 		// Write a list of the extra validator versions into the
 		// designated extra versions file in order to be relayed to the
 		// corresponding test.sh (next stage of the CI pipeline).
-		extraVersionFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
-		if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(versionsToRun, " ")), 0444); err != nil {
-			log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
+		if len(extraVersions) > 0 {
+			extraVersionFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
+			if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
+				log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
+			}
 		}
 
+		// Empty string is the "head" version, which is always run.
+		if validatorId == "pyang" {
+			versionsToRun = append(versionsToRun, "-head")
+		}
+		versionsToRun := append([]string{""}, extraVersions...)
 		if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
 			log.Fatal(errs)
 		}
