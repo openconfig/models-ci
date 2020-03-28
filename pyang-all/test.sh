@@ -51,7 +51,7 @@ run-pyang-head() {
   deactivate
   echo running pyang head
   local RESULTSDIR=$ROOT_DIR/results/pyang-head
-  local REPODIR=RESULTSDIR/pyang
+  local REPODIR=$RESULTSDIR/pyang
   git clone https://github.com/mbj4668/pyang.git $REPODIR
   cd $REPODIR
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
