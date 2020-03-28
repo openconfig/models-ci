@@ -234,7 +234,7 @@ func postInitialStatuses(g *commonci.GithubRequestHandler, validatorId string, v
 			NewStatus:   "pending",
 			Context:     validatorName,
 		}
-		if !prApproved && !validator.RunBeforeApproval {
+		if !prApproved && validator.SkipIfNotApproved {
 			update.Description = validatorName + " Skipped (PR not approved)"
 			update.NewStatus = "error"
 		}
@@ -309,6 +309,8 @@ func main() {
 		// Empty string is the "head" version, which is always run.
 		versionsToRun := []string{""}
 		if validatorId == "pyang" {
+			// pyang also runs a HEAD version.
+			versionsToRun = append(versionsToRun, "-head")
 			versionsToRun = append(versionsToRun, strings.Split(extraPyangVersions, ",")...)
 		}
 		// Write a list of the extra validator versions into the
@@ -328,7 +330,7 @@ func main() {
 		case !validator.IsPerModel:
 			// We don't generate commands when the tool is just ran on the entire models directory.
 			continue
-		case !prApproved && !validator.RunBeforeApproval:
+		case !prApproved && validator.SkipIfNotApproved:
 			// We don't generate commands for less important and long tests until PR is approved.
 			continue
 		}

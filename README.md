@@ -51,9 +51,11 @@ files are kept to a minimal as bash is more difficult to work with than Go.
 Non per-model validators may not have `test.sh`, and so may require a direct
 call in order to execute.
 
-No matter which way, the results are put into a `/workspace/results/<validator
-tool>` directory to be processed into a human-readable format. Here `/workspace`
-is the root directory for all GCB builds.
+No matter which way, the results are put into a
+`/workspace/results/<validatorId><non-latest-version>` directory to be processed
+into a human-readable format. Here `/workspace` is the root directory for all
+GCB builds. You can find the `validatorId` in the `commonci` package. The latest
+version is either the latest tagged version, or without it, the head.
 
 #### Special File Within Each Validator's Results Directory and Their Meanings
 

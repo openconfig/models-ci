@@ -49,9 +49,9 @@ type Validator struct {
 	// IsPerModel means the validator is run per-model, not across the
 	// entire repo of YANG files.
 	IsPerModel bool
-	// RunBeforeApproval means to run the test on a PR even before approval
-	// status. Longer tests are best be omitted from this category.
-	RunBeforeApproval bool
+	// SkipIfNotApproved means to avoid running the test on a PR before being approved.
+	// This is used for long-running and less important validators.
+	SkipIfNotApproved bool
 }
 
 // StatusName determines the status description for the version of the validator.
@@ -69,40 +69,38 @@ var (
 		"pyang": &Validator{
 			Name:              "Pyang",
 			IsPerModel:        true,
-			RunBeforeApproval: true,
+			SkipIfNotApproved: false,
 		},
 		"oc-pyang": &Validator{
 			Name:              "OpenConfig Linter",
 			IsPerModel:        true,
-			RunBeforeApproval: true,
+			SkipIfNotApproved: false,
 		},
 		"pyangbind": &Validator{
 			Name:              "Pyangbind",
 			IsPerModel:        true,
-			RunBeforeApproval: true,
+			SkipIfNotApproved: false,
 		},
 		"goyang-ygot": &Validator{
-			Name:       "goyang/ygot",
-			IsPerModel: true,
-			// RunBeforeApproval is ideally false here so that we can delay this long (goyang-ygot)
-			// check until after the PR is approved; however, this has 2 practical problems:
-			// 1. It is inconvenient to force the user to always re-invoke the build, that is to
-			// run each build twice, if the changes were trivial .
-			// 2. GCB can't rebuild GitHub App builds more than 3 days ago, so the current way of
-			// asking users to rebuild doesn't work as it requires the user to re-invoke the build
-			// less than 3 days later, which may not be the case.
-			RunBeforeApproval: true,
+			Name:              "goyang/ygot",
+			IsPerModel:        true,
+			SkipIfNotApproved: false,
 		},
 		"yanglint": &Validator{
 			Name:              "yanglint",
 			IsPerModel:        true,
-			RunBeforeApproval: true,
+			SkipIfNotApproved: false,
 		},
 		"regexp": &Validator{
 			Name:              "regexp tests",
 			IsPerModel:        false,
-			RunBeforeApproval: true,
+			SkipIfNotApproved: false,
 		},
+		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:
+		// 1. It is inconvenient to force the user to always re-invoke the build after approval
+		// if the changes were trivial.
+		// 2. GCB can't rebuild GitHub App builds more than 3 days ago, so it requires an
+		// approval less than 3 days later for a "rerun" to be executed without a new push.
 	}
 
 	// LabelColors are some helper hex colours for posting to GitHub.
@@ -272,7 +270,7 @@ func (g *GithubRequestHandler) UpdatePRStatus(update *GithubPRUpdate) error {
 }
 
 // IsPRApproved checks whether a PR is approved or not.
-// TODO(wenbli): If the RunBeforeApproval feature is used, this function should
+// TODO(wenbli): If the SkipIfNotApproved feature is used, this function should
 // undergo testing due to having some logic.
 // unit tests can be created based onon actual models-ci repo data that's sent back for a particular PR.
 func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (bool, error) {

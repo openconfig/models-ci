@@ -44,7 +44,20 @@ run-pyang-version() {
   source $VENVDIR/bin/activate
   pip3 install pyang==$1
   (bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA)
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA)
+}
+
+run-pyang-head() {
+  deactivate
+  echo running pyang head
+  local RESULTSDIR=$ROOT_DIR/results/pyang-head
+  local REPODIR=RESULTSDIR/pyang
+  git clone https://github.com/mbj4668/pyang.git $REPODIR
+  cd $REPODIR
+  echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
+  source ./env.sh
+  (bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME;
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version="-head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA)
 }
 
 if stat $PYANG_RESULTSDIR; then
@@ -52,6 +65,7 @@ if stat $PYANG_RESULTSDIR; then
     setup
   fi
 
+  run-pyang-head &
   for version in $@; do
     echo running extra pyang version $version
     run-pyang-version "$version" &
@@ -61,7 +75,7 @@ if stat $PYANG_RESULTSDIR; then
   pip3 install pyang
   pyang --version > $PYANG_RESULTSDIR/latest-version.txt
   (bash $PYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang > $PYANG_RESULTSDIR/$OUTFILE_NAME 2> $PYANG_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
 fi
 
 ########################## OC-PYANG #############################
@@ -95,7 +109,7 @@ if stat $OCPYANG_RESULTSDIR; then
   fi
 
   (bash $OCPYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR > $OCPYANG_RESULTSDIR/$OUTFILE_NAME 2> $OCPYANG_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
 fi
 
 ########################## PYANGBIND #############################
@@ -115,7 +129,7 @@ if stat $PYANGBIND_RESULTSDIR; then
     'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
 
   (bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=openconfig/models -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA) &
 fi
 
 ########################## COMMON CLEANUP #############################
