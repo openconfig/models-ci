@@ -322,10 +322,10 @@ func main() {
 		}
 
 		// Empty string is the "head" version, which is always run.
+		versionsToRun := append([]string{""}, extraVersions...)
 		if validatorId == "pyang" {
 			versionsToRun = append(versionsToRun, "-head")
 		}
-		versionsToRun := append([]string{""}, extraVersions...)
 		if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
 			log.Fatal(errs)
 		}
