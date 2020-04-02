@@ -202,34 +202,6 @@ func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) erro
 		_, _, err := g.client.Gists.CreateComment(ctx, gistID, &github.GistComment{Body: &gistComment})
 		return err
 	})
-
-	// XXX: Unfortunately check runs are currently unsupported by GCB.
-	//      Keeping this code here in case GCB supports it in the future.
-	//      Check runs is a better UI than posting gists as statuses.
-	//      https://groups.google.com/g/google-cloud-dev/c/fON-kDlykLc
-	// status := "completed"
-	// conclusion := "neutral"
-	// summary := "this is a test of the check run creation API"
-	// checkRunOpts := github.CreateCheckRunOptions{
-	// 	Name:       title,
-	// 	HeadSHA:    commitSHA,
-	// 	Status:     &status,
-	// 	Conclusion: &conclusion,
-	// 	Output: &github.CheckRunOutput{
-	// 		Title:   &title,
-	// 		Summary: &summary,
-	// 		Text:    &output,
-	// 	},
-	// }
-	//
-	// ctx2, cancel2 := context.WithTimeout(context.Background(), 30*time.Second)
-	// defer cancel2() // cancel context if the function returns before the timeout
-	//
-	// checkRun, resp, err := g.client.Checks.CreateCheckRun(ctx2, owner, repo, checkRunOpts)
-	// log.Print(resp)
-	// log.Print(*resp.Response)
-	// log.Print(checkRun)
-	// return err
 }
 
 // UpdatePRStatus takes an input githubPRUpdate struct and updates a GitHub

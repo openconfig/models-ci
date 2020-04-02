@@ -45,19 +45,21 @@ to be passed in as an arugment.
 ### 2 Validator Script Execution
 
 Per-model validators each have a minimal `test.sh` that can be invoked directly
-during CI that takes care of all the task of running the script. These bash
-files are kept to a minimal as bash is more difficult to work with than Go.
+during CI that takes care of all the preparatory, invocation, and
+post-processing steps of running the script. These bash files are kept to a
+minimal as bash is more difficult to write than Go.
 
 Non per-model validators may not have `test.sh`, and so may require a direct
-call in order to execute.
+call in the CI pipline in order to execute.
 
 No matter which way, the results are put into a
 `/workspace/results/<validatorId><non-latest-version>` directory to be processed
 into a human-readable format. Here `/workspace` is the root directory for all
-GCB builds. You can find the `validatorId` in the `commonci` package. The latest
-version is either the latest tagged version, or without it, the head.
+GCB builds. You can find the `validatorId` for each validator in the `commonci`
+package. The latest version is either the latest tagged version, or absent, the
+head.
 
-#### Special File Within Each Validator's Results Directory and Their Meanings
+#### Special Files Within Each Validator's Results Directory and Their Meanings
 
 `script.sh`: per-model validator execution script name.
 
@@ -70,15 +72,15 @@ file is a pass.
 `latest-version.txt`: Stores the name+version of the @latest validator to
 display to the user.
 
-`modelDir==model==status`: Each model has a file of this format created by the
-per-model validator execution script. `post_results` understands this format,
-and scans all of these in order to output the hierarchical results output to the
-user for per-model validators.
+`modelDir==model==status`: For per-model validators, each model has a file of
+this format created by the validator execution script. `post_results`
+understands this format, and scans all of these in order to output the results
+in a hierarchical format to the user.
 
 ### 3 `post_results`
 
-This script is aware of the results format outputted from each validator. It
-parses each result uniquely for each validator, and posts the information on the
+This script is aware of the results format for each validator. It parses each
+result uniquely for each validator, and posts the information as a gist on the
 GitHub PR.
 
 ## How Each Validator is Installed
@@ -93,7 +95,7 @@ yanglint          | Debian package periodically uploaded to cloud storage
 
 ## Setting Up GCB
 
-models-ci is written to be ran on Google Cloud Build (GCB) on a GitHub
+models-ci is written to be run on Google Cloud Build (GCB) on a GitHub
 OpenConfig models repository. While it is possible for it to be adapted for
 other CI infrastructures, it was not written with that in mind.
 
@@ -103,8 +105,10 @@ file stored in each OpenConfig models respository in which CI is to be executed.
 The details of `cloudbuild.yaml` is heavily dependent on the assumptions made in
 this respository.
 
-Each build step of `cloudbuild.yaml` is run of a docker container inside the
-same VM. The steps need to made to coordinate with one another manually.
+Each build step of `cloudbuild.yaml` is run by a docker container inside the
+same VM. The steps need to made to coordinate with one another manually. GCB
+allows steps to have arbitrary dependencies, and parallel execution of steps
+whose ancestor steps have already been executed.
 
 As [pre-built images](https://cloud.google.com/cloud-build/docs/cloud-builders)
 provided by GCB are currently used to run CI, `cloudbuild.yaml` requires some
@@ -115,13 +119,13 @@ are,
 2.  Call `cmd_gen` to generate the validator scripts for each validator tool.
 3.  Prepare each validator tool if necessary.
 4.  Run each validator tool either directly, or through the `script.sh`
-    generated from `cmd_gen`, redirecting the result into specified directories.
+    generated from `cmd_gen`, redirecting the result into specified files.
 5.  If `script.sh` is not used for a validator tool, then `post_results` needs
-    to be called afterwards.
+    to be called afterwards as well.
 
 To run this CI tool on GCB for a GitHub project, the
 [GCB App](https://github.com/marketplace/google-cloud-build) needs to be enabled
-for the models repo.
+for the target OpenConfig models repo.
 
 ## Future Improvements
 
@@ -129,3 +133,7 @@ A custom build container image would,
 
 -   simplify the `cloudbuild.yaml` script.
 -   speed up the build.
+
+Check runs is a better UI than posting gists as statuses. Unfortunately check
+runs are currently
+[unsupported by GCB](https://groups.google.com/g/google-cloud-dev/c/fON-kDlykLc).
