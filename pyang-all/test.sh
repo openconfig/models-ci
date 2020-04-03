@@ -11,11 +11,10 @@ SETUP_DONE=0
 
 setup() {
   apt-get update
-  apt install -y python3-pip # this line is time-consuming, if there is an image in the future, should use it.
+  # TODO(wenbli): this line is time-consuming, definitely include pip3 in a
+  # docker image when adopted.
+  apt install -y python3-pip
 
-  # This was an effort to try re-using pyangvenv from the previous run -- it doesn't
-  # save much time.
-  # tar -xzf $ROOT_DIR/pyangvenv.tar.gz -C /
   pip3 install virtualenv
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
@@ -23,9 +22,6 @@ setup() {
 }
 
 teardown(){
-  # This was an effort to try re-using pyangvenv from the previous run -- it doesn't
-  # save much time.
-  # -czf $ROOT_DIR/pyangvenv.tar.gz $VENVDIR
   rm -rf $VENVDIR
   rm -rf $OCPYANG_REPO
   rm -rf $PYANGBIND_REPO
@@ -75,7 +71,7 @@ if stat $PYANG_RESULTSDIR; then
     run-pyang-version "$version" &
   done
 
-  # Run latest pyang
+  # Run latest pyang version
   pip3 install pyang
   pyang --version > $PYANG_RESULTSDIR/latest-version.txt
   (bash $PYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang > $PYANG_RESULTSDIR/$OUTFILE_NAME 2> $PYANG_RESULTSDIR/$FAILFILE_NAME;

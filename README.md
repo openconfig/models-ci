@@ -14,6 +14,29 @@ that require them to be in some format.
 This CI tool helps model committers avoid breaking these important YANG tools
 and comply with the RFCs.
 
+## How to Add a Validator
+
+1.  Determine which category the validator is: per-model or not.
+2.  Add to `commonci.go`'s `Validators` map by giving it an ID and a short
+    description.
+3.  If the validator is per-model, add to `cmd_gen.go`'s `createValidatorFmtStr`
+    a format string for creating the validation command for each model. Don't
+    forget to add a test. It's possible that it requires a special format
+    string, requiring special handling from the other validators.
+4.  If special parsing is necessary, modify `parseModelResultsHTML`'s parsing
+    logic to apply special formatting for your tool's output.
+5.  Add a `<validatorId>/test.sh` file (see others for examples) that invokes
+    the generated `script.sh`, creates the special files, and calls
+    `post_results` for your validator. Depending on the nature of your
+    validator, there may be extra set-up that's required, or it could be very
+    simple.
+6.  Add a step in `cloudbuild.yaml` to invoke `test.sh`. Depending on the
+    validator, other preparatory steps may be required.
+7.  (optional) If more than one version is to be ran (e.g. allowing extra
+    versions to be supplied), look at how this is done for pyang (in `cmd_gen`,
+    its `test.sh`, and its `cloudbuild.yaml` step) and add capability for it
+    accordingly.
+
 ## Categories of CI Validators
 
 -   Per-Model Validators

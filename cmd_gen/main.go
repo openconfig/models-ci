@@ -321,7 +321,7 @@ func main() {
 			}
 		}
 
-		// Empty string is the "head" version, which is always run.
+		// Empty string means the latest version, which is always run.
 		versionsToRun := append([]string{""}, extraVersions...)
 		if validatorId == "pyang" {
 			versionsToRun = append(versionsToRun, "-head")
