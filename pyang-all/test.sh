@@ -10,13 +10,6 @@ FAILFILE_NAME=fail
 SETUP_DONE=0
 
 setup() {
-  apt-get update
-  # TODO(wenbli): this line is time-consuming, definitely include pip3 in a
-  # docker image when adopted.
-  apt install -y python3-pip
-
-  pip3 install virtualenv
-  virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   SETUP_DONE=1
 }
@@ -51,7 +44,7 @@ run-pyang-head() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   local REPODIR=$RESULTSDIR/pyang
-  git clone https://github.com/mbj4668/pyang.git $REPODIR
+  ##git clone https://github.com/mbj4668/pyang.git $REPODIR
   cd $REPODIR
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
   source ./env.sh
@@ -87,12 +80,12 @@ if stat $OCPYANG_RESULTSDIR; then
   if [ $SETUP_DONE -eq 0 ]; then
     setup
   fi
-  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
+  ##git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
 
-  pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
-  pip3 install enum34
-  pip3 install jinja2
-  pip3 install setuptools
+  ##pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
+  ##pip3 install enum34
+  ##pip3 install jinja2
+  ##pip3 install setuptools
 
   # Find the directory for the openconfig linter
   export PYTHONPATH=$OCPYANG_REPO
@@ -120,9 +113,9 @@ if stat $PYANGBIND_RESULTSDIR; then
   if [ $SETUP_DONE -eq 0 ]; then
     setup
   fi
-  git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
-  pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
-  pip3 install pyangbind
+  ##git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
+  ##pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
+  ##pip3 install pyangbind
   pip3 list | grep pyangbind > $PYANGBIND_RESULTSDIR/latest-version.txt
 
   export PYANGBIND_PLUGIN_DIR=`/usr/bin/env python3 -c \
