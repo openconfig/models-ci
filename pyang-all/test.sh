@@ -48,7 +48,8 @@ run-pyang-head() {
   cd $REPODIR
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
   source ./env.sh
-  pip3 install --no-cache-dir -r $REPODIR/requirements.txt
+  ls -larth /workspace
+  pip3 install --no-cache-dir -r /workspace/$REPODIR/requirements.txt
   (bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME;
   go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version="-head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA)
 }
