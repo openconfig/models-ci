@@ -47,6 +47,8 @@ run-pyang-head() {
   ##git clone https://github.com/mbj4668/pyang.git $REPODIR
   cd $REPODIR
   find / -name oc-pyang-repo
+  echo "WHAT'S GOING ON?"
+  find . -name oc-pyang-repo
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
   source ./env.sh
   pip3 install --no-cache-dir -r $REPODIR/requirements.txt
