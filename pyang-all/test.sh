@@ -10,6 +10,7 @@ FAILFILE_NAME=fail
 SETUP_DONE=0
 
 setup() {
+  virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   SETUP_DONE=1
 }
@@ -44,14 +45,11 @@ run-pyang-head() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   local REPODIR=$RESULTSDIR/pyang
-  ##git clone https://github.com/mbj4668/pyang.git $REPODIR
+  git clone https://github.com/mbj4668/pyang.git $REPODIR
   cd $REPODIR
-  find / -name oc-pyang-repo
-  echo "WHAT'S GOING ON?"
-  find . -name oc-pyang-repo
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
   source ./env.sh
-  pip3 install --no-cache-dir -r $REPODIR/requirements.txt
+  ##pip3 install --no-cache-dir -r $REPODIR/requirements.txt
   (bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME;
   go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version="-head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA)
 }
@@ -83,7 +81,7 @@ if stat $OCPYANG_RESULTSDIR; then
   if [ $SETUP_DONE -eq 0 ]; then
     setup
   fi
-  ##git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
+  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
 
   ##pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
   ##pip3 install enum34
