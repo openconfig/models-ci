@@ -114,10 +114,11 @@ if stat $PYANGBIND_RESULTSDIR; then
   if [ $SETUP_DONE -eq 0 ]; then
     setup
   fi
-  ##git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
+  git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
   ##pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
-  ##pip3 install pyangbind
+  pip3 install pyangbind
   pip3 list | grep pyangbind > $PYANGBIND_RESULTSDIR/latest-version.txt
+  find $PYANGBIND_RESULTSDIR/latest-version.txt -size 0 -delete
 
   export PYANGBIND_PLUGIN_DIR=`/usr/bin/env python3 -c \
     'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
