@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# NOTE: double-hashed comments (##) are lines rendered unnecessary by the Docker
+# image "gcr.io/disco-idea-817/models-ci-image" being used for pyang-all
+# validation.
+
 ########################## COMMON SETUP #############################
 ROOT_DIR=/workspace
 MODELROOT=$ROOT_DIR/release/yang
