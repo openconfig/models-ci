@@ -5,49 +5,52 @@ Continuous integration for OpenConfig models.
 ## Purpose
 
 There are several widely-used YANG tools that form an important part of what
-makes OpenConfig possible.
+makes OpenConfig possible in practice. These tools may validate models based on
+their interpretation of the YANG RFCs, and may also do processing on them such
+as code generation.
 
-These tools either do validation directly based on their interpretation of the
-YANG RFCs, or, more importantly, do processing on them (e.g. code generation)
-that require them to be in some format.
+This CI suite helps ensure that changes to OpenConfig YANG models remain
+compatible with key tools, and are compliant with relevant style guides and
+standards. Validators are divided into those that must pass for models changes
+to be committed, and those that are informational in nature (i.e., not required
+to pass for merging).
 
-This CI tool helps model committers avoid breaking these important YANG tools
-and comply with the RFCs.
+## Categories of CI Validators (from a CI Perspective)
+
+-   General (Per-Model) Validators
+
+Validators that make sense to be run once per model (per entry in each model's
+`.spec.yml`). e.g. pyang
+
+-   Repo-level validators
+
+Validators that are run directly in a simple command on the entire repository.
+e.g. regexp tests
 
 ## How to Add a Validator
 
-1.  Determine which category the validator is: per-model or not.
+1.  Determine which category the validator is: per-model or repo-level.
 2.  Add to `commonci.go`'s `Validators` map by giving it an ID and a short
     description.
 3.  If the validator is per-model, add to `cmd_gen.go`'s `createValidatorFmtStr`
     a format string for creating the validation command for each model. Don't
     forget to add a test. It's possible that it requires a special format
     string, requiring special handling from the other validators.
-4.  If special parsing is necessary, modify `parseModelResultsHTML`'s parsing
-    logic to apply special formatting for your tool's output.
+4.  If special parsing of validator results is necessary, modify
+    `parseModelResultsHTML`'s parsing logic to apply special formatting to your
+    tool's output.
 5.  Add a `<validatorId>/test.sh` file (see others for examples) that invokes
-    the generated `script.sh`, creates the special files, and calls
+    the generated `script.sh`, creates the special files (see below), and calls
     `post_results` for your validator. Depending on the nature of your
-    validator, there may be extra set-up that's required, or it could be very
-    simple.
-6.  Add a step in `cloudbuild.yaml` to invoke `test.sh`. Depending on the
-    validator, other preparatory steps may be required.
-7.  (optional) If more than one version is to be ran (e.g. allowing extra
-    versions to be supplied), look at how this is done for pyang (in `cmd_gen`,
-    its `test.sh`, and its `cloudbuild.yaml` step) and add capability for it
-    accordingly.
-
-## Categories of CI Validators
-
--   Per-Model Validators
-
-Validators that are run once per model (per entry in each model's `.spec.yml`).
-e.g. pyang
-
--   Non Per-Model validators
-
-Validators that are run directly in a simple command on the entire repository.
-e.g. regexp tests
+    validator, there may be extra set-up steps required, or the above two calls
+    may be sufficient within `test.sh`.
+6.  Add a step in `cloudbuild.yaml` to invoke the above `test.sh`. Depending on
+    the validator, other preparatory steps may be required within
+    `cloudbuild.yaml`.
+7.  (optional) If more than one version is to be run (whether by allowing
+    arbitrary extra versions to be supplied, or always running two versions),
+    look at how this is done for pyang (in `cmd_gen`, its `test.sh`, and its
+    `cloudbuild.yaml` step) and add capability for it accordingly.
 
 ## CI Steps
 
@@ -69,11 +72,10 @@ to be passed in as an arugment.
 
 Per-model validators each have a minimal `test.sh` that can be invoked directly
 during CI that takes care of all the preparatory, invocation, and
-post-processing steps of running the script. These bash files are kept to a
-minimal as bash is more difficult to write than Go.
+post-processing steps of running the script.
 
-Non per-model validators may not have `test.sh`, and so may require a direct
-call in the CI pipline in order to execute.
+Repo-level validators may not have `test.sh`, and so may require a direct call
+in the CI pipline in order to execute.
 
 No matter which way, the results are put into a
 `/workspace/results/<validatorId><non-latest-version>` directory to be processed
@@ -89,8 +91,10 @@ head.
 `out`: Stores stdout of validator execution. **required** to be present to
 indicate that the script ran.
 
-`fail`: Stores stderr of validator execution. A non-existent or an empty fail
-file is a pass.
+`fail`: Stores stderr of validator execution. A non-existent fail file is
+interpreted as a successful validator execution, which along with each model's
+status (see below), or by itself for a repo-level validator, determine whether
+the entire validation was successful.
 
 `latest-version.txt`: Stores the name+version of the @latest validator to
 display to the user.
@@ -109,8 +113,8 @@ GitHub PR.
 ## How Each Validator is Installed
 
 Validator         | Installation
------------------ | -----------------------------------------------------------
-regexp            | Files are moved into GOPATH from its folder during CI build
+----------------- | -------------------------------------------------------
+regexp            | Files moved into GOPATH from its folder during CI build
 pyang & pyangbind | pip
 oc-pyang          | git clone
 goyang/ygot       | go get
@@ -124,14 +128,14 @@ other CI infrastructures, it was not written with that in mind.
 
 In particular, models-ci assumes a corresponding
 [`cloudbuild.yaml`](https://cloud.google.com/cloud-build/docs/automating-builds/run-builds-on-github#preparing_a_github_repository_with_source_files)
-file stored in each OpenConfig models respository in which CI is to be executed.
-The details of `cloudbuild.yaml` is heavily dependent on the assumptions made in
-this respository.
+file stored in each OpenConfig models respository in which CI is to be executed
+that specifies each CI step within GCB's environment. The details of
+`cloudbuild.yaml` is heavily dependent on the assumptions made in this
+respository and vice versa.
 
 Each build step of `cloudbuild.yaml` is run by a docker container inside the
-same VM. The steps need to made to coordinate with one another manually. GCB
-allows steps to have arbitrary dependencies, and parallel execution of steps
-whose ancestor steps have already been executed.
+same VM. The steps are manually structured as a DAG for parallelism, taking
+advantage of GCB's ability to allow steps to have arbitrary dependencies.
 
 As [pre-built images](https://cloud.google.com/cloud-build/docs/cloud-builders)
 provided by GCB are currently used to run CI, `cloudbuild.yaml` requires some
