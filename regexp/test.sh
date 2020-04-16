@@ -5,10 +5,6 @@ REGEXP_RESULTSDIR=$ROOT_DIR/results/regexp
 OUTFILE=$REGEXP_RESULTSDIR/out
 FAILFILE=$REGEXP_RESULTSDIR/fail
 
-if ! stat $REGEXP_RESULTSDIR; then
-  exit 0
-fi
-
 mkdir -p $REGEXP_RESULTSDIR
 if go test -v gotests/regexp > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
