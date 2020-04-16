@@ -1,8 +1,9 @@
 package regexp_test
 
 import (
-	"flag"
 	"fmt"
+	"log"
+	"os"
 	"regexp"
 	"testing"
 
@@ -240,6 +241,8 @@ func checkPattern(testData string, patterns []string) (compileErr error, matched
 // init sets up the test, particularly parsing the OpenConfig path which is
 // supplied as a command line argument.
 func init() {
-	flag.StringVar(&ocdir, "ocdir", "../..", "Path to OpenConfig models repo")
-	flag.Parse()
+	ocdir = os.Getenv("OCDIR")
+	if ocdir == "" {
+		log.Fatal("missing environment variable $OCDIR for specifying model root directory")
+	}
 }
