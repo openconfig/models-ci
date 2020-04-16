@@ -37,11 +37,11 @@ run-pyang-version() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   pip3 install pyang==$1
-  if (bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA); then
+  if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
 }
 
 run-pyang-head() {
@@ -57,11 +57,11 @@ run-pyang-head() {
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
   source ./env.sh
   pip3 install --no-cache-dir -r $REPODIR/requirements.txt
-  if (bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version="-head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA); then
+  if bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
+  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version="-head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
 }
 
 if stat $PYANG_RESULTSDIR; then
@@ -77,12 +77,14 @@ if stat $PYANG_RESULTSDIR; then
 
   pip3 install pyang
   # Run latest pyang version
-  pyang --version > $PYANG_RESULTSDIR/latest-version.txt
-  if (bash $PYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang > $PYANG_RESULTSDIR/$OUTFILE_NAME 2> $PYANG_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA); then
-    # Delete fail file if it's empty and the script passed.
-    find $PYANG_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
-  fi &
+  {
+    pyang --version > $PYANG_RESULTSDIR/latest-version.txt
+    if bash $PYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang > $PYANG_RESULTSDIR/$OUTFILE_NAME 2> $PYANG_RESULTSDIR/$FAILFILE_NAME; then
+      # Delete fail file if it's empty and the script passed.
+      find $PYANG_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
+    fi
+    go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  } &
 fi
 
 ########################## OC-PYANG #############################
@@ -116,11 +118,13 @@ if stat $OCPYANG_RESULTSDIR; then
   fi
 
   pip3 install pyang
-  if (bash $OCPYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR > $OCPYANG_RESULTSDIR/$OUTFILE_NAME 2> $OCPYANG_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA); then
-    # Delete fail file if it's empty and the script passed.
-    find $OCPYANG_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
-  fi &
+  {
+    if bash $OCPYANG_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR > $OCPYANG_RESULTSDIR/$OUTFILE_NAME 2> $OCPYANG_RESULTSDIR/$FAILFILE_NAME; then
+      # Delete fail file if it's empty and the script passed.
+      find $OCPYANG_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
+    fi
+    go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  } &
 fi
 
 ########################## PYANGBIND #############################
@@ -141,11 +145,13 @@ if stat $PYANGBIND_RESULTSDIR; then
     'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
 
   pip3 install pyang
-  if (bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME;
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA); then
-    # Delete fail file if it's empty and the script passed.
-    find $PYANGBIND_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
-  fi &
+  {
+    if bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME; then
+      # Delete fail file if it's empty and the script passed.
+      find $PYANGBIND_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
+    fi
+    go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  } &
 fi
 
 ########################## COMMON CLEANUP #############################
