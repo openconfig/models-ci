@@ -91,10 +91,11 @@ head.
 `out`: Stores stdout of validator execution. **required** to be present to
 indicate that the script ran.
 
-`fail`: Stores stderr of validator execution. A non-existent fail file is
-interpreted as a successful validator execution, which along with each model's
-status (see below), or by itself for a repo-level validator, determine whether
-the entire validation was successful.
+`fail`: Stores stderr of validator execution. With no stderr, it should be empty
+if execution failed, and non-existent if execution passed. Thus, a non-existent
+fail file is interpreted as a successful validator execution, which along with
+each model's status (see below) for a per-model validator, or by itself for a
+repo-level validator, determine whether the entire validation was successful.
 
 `latest-version.txt`: Stores the name+version of the @latest validator to
 display to the user.

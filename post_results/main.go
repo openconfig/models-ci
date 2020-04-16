@@ -217,28 +217,30 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 		return "", false, fmt.Errorf("validator %q not found!", validatorId)
 	}
 
+	// outString is parsed stdout.
 	var outString string
-	pass := true
+	// pass is the overall validation result.
+	var pass bool
 
 	failFileBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
-	// A non-existent or an empty fail file is a pass.
-	var scriptFailOutString string
-	if err == nil {
-		scriptFailOutString = string(failFileBytes)
-	}
+	// existent fail file == failure.
+	executionFailed := err == nil
 	err = nil
 
 	switch {
-	// Non-empty fail string indicates a script execution failure when running a validator.
-	case scriptFailOutString != "":
-		outString = scriptFailOutString
-		// For per-model validators, a failure here is distinct from a validation failure.
+	case executionFailed:
+		outString = string(failFileBytes)
+		if outString == "" {
+			outString = "Test failed with no stderr output."
+		}
+		// For per-model validators, an execution failure suggests a CI infra failure.
 		if validator.IsPerModel {
 			outString = "Validator script failed -- infra bug?\n" + outString
 		}
 		pass = false
 	case !validator.IsPerModel:
-		outString = "Test passed"
+		outString = "Test passed."
+		pass = true
 	default:
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
 	}

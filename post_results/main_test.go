@@ -164,6 +164,13 @@ Passed.
 </details>
 `,
 	}, {
+		name:                 "pyang with an empty fail file",
+		inValidatorResultDir: "testdata/oc-pyang-with-fail-file",
+		inValidatorId:        "oc-pyang",
+		wantPass:             false,
+		wantOut: `Validator script failed -- infra bug?
+Test failed with no stderr output.`,
+	}, {
 		name:                 "basic non-pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
 		inValidatorId:        "goyang-ygot",
@@ -247,13 +254,13 @@ warning foo<br>
 		inValidatorResultDir: "testdata/regexp-tests",
 		inValidatorId:        "regexp",
 		wantPass:             true,
-		wantOut:              `Test passed`,
+		wantOut:              `Test passed.`,
 	}, {
-		name:                 "non-per-model pass -- empty fail file",
+		name:                 "non-per-model fail -- empty fail file",
 		inValidatorResultDir: "testdata/regexp-tests2",
 		inValidatorId:        "regexp",
-		wantPass:             true,
-		wantOut:              `Test passed`,
+		wantPass:             false,
+		wantOut:              `Test failed with no stderr output.`,
 	}, {
 		name:                 "non-per-model fail",
 		inValidatorResultDir: "testdata/regexp-tests-fail",
