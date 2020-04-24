@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"log"
@@ -56,8 +57,177 @@ func lintSymbol(pass bool) string {
 	return mdPassSymbol
 }
 
-func sprintLineHTML(line string) string {
-	return fmt.Sprintf("  <li>%s</li>\n", line)
+func sprintLineHTML(format string, a ...interface{}) string {
+	return fmt.Sprintf("  <li>"+format+"</li>\n", a...)
+}
+
+func sprintSummaryHTML(pass bool, title, message string) string {
+	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n%s</details>\n", lintSymbol(pass), title, message)
+}
+
+func readFile(path string) (string, error) {
+	outBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file at path %q: %v\n", path, err)
+	}
+	return string(outBytes), nil
+}
+
+func readYangFilesList(path string) ([]string, error) {
+	filesStr, err := readFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	fileMap := map[string]bool{}
+	for _, line := range strings.Split(filesStr, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fileSegments := strings.Split(line, "/")
+		yangFileName := strings.TrimSpace(fileSegments[len(fileSegments)-1])
+		if !strings.HasSuffix(yangFileName, ".yang") {
+			return nil, fmt.Errorf("while parsing %s: unrecognized line, expected a path ending in a YANG file: %s", path, line)
+		}
+		fileMap[yangFileName] = true
+	}
+
+	var files []string
+	for f := range fileMap {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+// TODO(wenovus): need comprehensive test cases.
+func readGoyangVersionsLog(path string, masterBranch bool, fileProperties map[string]map[string]string) error {
+	fileLog, err := readFile(path)
+	if err != nil {
+		return err
+	}
+	for _, line := range strings.Split(fileLog, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fileSegments := strings.SplitN(line, ":", 2)
+		yangFileName := strings.TrimSpace(fileSegments[0])
+		if !strings.HasSuffix(yangFileName, ".yang") {
+			return fmt.Errorf("while parsing %s: unrecognized line heading %q, expected a \"<name>.yang:\" start to the line: %q", path, yangFileName, line)
+		}
+		propertyMap, ok := fileProperties[yangFileName]
+		if !ok {
+			propertyMap = map[string]string{}
+			fileProperties[yangFileName] = propertyMap
+		}
+
+		if !masterBranch {
+			propertyMap["reachable"] = "true"
+		}
+
+		for _, property := range strings.Fields(strings.TrimSpace(fileSegments[1])) {
+			segments := strings.SplitN(property, ":", 2)
+			if len(segments) != 2 {
+				return fmt.Errorf("while parsing %s: unrecognized property substring, expected \"<property name>:\"<property>\"\" separated by spaces: %q", path, property)
+			}
+			name, value := segments[0], segments[1]
+			if value[0] == '"' {
+				if len(value) == 1 || value[len(value)-1] != '"' {
+					return fmt.Errorf("while parsing %s: Got invalid property value format: %s -- if the property value starts with a quote, it is assumed to be an enclosing quote", path, property)
+				}
+				value = value[1 : len(value)-1] // Remove enclosing quotes.
+			}
+			switch name {
+			case "openconfig-version":
+				fallthrough
+			case "latest-revision-version":
+				if masterBranch {
+					name = "master-" + name
+				}
+				propertyMap[name] = value
+			default:
+				log.Printf("skipped unrecognized YANG file property: %s", property)
+			}
+		}
+	}
+	return nil
+}
+
+func processMiscChecksOutput(testPath string) (string, bool, error) {
+	fileProperties := map[string]map[string]string{}
+	changedFiles, err := readYangFilesList(filepath.Join(testPath, "changed-files.txt"))
+	if err != nil {
+		return "", false, err
+	}
+	for _, file := range changedFiles {
+		if _, ok := fileProperties[file]; !ok {
+			fileProperties[file] = map[string]string{}
+		}
+		fileProperties[file]["changed"] = "true"
+	}
+	if err := readGoyangVersionsLog(filepath.Join(testPath, "pr-file-parse-log"), false, fileProperties); err != nil {
+		return "", false, err
+	}
+	if err := readGoyangVersionsLog(filepath.Join(testPath, "master-file-parse-log"), true, fileProperties); err != nil {
+		return "", false, err
+	}
+
+	var ocVersionViolations []string
+	var revVersionViolations []string
+	var reachabilityViolations []string
+	// Only look at the PR's files as they might be different from the master's files.
+	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(testPath, "all-non-empty-files.txt"))
+	if err != nil {
+		return "", false, err
+	}
+	for _, file := range allNonEmptyPRFiles {
+		properties, ok := fileProperties[file]
+
+		// Reachability check
+		if !ok || properties["reachable"] != "true" {
+			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: Non-null schema not used by any .spec.yml tree.", file))
+			// If the file was not reached, then its other
+			// parameters would not have been parsed by goyang, so
+			// simply skip the rest of the checks.
+			continue
+		}
+
+		// openconfig-version update check
+		ocVersion := properties["openconfig-version"]
+		if ocVersion == "" { // TODO(wenovus): need test case
+			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version not found", file))
+		} else if properties["changed"] == "true" {
+			// TODO(wenovus): This logic can be improved to check whether the increment follows semver rules.
+			if ocVersion == properties["master-openconfig-version"] {
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
+			}
+		}
+
+		// latest revision version check
+		revVersion := properties["latest-revision-version"]
+		if revVersion != "" && revVersion != ocVersion { // TODO(wenovus): need test case on revVersion == ""
+			revVersionViolations = append(revVersionViolations, sprintLineHTML("%s: openconfig-version:%q latest-revision-version:%q", file, ocVersion, revVersion))
+		}
+	}
+
+	// Compute HTML string and pass/fail status.
+	var out strings.Builder
+	var pass = true
+	appendViolationOut := func(desc string, violations []string) {
+		if len(violations) == 0 {
+			out.WriteString(sprintSummaryHTML(true, desc, "Passed.\n"))
+		} else {
+			out.WriteString(sprintSummaryHTML(false, desc, strings.Join(violations, "")))
+			pass = false
+		}
+	}
+	appendViolationOut("openconfig-version update check", ocVersionViolations)
+	appendViolationOut("revision reference version matches openconfig-version", revVersionViolations)
+	appendViolationOut(".spec.yml build reachability check", reachabilityViolations)
+
+	return out.String(), pass, nil
 }
 
 // processAnyPyangOutput takes the raw pyang output and transforms it to an
@@ -128,10 +298,6 @@ func processAnyPyangOutput(rawOut string, pass, noWarnings bool) (string, error)
 	return out.String(), nil
 }
 
-func sprintSummaryHTML(pass bool, modelName, message string) string {
-	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n%s</details>\n", lintSymbol(pass), modelName, message)
-}
-
 // parseModelResultsHTML transforms the output files of the validator script into HTML
 // to be displayed on GitHub.
 func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool, error) {
@@ -173,11 +339,10 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 			}
 
 			// Get output string.
-			outBytes, err := ioutil.ReadFile(path)
+			outString, err := readFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read file at path %q: %v\n", path, err)
 			}
-			outString := string(outBytes)
 
 			// Transform output string into HTML.
 			if strings.Contains(validatorId, "pyang") {
@@ -241,7 +406,7 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 	case !validator.IsPerModel:
 		outString = "Test passed."
 		pass = true
-	default:
+	default: // validator.IsPerModel
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
 	}
 
@@ -266,7 +431,7 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 			log.Printf("did not read latest version for %s: %v", validatorId, err)
 		} else {
 			// Get the first line of the version output as the tool's display title, with extra spacing in between words removed.
-			validatorDesc = strings.Join(strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 1)[0])), " ")
+			validatorDesc = strings.Join(strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0])), " ")
 		}
 	}
 
