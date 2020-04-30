@@ -8,62 +8,6 @@ import (
 	"github.com/openconfig/gnmi/errdiff"
 )
 
-func TestProcessMiscChecksOutput(t *testing.T) {
-	// FIXME(wenovus): add more test cases.
-	// FIXME(wenovus): Add checks for duplicate entries in the parse logs.
-	tests := []struct {
-		name          string
-		inPath        string
-		wantPass      bool
-		wantOut       string
-		wantErrSubstr string
-	}{{
-		name:     "openconfig-version, revision version, and .spec.yml checks all pass",
-		inPath:   "testdata/misc-checks-pass",
-		wantPass: true,
-		wantOut: `<details>
-  <summary>:white_check_mark: openconfig-version update check</summary>
-Passed.
-</details>
-<details>
-  <summary>:white_check_mark: .spec.yml build reachability check</summary>
-Passed.
-</details>
-`,
-	}, {
-		name:     "openconfig-version, revision version, and .spec.yml checks all fail",
-		inPath:   "testdata/misc-checks-fail",
-		wantPass: false,
-		wantOut: `<details>
-  <summary>:no_entry: openconfig-version update check</summary>
-  <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
-</details>
-<details>
-  <summary>:no_entry: .spec.yml build reachability check</summary>
-  <li>openconfig-packet-match.yang: Non-null schema not used by any .spec.yml tree.</li>
-</details>
-`,
-	}}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotOut, gotPass, err := processMiscChecksOutput(tt.inPath)
-			if err != nil {
-				if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
-					t.Fatalf("did not get expected error, %s", diff)
-				}
-				return
-			}
-			if diff := cmp.Diff(strings.Split(tt.wantOut, "\n"), strings.Split(gotOut, "\n")); diff != "" {
-				t.Errorf("(-wantOut, +gotOut):\n%s", diff)
-			}
-			if gotPass != tt.wantPass {
-				t.Errorf("gotPass: %v, wantPass: %v", gotPass, tt.wantPass)
-			}
-		})
-	}
-}
-
 func TestProcessAnyPyangOutput(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
@@ -192,6 +136,7 @@ func TestGetResult(t *testing.T) {
 		inValidatorId        string
 		wantPass             bool
 		wantOut              string
+		wantErrSubstr        string
 	}{{
 		name:                 "basic pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
@@ -329,13 +274,46 @@ warning foo<br>
 		inValidatorId:        "oc-pyang",
 		wantPass:             false,
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
+	}, {
+		// FIXME(wenovus): add more test cases.
+		// FIXME(wenovus): Add checks for duplicate entries in the parse logs.
+		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
+		inValidatorResultDir: "testdata/misc-checks-pass",
+		inValidatorId:        "misc-checks",
+		wantPass:             true,
+		wantOut: `<details>
+  <summary>:white_check_mark: openconfig-version update check</summary>
+Passed.
+</details>
+<details>
+  <summary>:white_check_mark: .spec.yml build reachability check</summary>
+Passed.
+</details>
+`,
+	}, {
+		name:                 "openconfig-version, revision version, and .spec.yml checks all fail",
+		inValidatorResultDir: "testdata/misc-checks-fail",
+		inValidatorId:        "misc-checks",
+		wantPass:             false,
+		wantOut: `<details>
+  <summary>:no_entry: openconfig-version update check</summary>
+  <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
+</details>
+<details>
+  <summary>:no_entry: .spec.yml build reachability check</summary>
+  <li>openconfig-packet-match.yang: Non-null schema not used by any .spec.yml tree.</li>
+</details>
+`,
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotOut, gotPass, err := getResult(tt.inValidatorId, tt.inValidatorResultDir)
 			if err != nil {
-				t.Fatal(err)
+				if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
+					t.Fatalf("did not get expected error, %s", diff)
+				}
+				return
 			}
 			if gotPass != tt.wantPass {
 				t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)

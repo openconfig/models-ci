@@ -395,11 +395,13 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 			outString = "Validator script failed -- infra bug?\n" + outString
 		}
 		pass = false
-	case !validator.IsPerModel:
+	case validator.IsPerModel && validatorId == "misc-checks":
+		outString, pass, err = processMiscChecksOutput(resultsDir)
+	case validator.IsPerModel:
+		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
+	default:
 		outString = "Test passed."
 		pass = true
-	default: // validator.IsPerModel
-		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
 	}
 
 	return outString, pass, err

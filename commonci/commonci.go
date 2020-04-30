@@ -96,6 +96,11 @@ var (
 			IsPerModel:        false,
 			SkipIfNotApproved: false,
 		},
+		"misc-checks": &Validator{
+			Name:              "misc-checks",
+			IsPerModel:        true,
+			SkipIfNotApproved: false,
+		},
 		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:
 		// 1. It is inconvenient to force the user to always re-invoke the build after approval
 		// if the changes were trivial.
