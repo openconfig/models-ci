@@ -5,11 +5,13 @@ RESULTSDIR=$ROOT_DIR/results/misc-checks
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
 
-go get github.com/openconfig/goyang@versions-output
-
 if ! stat $RESULTSDIR; then
   exit 0
 fi
+
+GO111MODULE=on go get github.com/openconfig/goyang@versions-output
+echo "ALPHA"
+find $GOPATH=/src/github.com/openconfig/goyang
 
 # all-non-empty-files.txt
 # find $_MODEL_ROOT -name '*.yang' -exec $GOPATH/bin/goyang -f nonempty -p $_MODEL_ROOT {} \; > $RESULTSDIR/all-non-empty-files.txt 2>> $FAILFILE
