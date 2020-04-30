@@ -7,11 +7,6 @@ FAILFILE=$RESULTSDIR/fail
 
 go get github.com/openconfig/goyang@versions-output
 
-# changed-files.txt
-cd $ROOT_DIR
-BASE_COMMIT=$(git merge-base $COMMIT_SHA master)
-git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-files.txt 2>> $FAILFILE
-
 # all-non-empty-files.txt
 # find $_MODEL_ROOT -name '*.yang' -exec $GOPATH/bin/goyang -f nonempty -p $_MODEL_ROOT {} \; > $RESULTSDIR/all-non-empty-files.txt 2>> $FAILFILE
 find $_MODEL_ROOT -name '*.yang' > $RESULTSDIR/all-non-empty-files.txt 2>> $FAILFILE
@@ -26,8 +21,16 @@ if bash $RESULTSDIR/script.sh > $OUTFILE 2>> $FAILFILE; then
 fi
 cat $RESULTSDIR/*.pr-file-parse-log > $RESULTSDIR/pr-file-parse-log 2>> $FAILFILE
 
+# changed-files.txt
+REPODIR=$RESULTSDIR/base_repo
+git clone -b $_HEAD_BRANCH github.com/$_REPO_SLUG $REPODIR > $OUTFILE 2>> $FAILFILE
+cd $REPODIR
+BASE_COMMIT=$(git merge-base $COMMIT_SHA master)
+git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-files.txt 2>> $FAILFILE
+
 # master-file-parse-log
-git clone -b $BASE_COMMIT github.com/$_REPO_SLUG $RESULTSDIR/base_repo > $OUTFILE 2>> $FAILFILE
-find $RESULTSDIR/base_repo -name '*.yang' -exec $GOPATH/bin/goyang -f oc-versions -p $RESULTSDIR/base_repo {} \; > $RESULTSDIR/master-file-parse-log 2>> $FAILFILE
+# git clone -b $BASE_COMMIT github.com/$_REPO_SLUG $REPODIR > $OUTFILE 2>> $FAILFILE
+git checkout $BASE_COMMIT > $OUTFILE 2>> $FAILFILE
+find $REPODIR -name '*.yang' -exec $GOPATH/bin/goyang -f oc-versions -p $REPODIR {} \; > $RESULTSDIR/master-file-parse-log 2>> $FAILFILE
 
 go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
