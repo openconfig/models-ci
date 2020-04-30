@@ -7,6 +7,15 @@ FAILFILE=$RESULTSDIR/fail
 
 go get github.com/openconfig/goyang@versions-output
 
+# $RESULTSDIR/all-non-empty-files.txt
+# $RESULTSDIR/pr-file-parse-log
+# $RESULTSDIR/changed-files.txt
+# $RESULTSDIR/master-file-parse-log
+
+if ! stat $RESULTSDIR; then
+  exit 0
+fi
+
 # all-non-empty-files.txt
 # find $_MODEL_ROOT -name '*.yang' -exec $GOPATH/bin/goyang -f nonempty -p $_MODEL_ROOT {} \; > $RESULTSDIR/all-non-empty-files.txt 2>> $FAILFILE
 find $_MODEL_ROOT -name '*.yang' > $RESULTSDIR/all-non-empty-files.txt 2>> $FAILFILE
