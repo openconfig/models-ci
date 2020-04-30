@@ -240,13 +240,13 @@ fi
 		inValidatorName: "misc-checks",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/misc-checks
-if ! /go/bin/goyang -f versions -p testdata,/workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang > /workspace/results/misc-checks/acl.openconfig-acl.pr-file-parse-log; then
+if ! /go/bin/goyang -f oc-versions -p testdata,/workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang > /workspace/results/misc-checks/acl.openconfig-acl.pr-file-parse-log; then
   >&2 echo "goyang parse of acl.openconfig-acl reported non-zero status."
 fi
-if ! /go/bin/goyang -f versions -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang > /workspace/results/misc-checks/optical-transport.openconfig-optical-amplifier.pr-file-parse-log; then
+if ! /go/bin/goyang -f oc-versions -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang > /workspace/results/misc-checks/optical-transport.openconfig-optical-amplifier.pr-file-parse-log; then
   >&2 echo "goyang parse of optical-transport.openconfig-optical-amplifier reported non-zero status."
 fi
-if ! /go/bin/goyang -f versions -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang > /workspace/results/misc-checks/optical-transport.openconfig-transport-line-protection.pr-file-parse-log; then
+if ! /go/bin/goyang -f oc-versions -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang > /workspace/results/misc-checks/optical-transport.openconfig-transport-line-protection.pr-file-parse-log; then
   >&2 echo "goyang parse of optical-transport.openconfig-transport-line-protection reported non-zero status."
 fi
 `,

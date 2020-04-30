@@ -28,6 +28,6 @@ cat $RESULTSDIR/*.pr-file-parse-log > $RESULTSDIR/pr-file-parse-log 2>> $FAILFIL
 
 # master-file-parse-log
 git clone -b $BASE_COMMIT github.com/$_REPO_SLUG $RESULTSDIR/base_repo > $OUTFILE 2>> $FAILFILE
-find $RESULTSDIR/base_repo -name '*.yang' -exec $GOPATH/bin/goyang -f versions -p $RESULTSDIR/base_repo {} \; > $RESULTSDIR/master-file-parse-log 2>> $FAILFILE
+find $RESULTSDIR/base_repo -name '*.yang' -exec $GOPATH/bin/goyang -f oc-versions -p $RESULTSDIR/base_repo {} \; > $RESULTSDIR/master-file-parse-log 2>> $FAILFILE
 
 go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA

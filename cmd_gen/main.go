@@ -187,7 +187,7 @@ fi
 fi
 `)
 
-	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/goyang -f versions -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
+	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/goyang -f oc-versions -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
   >&2 echo "goyang parse of {{ .ModelDirName }}.{{ .ModelName }} reported non-zero status."
 fi
 `)
