@@ -28,7 +28,6 @@ cat $RESULTSDIR/*.pr-file-parse-log > $RESULTSDIR/pr-file-parse-log 2>> $FAILFIL
 # changed-files.txt
 REPODIR=$RESULTSDIR/base_repo
 git clone -b $_HEAD_BRANCH "git@github.com:$_REPO_SLUG.git" $REPODIR
-WD=`pwd`
 cd $REPODIR
 BASE_COMMIT=$(git merge-base $COMMIT_SHA origin/master)
 git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-files.txt 2>> $FAILFILE
@@ -38,5 +37,4 @@ git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-fi
 git checkout $BASE_COMMIT > $OUTFILE 2>> $FAILFILE
 find $REPODIR -name '*.yang' -exec $GOPATH/bin/goyang -f oc-versions -p $REPODIR {} \; > $RESULTSDIR/master-file-parse-log 2>> $FAILFILE
 
-cd $WD
 go run $GOPATH/src/github.com/openconfig/models-ci/post_results/main.go -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
