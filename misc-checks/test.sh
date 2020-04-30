@@ -11,7 +11,7 @@ fi
 
 GO111MODULE=on go get github.com/openconfig/goyang@versions-output
 echo "ALPHA"
-find $GOPATH=/src/github.com/openconfig/goyang
+find $GOPATH/bin
 
 # all-non-empty-files.txt
 # find $_MODEL_ROOT -name '*.yang' -exec $GOPATH/bin/goyang -f nonempty -p $_MODEL_ROOT {} \; > $RESULTSDIR/all-non-empty-files.txt 2>> $FAILFILE
