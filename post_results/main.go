@@ -175,7 +175,6 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 	}
 
 	var ocVersionViolations []string
-	var revVersionViolations []string
 	var reachabilityViolations []string
 	// Only look at the PR's files as they might be different from the master's files.
 	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(testPath, "all-non-empty-files.txt"))
@@ -204,12 +203,6 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
 			}
 		}
-
-		// latest revision version check
-		revVersion := properties["latest-revision-version"]
-		if revVersion != "" && revVersion != ocVersion { // TODO(wenovus): need test case on revVersion == ""
-			revVersionViolations = append(revVersionViolations, sprintLineHTML("%s: openconfig-version:%q latest-revision-version:%q", file, ocVersion, revVersion))
-		}
 	}
 
 	// Compute HTML string and pass/fail status.
@@ -224,7 +217,6 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 		}
 	}
 	appendViolationOut("openconfig-version update check", ocVersionViolations)
-	appendViolationOut("revision reference version matches openconfig-version", revVersionViolations)
 	appendViolationOut(".spec.yml build reachability check", reachabilityViolations)
 
 	return out.String(), pass, nil

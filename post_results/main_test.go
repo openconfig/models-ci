@@ -10,6 +10,7 @@ import (
 
 func TestProcessMiscChecksOutput(t *testing.T) {
 	// FIXME(wenovus): add more test cases.
+	// FIXME(wenovus): Add checks for duplicate entries in the parse logs.
 	tests := []struct {
 		name          string
 		inPath        string
@@ -25,10 +26,6 @@ func TestProcessMiscChecksOutput(t *testing.T) {
 Passed.
 </details>
 <details>
-  <summary>:white_check_mark: revision reference version matches openconfig-version</summary>
-Passed.
-</details>
-<details>
   <summary>:white_check_mark: .spec.yml build reachability check</summary>
 Passed.
 </details>
@@ -40,10 +37,6 @@ Passed.
 		wantOut: `<details>
   <summary>:no_entry: openconfig-version update check</summary>
   <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
-</details>
-<details>
-  <summary>:no_entry: revision reference version matches openconfig-version</summary>
-  <li>openconfig-mpls-static.yang: openconfig-version:"1.0.1" latest-revision-version:"1.0.0"</li>
 </details>
 <details>
   <summary>:no_entry: .spec.yml build reachability check</summary>

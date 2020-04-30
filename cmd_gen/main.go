@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 
 	"github.com/openconfig/models-ci/commonci"
 	"gopkg.in/yaml.v3"
@@ -31,6 +32,9 @@ var (
 	localResultsDir   string // folder into which the command outputs its results
 	localValidatorId  string
 	localModelDirName string // a model directory (e.g. network-instance, aft)
+
+	// Miscellaneous flags
+	listBuildFiles bool // Show all build files from the .spec.yml files as a single line.
 
 	// disabledModelPaths are the paths whose models should not undergo CI.
 	// These should be temporary -- they're only here to help the transition to CI.
@@ -56,6 +60,9 @@ func init() {
 	flag.StringVar(&localResultsDir, "resultsDir", "~/tmp/ci-results", "root directory to OpenConfig models")
 	flag.StringVar(&localValidatorId, "validator", "", "")
 	flag.StringVar(&localModelDirName, "modelDirName", "", "")
+
+	// Miscellaneous flags
+	flag.BoolVar(&listBuildFiles, "listBuildFiles", false, "Show all build files from the .spec.yml files as a single line.")
 }
 
 // ModelInfo represents the yaml model of an OpenConfig .spec.yml file.
@@ -74,6 +81,26 @@ type OpenConfigModelMap struct {
 	// ModelInfoMap stores all ModelInfo for each model directory keyed by
 	// the relative path to the model directory's .spec.yml.
 	ModelInfoMap map[string][]ModelInfo
+}
+
+func (m OpenConfigModelMap) SingleLineBuildFiles() string {
+	modelDirNames := make([]string, 0, len(m.ModelInfoMap))
+	for modelDirName := range m.ModelInfoMap {
+		modelDirNames = append(modelDirNames, modelDirName)
+	}
+	sort.Strings(modelDirNames)
+
+	var buildFiles []string
+	for _, modelDirName := range modelDirNames {
+		fmt.Println(modelDirName)
+		for _, modelInfo := range m.ModelInfoMap[modelDirName] {
+			if !modelInfo.RunCi {
+				continue
+			}
+			buildFiles = append(buildFiles, modelInfo.BuildFiles...)
+		}
+	}
+	return strings.Join(buildFiles, " ")
 }
 
 // parseModels walks the path given at modelRoot to populate the OpenConfigModelMap.
@@ -114,49 +141,82 @@ func parseModels(modelRoot string) (OpenConfigModelMap, error) {
 	return OpenConfigModelMap{ModelRoot: modelRoot, ModelInfoMap: modelInfoMap}, err
 }
 
-// createValidatorFmtStr creates the customized format string to invoke the
-// given validator on a model.
-func createValidatorFmtStr(validatorId string) (string, error) {
-	switch validatorId {
-	case "pyang":
-		return `if ! $@ -p %s -p %s/third_party/ietf %s &> %s; then
-  mv %s %s
+// mustTemplate generates a template.Template for a particular named source template
+func mustTemplate(name, src string) *template.Template {
+	return template.Must(template.New(name).Parse(src))
+}
+
+type cmdParams struct {
+	ModelRoot    string
+	RepoRoot     string
+	BuildFiles   string
+	ModelDirName string
+	ModelName    string
+	ResultsDir   string
+}
+
+var (
+	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi
-`, nil
-	case "oc-pyang":
-		return `if ! $@ -p %s -p %s/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH %s &> %s; then
-  mv %s %s
+`)
+
+	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi
-`, nil
-	case "pyangbind":
-		return `if ! $@ -p %s -p %s/third_party/ietf -f pybind -o binding.py %s &> %s; then
-  mv %s %s
+`)
+
+	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o binding.py {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi
-`, nil
-	case "goyang-ygot":
-		return `if ! /go/bin/generator \
--path=%s,%s/third_party/ietf \
--output_file=` + commonci.ResultsDir + `/goyang-ygot/oc.go \
+`)
+
+	goyangYgotCmdTemplate = mustTemplate("goyang-ygot", `if ! /go/bin/generator \
+-path={{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf \
+-output_file=`+commonci.ResultsDir+`/goyang-ygot/oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
-%s &> %s; then
-  mv %s %s
+{{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi
-`, nil
+`)
+
+	yanglintCmdTemplate = mustTemplate("yanglint", `if ! yanglint -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
+fi
+`)
+
+	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/goyang -f versions -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
+  >&2 echo "goyang parse of {{ .ModelDirName }}.{{ .ModelName }} reported non-zero status."
+fi
+`)
+)
+
+// validatorTemplate creates the customized format string to invoke the
+// given validator on a model.
+func validatorTemplate(validatorId string) (*template.Template, error) {
+	switch validatorId {
+	case "pyang":
+		return pyangCmdTemplate, nil
+	case "oc-pyang":
+		return ocPyangCmdTemplate, nil
+	case "pyangbind":
+		return pyangbindCmdTemplate, nil
+	case "goyang-ygot":
+		return goyangYgotCmdTemplate, nil
 	case "yanglint":
-		return `if ! yanglint -p %s -p %s/third_party/ietf %s &> %s; then
-  mv %s %s
-fi
-`, nil
+		return yanglintCmdTemplate, nil
+	case "misc-checks":
+		return miscChecksCmdTemplate, nil
 	}
-	return "", fmt.Errorf("createValidatorFmtStr: unrecognized validatorId %q", validatorId)
+	return nil, fmt.Errorf("validatorTemplate: unrecognized validatorId for creating a per-model command %q", validatorId)
 }
 
 // genValidatorCommandForModelDir generates the validator command for a single modelDir.
 func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string, modelMap OpenConfigModelMap) (string, error) {
 	var builder strings.Builder
-	fmtStr, err := createValidatorFmtStr(validatorId)
+	cmdTemplate, err := validatorTemplate(validatorId)
 	if err != nil {
 		return "", err
 	}
@@ -165,9 +225,16 @@ func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string
 		if !modelInfo.RunCi || len(modelInfo.BuildFiles) == 0 {
 			continue
 		}
-		outputFile := filepath.Join(resultsDir, fmt.Sprintf("%s==%s==pass", modelDirName, modelInfo.Name))
-		failFile := filepath.Join(resultsDir, fmt.Sprintf("%s==%s==fail", modelDirName, modelInfo.Name))
-		builder.WriteString(fmt.Sprintf(fmtStr, modelMap.ModelRoot, commonci.RootDir, strings.Join(modelInfo.BuildFiles, " "), outputFile, outputFile, failFile))
+		if err := cmdTemplate.Execute(&builder, &cmdParams{
+			ModelRoot:    modelMap.ModelRoot,
+			RepoRoot:     commonci.RootDir,
+			BuildFiles:   strings.Join(modelInfo.BuildFiles, " "),
+			ModelDirName: modelDirName,
+			ModelName:    modelInfo.Name,
+			ResultsDir:   resultsDir,
+		}); err != nil {
+			return "", err
+		}
 	}
 	return builder.String(), nil
 }
@@ -259,6 +326,11 @@ func main() {
 	modelMap, err := parseModels(modelRoot)
 	if err != nil {
 		log.Fatalf("CI flow failed due to error encountered while parsing spec files, parseModels: %v", err)
+	}
+
+	if listBuildFiles {
+		fmt.Println(modelMap.SingleLineBuildFiles())
+		return
 	}
 
 	// Handle local call case.
