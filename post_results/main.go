@@ -61,8 +61,8 @@ func sprintLineHTML(format string, a ...interface{}) string {
 	return fmt.Sprintf("  <li>"+format+"</li>\n", a...)
 }
 
-func sprintSummaryHTML(pass bool, title, message string) string {
-	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n%s</details>\n", lintSymbol(pass), title, message)
+func sprintSummaryHTML(pass bool, title, format string, a ...interface{}) string {
+	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n"+format+"</details>\n", append([]interface{}{lintSymbol(pass), title}, a...)...)
 }
 
 func readFile(path string) (string, error) {
@@ -175,7 +175,9 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 	}
 
 	var ocVersionViolations []string
+	ocVersionChangedCount := 0
 	var reachabilityViolations []string
+	filesReachedCount := 0
 	// Only look at the PR's files as they might be different from the master's files.
 	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(testPath, "all-non-empty-files.txt"))
 	if err != nil {
@@ -192,6 +194,7 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 			// simply skip the rest of the checks.
 			continue
 		}
+		filesReachedCount += 1
 
 		// openconfig-version update check
 		ocVersion, hasVersion := properties["openconfig-version"]
@@ -203,7 +206,9 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 			// TODO(wenovus): This logic can be improved to check whether the increment follows semver rules.
 			if ocVersion == masterOcVersion {
 				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
+				break
 			}
+			ocVersionChangedCount += 1
 		case hadVersion:
 			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
 		}
@@ -212,16 +217,16 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 	// Compute HTML string and pass/fail status.
 	var out strings.Builder
 	var pass = true
-	appendViolationOut := func(desc string, violations []string) {
+	appendViolationOut := func(desc string, violations []string, passString string) {
 		if len(violations) == 0 {
-			out.WriteString(sprintSummaryHTML(true, desc, "Passed.\n"))
+			out.WriteString(sprintSummaryHTML(true, desc, passString))
 		} else {
 			out.WriteString(sprintSummaryHTML(false, desc, strings.Join(violations, "")))
 			pass = false
 		}
 	}
-	appendViolationOut("openconfig-version update check", ocVersionViolations)
-	appendViolationOut(".spec.yml build reachability check", reachabilityViolations)
+	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d files correctly updated.\n", ocVersionChangedCount))
+	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
 
 	return out.String(), pass, nil
 }

@@ -282,11 +282,11 @@ warning foo<br>
 		wantPass:             true,
 		wantOut: `<details>
   <summary>:white_check_mark: openconfig-version update check</summary>
-Passed.
+4 files correctly updated.
 </details>
 <details>
   <summary>:white_check_mark: .spec.yml build reachability check</summary>
-Passed.
+8 files reached by build rules.
 </details>
 `,
 	}, {
