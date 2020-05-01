@@ -225,7 +225,7 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 			pass = false
 		}
 	}
-	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d files correctly updated.\n", ocVersionChangedCount))
+	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d file(s) correctly updated.\n", ocVersionChangedCount))
 	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
 
 	return out.String(), pass, nil
