@@ -194,14 +194,18 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 		}
 
 		// openconfig-version update check
-		ocVersion := properties["openconfig-version"]
-		if ocVersion == "" { // TODO(wenovus): need test case
-			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version not found", file))
-		} else if properties["changed"] == "true" {
+		ocVersion, hasVersion := properties["openconfig-version"]
+		masterOcVersion, hadVersion := properties["master-openconfig-version"]
+		switch {
+		case properties["changed"] != "true":
+			// We assume the versioning is correct without change.
+		case hasVersion:
 			// TODO(wenovus): This logic can be improved to check whether the increment follows semver rules.
-			if ocVersion == properties["master-openconfig-version"] {
+			if ocVersion == masterOcVersion {
 				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
 			}
+		case hadVersion:
+			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
 		}
 	}
 

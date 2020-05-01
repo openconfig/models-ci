@@ -1,2 +1,2 @@
 openconfig-acl.yang: openconfig-version:"1.2.2" latest-revision-version:"1.2.2"
-openconfig-mpls-static.yang: openconfig-version:"1.0.1" latest-revision-version:"1.0.0" 
+changed-version-to-noversion.yang:

@@ -97,7 +97,7 @@ var (
 			SkipIfNotApproved: false,
 		},
 		"misc-checks": &Validator{
-			Name:              "misc-checks",
+			Name:              "Miscellaneous Checks",
 			IsPerModel:        true,
 			SkipIfNotApproved: false,
 		},

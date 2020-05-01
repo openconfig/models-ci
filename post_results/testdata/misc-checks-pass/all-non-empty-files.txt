@@ -1,3 +1,9 @@
 release/models/mpls/openconfig-mpls-static.yang
 release/models/acl/openconfig-acl.yang
 release/models/acl/deeper/openconfig-packet-match.yang
+
+release/models/bgp/changed-unreached-to-reached-noversion.yang
+release/models/bgp/changed-unreached-to-version.yang
+release/models/bgp/changed-noversion-to-noversion.yang
+release/models/bgp/changed-noversion-to-version.yang
+release/models/bgp/unchanged-noversion.yang

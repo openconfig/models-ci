@@ -275,7 +275,6 @@ warning foo<br>
 		wantPass:             false,
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 	}, {
-		// FIXME(wenovus): add more test cases.
 		// FIXME(wenovus): Add checks for duplicate entries in the parse logs.
 		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
 		inValidatorResultDir: "testdata/misc-checks-pass",
@@ -297,11 +296,15 @@ Passed.
 		wantPass:             false,
 		wantOut: `<details>
   <summary>:no_entry: openconfig-version update check</summary>
+  <li>changed-version-to-noversion.yang: openconfig-version was removed</li>
   <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
 </details>
 <details>
   <summary>:no_entry: .spec.yml build reachability check</summary>
-  <li>openconfig-packet-match.yang: Non-null schema not used by any .spec.yml tree.</li>
+  <li>changed-noversion-to-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
+  <li>changed-unreached-to-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
+  <li>changed-version-to-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
+  <li>unchanged-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
 </details>
 `,
 	}}
