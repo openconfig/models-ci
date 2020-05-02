@@ -41,7 +41,7 @@ run-pyang-version() {
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  $GOPATH/bin/post_results -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
 }
 
 run-pyang-head() {
@@ -61,7 +61,7 @@ run-pyang-head() {
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
-  go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -version="-head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  $GOPATH/bin/post_results -validator=pyang -version="head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
 }
 
 if stat $PYANG_RESULTSDIR; then
@@ -83,7 +83,7 @@ if stat $PYANG_RESULTSDIR; then
       # Delete fail file if it's empty and the script passed.
       find $PYANG_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
     fi
-    go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+    $GOPATH/bin/post_results -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
   } &
 fi
 
@@ -123,7 +123,7 @@ if stat $OCPYANG_RESULTSDIR; then
       # Delete fail file if it's empty and the script passed.
       find $OCPYANG_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
     fi
-    go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+    $GOPATH/bin/post_results -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
   } &
 fi
 
@@ -150,7 +150,7 @@ if stat $PYANGBIND_RESULTSDIR; then
       # Delete fail file if it's empty and the script passed.
       find $PYANGBIND_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
     fi
-    go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+    $GOPATH/bin/post_results -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
   } &
 fi
 

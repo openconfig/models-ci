@@ -12,7 +12,6 @@ import (
 	"text/template"
 
 	"github.com/openconfig/models-ci/commonci"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -65,82 +64,6 @@ func init() {
 	flag.BoolVar(&listBuildFiles, "listBuildFiles", false, "Show all build files from the .spec.yml files as a single line.")
 }
 
-// ModelInfo represents the yaml model of an OpenConfig .spec.yml file.
-type ModelInfo struct {
-	Name       string
-	DocFiles   []string `yaml:"docs"`
-	BuildFiles []string `yaml:"build"`
-	RunCi      bool     `yaml:"run-ci"`
-}
-
-// OpenConfigModelMap represents the directory structure and model information
-// of the entire OpenConfig models required for CI.
-type OpenConfigModelMap struct {
-	// ModelRoot is the path to the OpenConfig models root directory.
-	ModelRoot string
-	// ModelInfoMap stores all ModelInfo for each model directory keyed by
-	// the relative path to the model directory's .spec.yml.
-	ModelInfoMap map[string][]ModelInfo
-}
-
-func (m OpenConfigModelMap) SingleLineBuildFiles() string {
-	modelDirNames := make([]string, 0, len(m.ModelInfoMap))
-	for modelDirName := range m.ModelInfoMap {
-		modelDirNames = append(modelDirNames, modelDirName)
-	}
-	sort.Strings(modelDirNames)
-
-	var buildFiles []string
-	for _, modelDirName := range modelDirNames {
-		fmt.Println(modelDirName)
-		for _, modelInfo := range m.ModelInfoMap[modelDirName] {
-			if !modelInfo.RunCi {
-				continue
-			}
-			buildFiles = append(buildFiles, modelInfo.BuildFiles...)
-		}
-	}
-	return strings.Join(buildFiles, " ")
-}
-
-// parseModels walks the path given at modelRoot to populate the OpenConfigModelMap.
-func parseModels(modelRoot string) (OpenConfigModelMap, error) {
-	modelInfoMap := map[string][]ModelInfo{}
-	err := filepath.Walk(modelRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
-		}
-		if !info.IsDir() && info.Name() == ".spec.yml" {
-			file, err := os.Open(path)
-			if err != nil {
-				return fmt.Errorf("failed to open spec file at path %q: %v\n", path, err)
-			}
-			m := []ModelInfo{}
-			if err := yaml.NewDecoder(file).Decode(&m); err != nil {
-				return fmt.Errorf("error while unmarshalling spec file at path %q: %v\n", path, err)
-			}
-
-			// Change the build paths to the absolute correct paths.
-			for _, info := range m {
-				for i, fileName := range info.BuildFiles {
-					info.BuildFiles[i] = filepath.Join(modelRoot, strings.TrimPrefix(fileName, "yang/"))
-				}
-			}
-
-			relPath, err := filepath.Rel(modelRoot, filepath.Dir(path))
-			if err != nil {
-				return fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q): %v\n", path, modelRoot, err)
-			}
-			// Allow nested model directories to be used later on as a partial file name.
-			relPath = strings.ReplaceAll(relPath, "/", ":")
-			modelInfoMap[relPath] = m
-		}
-		return nil
-	})
-
-	return OpenConfigModelMap{ModelRoot: modelRoot, ModelInfoMap: modelInfoMap}, err
-}
-
 // mustTemplate generates a template.Template for a particular named source template
 func mustTemplate(name, src string) *template.Template {
 	return template.Must(template.New(name).Parse(src))
@@ -187,8 +110,8 @@ fi
 fi
 `)
 
-	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/goyang -f oc-versions -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
-  >&2 echo "goyang parse of {{ .ModelDirName }}.{{ .ModelName }} reported non-zero status."
+	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/ocversion -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
+  >&2 echo "parse of {{ .ModelDirName }}.{{ .ModelName }} reported non-zero status."
 fi
 `)
 )
@@ -214,7 +137,7 @@ func validatorTemplate(validatorId string) (*template.Template, error) {
 }
 
 // genValidatorCommandForModelDir generates the validator command for a single modelDir.
-func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string, modelMap OpenConfigModelMap) (string, error) {
+func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string, modelMap commonci.OpenConfigModelMap) (string, error) {
 	var builder strings.Builder
 	cmdTemplate, err := validatorTemplate(validatorId)
 	if err != nil {
@@ -254,7 +177,7 @@ type labelPoster interface {
 // Files names follow the "modelDir==model==status" format with no file extensions.
 // The local flag indicates to run this as a helper to generate the script,
 // rather than running it within GCB.
-func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, modelMap OpenConfigModelMap) (string, error) {
+func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, modelMap commonci.OpenConfigModelMap) (string, error) {
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 	var builder strings.Builder
 
@@ -323,9 +246,9 @@ func main() {
 	}
 
 	// Populate information necessary for validation script generation.
-	modelMap, err := parseModels(modelRoot)
+	modelMap, err := commonci.ParseOCModels(modelRoot)
 	if err != nil {
-		log.Fatalf("CI flow failed due to error encountered while parsing spec files, parseModels: %v", err)
+		log.Fatalf("CI flow failed due to error encountered while parsing spec files, commonci.ParseOCModels: %v", err)
 	}
 
 	if listBuildFiles {

@@ -1,17 +1,17 @@
 #!/bin/bash
 
 ROOT_DIR=/workspace
-GOYANGYGOT_RESULTSDIR=$ROOT_DIR/results/goyang-ygot
-OUTFILE_NAME=out
-FAILFILE_NAME=fail
+RESULTSDIR=$ROOT_DIR/results/goyang-ygot
+OUTFILE=$RESULTSDIR/out
+FAILFILE=$RESULTSDIR/fail
 
-if ! stat $GOYANGYGOT_RESULTSDIR; then
+if ! stat $RESULTSDIR; then
   exit 0
 fi
 
-GO111MODULE=on go list -m github.com/openconfig/ygot@latest > $GOYANGYGOT_RESULTSDIR/latest-version.txt
-if bash $GOYANGYGOT_RESULTSDIR/script.sh > $GOYANGYGOT_RESULTSDIR/$OUTFILE_NAME 2> $GOYANGYGOT_RESULTSDIR/$FAILFILE_NAME; then
+GO111MODULE=on go list -m github.com/openconfig/ygot@latest > $RESULTSDIR/latest-version.txt
+if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
-  find $GOYANGYGOT_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
+  find $FAILFILE -size 0 -delete
 fi
-go run /go/src/github.com/openconfig/models-ci/post_results/main.go -validator=goyang-ygot -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+$GOPATH/bin/post_results -validator=goyang-ygot -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA

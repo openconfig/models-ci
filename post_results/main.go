@@ -101,7 +101,6 @@ func readYangFilesList(path string) ([]string, error) {
 	return files, nil
 }
 
-// TODO(wenovus): need comprehensive test cases.
 func readGoyangVersionsLog(path string, masterBranch bool, fileProperties map[string]map[string]string) error {
 	fileLog, err := readFile(path)
 	if err != nil {
@@ -188,7 +187,7 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 
 		// Reachability check
 		if !ok || properties["reachable"] != "true" {
-			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: Non-null schema not used by any .spec.yml tree.", file))
+			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: Non-null schema not used by any .spec.yml build.", file))
 			// If the file was not reached, then its other
 			// parameters would not have been parsed by goyang, so
 			// simply skip the rest of the checks.

@@ -301,10 +301,10 @@ warning foo<br>
 </details>
 <details>
   <summary>:no_entry: .spec.yml build reachability check</summary>
-  <li>changed-noversion-to-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
-  <li>changed-unreached-to-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
-  <li>changed-version-to-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
-  <li>unchanged-unreached.yang: Non-null schema not used by any .spec.yml tree.</li>
+  <li>changed-noversion-to-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
+  <li>changed-unreached-to-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
+  <li>changed-version-to-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
+  <li>unchanged-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
 </details>
 `,
 	}}

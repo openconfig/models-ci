@@ -5,102 +5,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/openconfig/models-ci/commonci"
 )
-
-var (
-	basicModelMap = OpenConfigModelMap{
-		ModelRoot: "testdata",
-		ModelInfoMap: map[string][]ModelInfo{
-			"acl": []ModelInfo{{
-				Name: "openconfig-acl",
-				DocFiles: []string{
-					"yang/acl/openconfig-packet-match-types.yang",
-					"yang/acl/openconfig-acl.yang",
-				},
-				BuildFiles: []string{
-					"testdata/acl/openconfig-acl.yang",
-					"testdata/acl/openconfig-acl-evil-twin.yang",
-				},
-				RunCi: true,
-			}},
-			"optical-transport": []ModelInfo{{
-				Name: "openconfig-terminal-device",
-				DocFiles: []string{
-					"yang/optical-transport/openconfig-transport-types.yang",
-					"yang/platform/openconfig-platform-types.yang",
-					"yang/optical-transport/openconfig-terminal-device.yang",
-					"yang/platform/openconfig-platform-transceiver.yang",
-				},
-				RunCi: true,
-			}, {
-				Name: "openconfig-optical-amplifier",
-				BuildFiles: []string{
-					"testdata/optical-transport/openconfig-optical-amplifier.yang",
-				},
-				RunCi: true,
-			}, {
-				Name: "openconfig-wavelength-router",
-				DocFiles: []string{
-					"yang/optical-transport/openconfig-transport-types.yang",
-					"yang/optical-transport/openconfig-transport-line-common.yang",
-					"yang/optical-transport/openconfig-wavelength-router.yang",
-					"yang/optical-transport/openconfig-channel-monitor.yang",
-					"yang/optical-transport/openconfig-transport-line-connectivity.yang",
-				},
-				BuildFiles: []string{
-					"testdata/optical-transport/openconfig-transport-line-connectivity.yang",
-					"testdata/optical-transport/openconfig-wavelength-router.yang",
-				},
-				RunCi: false,
-			}, {
-				Name: "openconfig-transport-line-protection",
-				DocFiles: []string{
-					"yang/platform/openconfig-platform-types.yang",
-					"yang/optical-transport/openconfig-transport-line-protection.yang",
-					"yang/platform/openconfig-platform.yang",
-				},
-				BuildFiles: []string{
-					"testdata/optical-transport/openconfig-transport-line-protection.yang",
-				},
-				RunCi: true,
-			}, {
-				Name: "openconfig-optical-attenuator",
-				DocFiles: []string{
-					"yang/optical-transport/openconfig-optical-attenuator.yang",
-				},
-				BuildFiles: []string{
-					"testdata/optical-transport/openconfig-optical-attenuator.yang",
-				},
-				RunCi: false,
-			}},
-		},
-	}
-)
-
-func TestParseModels(t *testing.T) {
-	tests := []struct {
-		name        string
-		inModelRoot string
-		want        OpenConfigModelMap
-	}{{
-		name:        "basic",
-		inModelRoot: "testdata",
-		want:        basicModelMap,
-	}}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseModels(tt.inModelRoot)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("(-want, +got):\n%s", diff)
-			}
-		})
-	}
-}
 
 // Fake LabelPoster for testing.
 type postLabelRecorder struct {
@@ -113,10 +19,15 @@ func (p *postLabelRecorder) PostLabel(labelName, labelColor, owner, repo string,
 }
 
 func TestGenOpenConfigLinterScript(t *testing.T) {
+	basicModelMap, err := commonci.ParseOCModels("testdata")
+	if err != nil {
+		t.Fatalf("TestGenOpenConfigLinterScript: Failed to parse models for testing: %v", err)
+	}
+
 	tests := []struct {
 		name                 string
 		inValidatorName      string
-		inModelMap           OpenConfigModelMap
+		inModelMap           commonci.OpenConfigModelMap
 		inDisabledModelPaths map[string]bool
 		wantCmd              string
 		wantSkipLabels       []string
@@ -240,14 +151,14 @@ fi
 		inValidatorName: "misc-checks",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/misc-checks
-if ! /go/bin/goyang -f oc-versions -p testdata,/workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang > /workspace/results/misc-checks/acl.openconfig-acl.pr-file-parse-log; then
-  >&2 echo "goyang parse of acl.openconfig-acl reported non-zero status."
+if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang > /workspace/results/misc-checks/acl.openconfig-acl.pr-file-parse-log; then
+  >&2 echo "parse of acl.openconfig-acl reported non-zero status."
 fi
-if ! /go/bin/goyang -f oc-versions -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang > /workspace/results/misc-checks/optical-transport.openconfig-optical-amplifier.pr-file-parse-log; then
-  >&2 echo "goyang parse of optical-transport.openconfig-optical-amplifier reported non-zero status."
+if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang > /workspace/results/misc-checks/optical-transport.openconfig-optical-amplifier.pr-file-parse-log; then
+  >&2 echo "parse of optical-transport.openconfig-optical-amplifier reported non-zero status."
 fi
-if ! /go/bin/goyang -f oc-versions -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang > /workspace/results/misc-checks/optical-transport.openconfig-transport-line-protection.pr-file-parse-log; then
-  >&2 echo "goyang parse of optical-transport.openconfig-transport-line-protection reported non-zero status."
+if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang > /workspace/results/misc-checks/optical-transport.openconfig-transport-line-protection.pr-file-parse-log; then
+  >&2 echo "parse of optical-transport.openconfig-transport-line-protection reported non-zero status."
 fi
 `,
 	}, {

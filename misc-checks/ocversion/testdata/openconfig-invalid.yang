@@ -1,0 +1,5 @@
+module openconfig-invalid {
+
+  yang-version "1";;;;;INVALID TOKENS
+
+}
