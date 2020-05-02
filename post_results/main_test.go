@@ -275,7 +275,6 @@ warning foo<br>
 		wantPass:             false,
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 	}, {
-		// FIXME(wenovus): Add checks for duplicate entries in the parse logs.
 		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
 		inValidatorResultDir: "testdata/misc-checks-pass",
 		inValidatorId:        "misc-checks",
