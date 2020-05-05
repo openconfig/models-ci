@@ -4,14 +4,14 @@
 # image "gcr.io/disco-idea-817/models-ci-image" being used for pyang-all
 # validation.
 
-########################## COMMON SETUP #############################
+########################## SETUP #############################
 ROOT_DIR=/workspace
 MODELROOT=$ROOT_DIR/release/yang
 TESTDIR=$ROOT_DIR
 VENVDIR=$TESTDIR/pyangbindvenv
 RESULTSDIR=$ROOT_DIR/results/pyangbind
-OUTFILE=out
-FAILFILE=fail
+OUTFILE=$RESULTSDIR/out
+FAILFILE=$RESULTSDIR/fail
 
 if ! stat $RESULTSDIR; then
   exit 0
@@ -21,8 +21,8 @@ PYANGBIND_REPO=$TESTDIR/pyangbind-repo
 setup() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
-  git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
 
+  git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
   pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
   pip3 install pyangbind
   pip3 install pyang
