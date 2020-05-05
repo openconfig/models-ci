@@ -86,7 +86,7 @@ fi
 
 	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
+fi &
 `)
 
 	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
