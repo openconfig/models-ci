@@ -88,13 +88,13 @@ wait
 		inValidatorName: "pyangbind",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyangbind
-if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang 2> /workspace/results/pyangbind/acl==openconfig-acl==pass > /dev/null; then
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o acl.openconfig-acl.binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
   mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
 fi &
-if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind testdata/optical-transport/openconfig-optical-amplifier.yang 2> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass > /dev/null; then
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-optical-amplifier.binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==fail
 fi &
-if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind testdata/optical-transport/openconfig-transport-line-protection.yang 2> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass > /dev/null; then
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-transport-line-protection.binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
 fi &
 wait
