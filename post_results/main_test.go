@@ -362,7 +362,7 @@ func TestGetGistInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDescription, gotContent, err := getGistInfo(tt.inValidatorId, tt.inVersion, tt.inValidatorResultDir)
+			gotDescription, gotContent, err := getGistHeading(tt.inValidatorId, tt.inVersion, tt.inValidatorResultDir)
 			if err != nil {
 				if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 					t.Fatalf("did not get expected error, %s", diff)

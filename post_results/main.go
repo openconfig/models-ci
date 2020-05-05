@@ -415,15 +415,15 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 	return outString, pass, err
 }
 
-// getGistInfo gets the description and content of the result gist for the
+// getGistHeading gets the description and content of the result gist for the
 // given validator from its script output file. The "description" is the title
 // of the gist, and "content" is the script execution output.
 // NOTE: The parsed test result output (distinct from the script execution
 // output) should be attached as a comment on the same gist.
-func getGistInfo(validatorId, version, resultsDir string) (string, string, error) {
+func getGistHeading(validatorId, version, resultsDir string) (string, string, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", "", fmt.Errorf("getGistInfo: validator %q not found!", validatorId)
+		return "", "", fmt.Errorf("getGistHeading: validator %q not found!", validatorId)
 	}
 
 	validatorDesc := validator.StatusName(version)
@@ -449,9 +449,8 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 	return validatorDesc, content, nil
 }
 
-// postResult runs the OpenConfig linter, and Go-based tests for the models
-// repo. The results are written to a GitHub Gist, and into the PR that was
-// modified, associated with the commit reference SHA.
+// postResult retrieves the test output for the given validator and version
+// from its results folder and posts a gist and PR status linking to the gist.
 func postResult(validatorId, version string) error {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
@@ -466,7 +465,7 @@ func postResult(validatorId, version string) error {
 
 	// Create gist representing test results. The "validatorDesc" is the
 	// title of the gist, and "content" is the script execution output.
-	validatorDesc, content, err := getGistInfo(validatorId, version, resultsDir)
+	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}

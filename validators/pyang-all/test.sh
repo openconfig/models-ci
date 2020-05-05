@@ -90,7 +90,7 @@ fi
 ########################## OC-PYANG #############################
 OCPYANG_RESULTSDIR=$ROOT_DIR/results/oc-pyang
 OCPYANG_REPO=$TESTDIR/oc-pyang-repo
-OCPYANG_DIR=/go/src/github.com/openconfig/models-ci/oc-pyang
+OCPYANG_DIR=$GOPATH/src/github.com/openconfig/models-ci/validators/oc-pyang
 
 if stat $OCPYANG_RESULTSDIR; then
   if [ $SETUP_DONE -eq 0 ]; then
