@@ -202,6 +202,8 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 		builder.WriteString(cmdStr)
 	}
 
+	// In case there are parallel commands.
+	builder.WriteString("wait\n")
 	return builder.String(), nil
 }
 
