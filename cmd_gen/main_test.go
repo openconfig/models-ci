@@ -107,31 +107,31 @@ wait
 mkdir -p /workspace/results/goyang-ygot
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
--output_file=/workspace/results/goyang-ygot/oc.go \
+-output_file=/workspace/results/goyang-ygot/acl.openconfig-acl.oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
 testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/goyang-ygot/acl==openconfig-acl==pass; then
   mv /workspace/results/goyang-ygot/acl==openconfig-acl==pass /workspace/results/goyang-ygot/acl==openconfig-acl==fail
-fi
+fi &
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
--output_file=/workspace/results/goyang-ygot/oc.go \
+-output_file=/workspace/results/goyang-ygot/optical-transport.openconfig-optical-amplifier.oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
 testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==pass /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==fail
-fi
+fi &
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
--output_file=/workspace/results/goyang-ygot/oc.go \
+-output_file=/workspace/results/goyang-ygot/optical-transport.openconfig-transport-line-protection.oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
 testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==fail
-fi
+fi &
 wait
 `,
 	}, {

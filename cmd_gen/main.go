@@ -96,13 +96,13 @@ fi &
 
 	goyangYgotCmdTemplate = mustTemplate("goyang-ygot", `if ! /go/bin/generator \
 -path={{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf \
--output_file=`+commonci.ResultsDir+`/goyang-ygot/oc.go \
+-output_file=`+commonci.ResultsDir+`/goyang-ygot/{{ .ModelDirName }}.{{ .ModelName }}.oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
 {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
+fi &
 `)
 
 	yanglintCmdTemplate = mustTemplate("yanglint", `if ! yanglint -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
