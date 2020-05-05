@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # NOTE: double-hashed comments (##) are lines rendered unnecessary by the Docker
-# image "gcr.io/disco-idea-817/models-ci-image" being used for pyang-all
+# image "gcr.io/disco-idea-817/models-ci-image" being used for all pyang
 # validation.
 
 ########################## SETUP #############################
@@ -10,8 +10,8 @@ MODELROOT=$ROOT_DIR/release/yang
 TESTDIR=$ROOT_DIR
 VENVDIR=$TESTDIR/oc-pyangvenv
 RESULTSDIR=$ROOT_DIR/results/oc-pyang
-OUTFILE=$RESULTDIR/out
-FAILFILE=$RESULTDIR/fail
+OUTFILE=$RESULTSDIR/out
+FAILFILE=$RESULTSDIR/fail
 
 if ! stat $RESULTSDIR; then
   exit 0

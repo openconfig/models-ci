@@ -87,13 +87,13 @@ fi
 mkdir -p /workspace/results/pyangbind
 if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
   mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
-fi
+fi &
 if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==fail
-fi
+fi &
 if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
-fi
+fi &
 `,
 	}, {
 		name:            "basic goyang-ygot",

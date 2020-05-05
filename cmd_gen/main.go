@@ -91,7 +91,7 @@ fi
 
 	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o binding.py {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
+fi &
 `)
 
 	goyangYgotCmdTemplate = mustTemplate("goyang-ygot", `if ! /go/bin/generator \
