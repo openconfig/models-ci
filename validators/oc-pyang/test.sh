@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# NOTE: double-hashed comments (##) are lines rendered unnecessary by the Docker
-# image "gcr.io/disco-idea-817/models-ci-image" being used for all pyang
-# validation.
-
 ########################## SETUP #############################
 ROOT_DIR=/workspace
 MODELROOT=$ROOT_DIR/release/yang
@@ -58,5 +54,5 @@ if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR
 fi
 $GOPATH/bin/post_results -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
 
-########################## COMMON CLEANUP #############################
+########################## CLEANUP #############################
 teardown
