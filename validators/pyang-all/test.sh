@@ -128,31 +128,31 @@ if stat $OCPYANG_RESULTSDIR; then
 fi
 
 ########################## PYANGBIND #############################
-PYANGBIND_RESULTSDIR=$ROOT_DIR/results/pyangbind
-PYANGBIND_REPO=$TESTDIR/pyangbind-repo
-
-if stat $PYANGBIND_RESULTSDIR; then
-  if [ $SETUP_DONE -eq 0 ]; then
-    setup
-  fi
-  git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
-  pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
-  pip3 install pyangbind
-  pip3 list | grep pyangbind > $PYANGBIND_RESULTSDIR/latest-version.txt
-  find $PYANGBIND_RESULTSDIR/latest-version.txt -size 0 -delete
-
-  export PYANGBIND_PLUGIN_DIR=`/usr/bin/env python3 -c \
-    'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
-
-  pip3 install pyang
-  {
-    if bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME; then
-      # Delete fail file if it's empty and the script passed.
-      find $PYANGBIND_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
-    fi
-    $GOPATH/bin/post_results -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
-  } &
-fi
+#PYANGBIND_RESULTSDIR=$ROOT_DIR/results/pyangbind
+#PYANGBIND_REPO=$TESTDIR/pyangbind-repo
+#
+#if stat $PYANGBIND_RESULTSDIR; then
+#  if [ $SETUP_DONE -eq 0 ]; then
+#    setup
+#  fi
+#  git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
+#  pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
+#  pip3 install pyangbind
+#  pip3 list | grep pyangbind > $PYANGBIND_RESULTSDIR/latest-version.txt
+#  find $PYANGBIND_RESULTSDIR/latest-version.txt -size 0 -delete
+#
+#  export PYANGBIND_PLUGIN_DIR=`/usr/bin/env python3 -c \
+#    'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
+#
+#  pip3 install pyang
+#  {
+#    if bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME; then
+#      # Delete fail file if it's empty and the script passed.
+#      find $PYANGBIND_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
+#    fi
+#    $GOPATH/bin/post_results -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+#  } &
+#fi
 
 ########################## COMMON CLEANUP #############################
 wait

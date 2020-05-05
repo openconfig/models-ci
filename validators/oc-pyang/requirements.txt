@@ -1,4 +1,3 @@
-Jinja
 lxml
 MarkupSafe
 cython
