@@ -13,7 +13,7 @@ RESULTSDIR=$ROOT_DIR/results/pyangbind
 OUTFILE=out
 FAILFILE=fail
 
-if stat $RESULTSDIR; then
+if ! stat $RESULTSDIR; then
   exit 0
 fi
 
