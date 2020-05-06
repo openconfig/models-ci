@@ -1,14 +1,27 @@
+// Copyright 2020 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestPrintOCVersions(t *testing.T) {
+func TestOcVersionsList(t *testing.T) {
 	tests := []struct {
 		desc    string
 		inPath  []string
@@ -51,9 +64,7 @@ other-extensions.yang:
 				t.Fatal(errs)
 			}
 
-			var b bytes.Buffer
-			printOCVersions(&b, entries)
-			got, want := strings.Split(b.String(), "\n"), strings.Split(tt.want, "\n")
+			got, want := strings.Split(ocVersionsList(entries), "\n"), strings.Split(tt.want, "\n")
 			if diff := cmp.Diff(got, want); diff != "" {
 				t.Errorf("(-got, +want):\n%s", diff)
 			}

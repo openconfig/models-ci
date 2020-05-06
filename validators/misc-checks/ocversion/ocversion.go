@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc.
+// Copyright 2020 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,18 +15,26 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 	"strings"
 
 	"github.com/openconfig/goyang/pkg/yang"
-	"github.com/pborman/getopt/v2"
 )
 
-// printOCVersions prints all files, along with their openconfig-version value, if present.
-func printOCVersions(w io.Writer, entries []*yang.Entry) {
+var pathStr string
+
+func init() {
+	flag.StringVar(&pathStr, "p", "", "comma separated list of directories to add to search path")
+}
+
+// ocVersionsList list all files with their openconfig-version value. If not
+// present, it still lists the file.
+// Any errors are reported to stderr.
+func ocVersionsList(entries []*yang.Entry) string {
+	var builder strings.Builder
 	for _, e := range entries {
 		m, ok := e.Node.(*yang.Module)
 		if !ok {
@@ -34,7 +42,7 @@ func printOCVersions(w io.Writer, entries []*yang.Entry) {
 			continue
 		}
 
-		fmt.Fprintf(w, "%s.yang:", m.Name)
+		builder.WriteString(fmt.Sprintf("%s.yang:", m.Name))
 
 		for _, e := range m.Extensions {
 			keywordParts := strings.Split(e.Keyword, ":")
@@ -46,15 +54,16 @@ func printOCVersions(w io.Writer, entries []*yang.Entry) {
 			if ext == "openconfig-version" {
 				extMod := yang.FindModuleByPrefix(m, pfx)
 				if extMod == nil {
-					fmt.Fprintf(os.Stderr, "unable to find module using prefix %q from referencing module %q\n", pfx, m.Name)
+					builder.WriteString(fmt.Sprintf("unable to find module using prefix %q from referencing module %q\n", pfx, m.Name))
 				} else if extMod.Name == "openconfig-extensions" {
-					fmt.Fprintf(w, " openconfig-version:%q", e.Argument)
+					builder.WriteString(fmt.Sprintf(" openconfig-version:%q", e.Argument))
 				}
 			}
 		}
 
-		fmt.Fprintf(w, "\n")
+		builder.WriteString("\n")
 	}
+	return builder.String()
 }
 
 func buildModuleEntries(paths, files []string) ([]*yang.Entry, []error) {
@@ -113,17 +122,12 @@ func buildModuleEntries(paths, files []string) ([]*yang.Entry, []error) {
 }
 
 func main() {
-	pathsPtr := getopt.ListLong("path", 'p', "comma separated list of directories to add to search path", "DIR[,DIR...]")
+	flag.Parse()
 
-	if err := getopt.Getopt(nil); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		getopt.PrintUsage(os.Stderr)
-		os.Exit(1)
-	}
+	paths := strings.Split(pathStr, ",")
+	files := flag.Args()
 
-	files := getopt.Args()
-
-	entries, errs := buildModuleEntries(*pathsPtr, files)
+	entries, errs := buildModuleEntries(paths, files)
 	if errs != nil {
 		for _, err := range errs {
 			fmt.Fprintln(os.Stderr, err)
@@ -131,5 +135,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	printOCVersions(os.Stdout, entries)
+	fmt.Print(ocVersionsList(entries))
 }
