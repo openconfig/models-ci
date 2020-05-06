@@ -1,3 +1,17 @@
+// Copyright 2020 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -57,14 +71,17 @@ func lintSymbol(pass bool) string {
 	return mdPassSymbol
 }
 
+// sprintLineHTML prints a single list item to be put under a top-level summary item.
 func sprintLineHTML(format string, a ...interface{}) string {
 	return fmt.Sprintf("  <li>"+format+"</li>\n", a...)
 }
 
+// sprintSummaryHTML prints a top-level summary item containing free-form or list items.
 func sprintSummaryHTML(pass bool, title, format string, a ...interface{}) string {
 	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n"+format+"</details>\n", append([]interface{}{lintSymbol(pass), title}, a...)...)
 }
 
+// readFile reads the entire file into a string and returns it along with an error if any.
 func readFile(path string) (string, error) {
 	outBytes, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -73,6 +90,9 @@ func readFile(path string) (string, error) {
 	return string(outBytes), nil
 }
 
+// readYangFilesList reads a file containing a list of YANG files, and returns
+// a slice of these files. An unrecognized line causes an error to be returned.
+// The error checking is not robust, but should be sufficient for our limited use.
 func readYangFilesList(path string) ([]string, error) {
 	filesStr, err := readFile(path)
 	if err != nil {
@@ -101,8 +121,12 @@ func readYangFilesList(path string) ([]string, error) {
 	return files, nil
 }
 
-func readGoyangVersionsLog(path string, masterBranch bool, fileProperties map[string]map[string]string) error {
-	fileLog, err := readFile(path)
+// readGoyangVersionsLog returns a map of YANG files to file attributes as parsed from the log.
+// The file should be a list of YANG file to space-separated attributes.
+// e.g.
+// foo.yang: openconfig-version:"1.2.3" revision-version:"2.3.4"
+func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map[string]map[string]string) error {
+	fileLog, err := readFile(logPath)
 	if err != nil {
 		return err
 	}
@@ -114,7 +138,7 @@ func readGoyangVersionsLog(path string, masterBranch bool, fileProperties map[st
 		fileSegments := strings.SplitN(line, ":", 2)
 		yangFileName := strings.TrimSpace(fileSegments[0])
 		if !strings.HasSuffix(yangFileName, ".yang") {
-			return fmt.Errorf("while parsing %s: unrecognized line heading %q, expected a \"<name>.yang:\" start to the line: %q", path, yangFileName, line)
+			return fmt.Errorf("while parsing %s: unrecognized line heading %q, expected a \"<name>.yang:\" start to the line: %q", logPath, yangFileName, line)
 		}
 		propertyMap, ok := fileProperties[yangFileName]
 		if !ok {
@@ -129,12 +153,12 @@ func readGoyangVersionsLog(path string, masterBranch bool, fileProperties map[st
 		for _, property := range strings.Fields(strings.TrimSpace(fileSegments[1])) {
 			segments := strings.SplitN(property, ":", 2)
 			if len(segments) != 2 {
-				return fmt.Errorf("while parsing %s: unrecognized property substring, expected \"<property name>:\"<property>\"\" separated by spaces: %q", path, property)
+				return fmt.Errorf("while parsing %s: unrecognized property substring, expected \"<property name>:\"<property>\"\" separated by spaces: %q", logPath, property)
 			}
 			name, value := segments[0], segments[1]
 			if value[0] == '"' {
 				if len(value) == 1 || value[len(value)-1] != '"' {
-					return fmt.Errorf("while parsing %s: Got invalid property value format: %s -- if the property value starts with a quote, it is assumed to be an enclosing quote", path, property)
+					return fmt.Errorf("while parsing %s: Got invalid property value format: %s -- if the property value starts with a quote, it is assumed to be an enclosing quote", logPath, property)
 				}
 				value = value[1 : len(value)-1] // Remove enclosing quotes.
 			}
@@ -154,9 +178,11 @@ func readGoyangVersionsLog(path string, masterBranch bool, fileProperties map[st
 	return nil
 }
 
-func processMiscChecksOutput(testPath string) (string, bool, error) {
+// processMiscChecksOutput takes the raw result output from the misc-checks
+// results directory and returns its formatted report and pass/fail status.
+func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	fileProperties := map[string]map[string]string{}
-	changedFiles, err := readYangFilesList(filepath.Join(testPath, "changed-files.txt"))
+	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
 	if err != nil {
 		return "", false, err
 	}
@@ -166,10 +192,10 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 		}
 		fileProperties[file]["changed"] = "true"
 	}
-	if err := readGoyangVersionsLog(filepath.Join(testPath, "pr-file-parse-log"), false, fileProperties); err != nil {
+	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "pr-file-parse-log"), false, fileProperties); err != nil {
 		return "", false, err
 	}
-	if err := readGoyangVersionsLog(filepath.Join(testPath, "master-file-parse-log"), true, fileProperties); err != nil {
+	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "master-file-parse-log"), true, fileProperties); err != nil {
 		return "", false, err
 	}
 
@@ -178,7 +204,7 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 	var reachabilityViolations []string
 	filesReachedCount := 0
 	// Only look at the PR's files as they might be different from the master's files.
-	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(testPath, "all-non-empty-files.txt"))
+	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(resultsDir, "all-non-empty-files.txt"))
 	if err != nil {
 		return "", false, err
 	}
@@ -187,7 +213,7 @@ func processMiscChecksOutput(testPath string) (string, bool, error) {
 
 		// Reachability check
 		if !ok || properties["reachable"] != "true" {
-			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: Non-null schema not used by any .spec.yml build.", file))
+			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: file not used by any .spec.yml build.", file))
 			// If the file was not reached, then its other
 			// parameters would not have been parsed by goyang, so
 			// simply skip the rest of the checks.

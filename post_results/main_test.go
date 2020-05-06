@@ -1,3 +1,17 @@
+// Copyright 2020 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -300,10 +314,10 @@ warning foo<br>
 </details>
 <details>
   <summary>:no_entry: .spec.yml build reachability check</summary>
-  <li>changed-noversion-to-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
-  <li>changed-unreached-to-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
-  <li>changed-version-to-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
-  <li>unchanged-unreached.yang: Non-null schema not used by any .spec.yml build.</li>
+  <li>changed-noversion-to-unreached.yang: file not used by any .spec.yml build.</li>
+  <li>changed-unreached-to-unreached.yang: file not used by any .spec.yml build.</li>
+  <li>changed-version-to-unreached.yang: file not used by any .spec.yml build.</li>
+  <li>unchanged-unreached.yang: file not used by any .spec.yml build.</li>
 </details>
 `,
 	}}
