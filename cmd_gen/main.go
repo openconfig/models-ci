@@ -300,6 +300,9 @@ func main() {
 	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
 		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
 	}
+	if err := os.MkdirAll(commonci.UserConfigDir, 0644); err != nil {
+		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
+	}
 
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
