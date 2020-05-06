@@ -8,6 +8,7 @@ VENVDIR=$TESTDIR/pyangvenv
 RESULTSDIR=$ROOT_DIR/results/pyang
 OUTFILE_NAME=out
 FAILFILE_NAME=fail
+EXTRA_VERSIONS_FILE=$ROOT_DIR/user-config/extra-pyang-versions.txt
 
 if ! stat $RESULTSDIR; then
   exit 0
@@ -49,7 +50,7 @@ run-pyang-head() {
 }
 
 run-pyang-head &
-for version in $@; do
+for version in $(< $EXTRA_VERSIONS_FILE); do
   run-pyang-version "$version" &
 done
 

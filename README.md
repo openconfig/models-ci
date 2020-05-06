@@ -68,6 +68,10 @@ which contains the validator commands ready to be invoked. Each validator's
 pyang requires the path to the pyang executable and some environment variables
 to be passed in as an arugment.
 
+`cmd_gen` also creates and stores information inside the
+`/workspace/user-config` directory, which contain user flags passed to `cmd_gen`
+that controls the remaining CI steps.
+
 ### 2 Validator Script Execution
 
 Per-model validators each have a minimal `test.sh` that can be invoked directly

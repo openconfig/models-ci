@@ -18,6 +18,10 @@ const (
 	RootDir = "/workspace"
 	// ResultsDir contains all results of the CI process.
 	ResultsDir = "/workspace/results"
+	// UserConfigDir by convention contains the user config that is
+	// passed from cmd_gen to later stages of the CI. It is common to all
+	// CI steps.
+	UserConfigDir = "/workspace/user-config"
 	// ScriptFileName by convention is the script with the validator commands.
 	ScriptFileName = "script.sh"
 	// LatestVersionFileName by convention contains the version description

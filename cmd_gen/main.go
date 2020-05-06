@@ -312,7 +312,7 @@ func main() {
 		// designated extra versions file in order to be relayed to the
 		// corresponding test.sh (next stage of the CI pipeline).
 		if len(extraVersions) > 0 {
-			extraVersionFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
+			extraVersionFile := filepath.Join(commonci.UserConfigDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
 			if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
 				log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
 			}
