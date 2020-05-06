@@ -70,7 +70,9 @@ to be passed in as an arugment.
 
 `cmd_gen` also creates and stores information inside the
 `/workspace/user-config` directory, which contain user flags passed to `cmd_gen`
-that controls the remaining CI steps.
+that controls the remaining CI steps, so that the steps after `cmd_gen` in the
+cloudbuild.yaml are configurable through the `cmd_gen` step, and not require
+detailed understanding from the user.
 
 ### 2 Validator Script Execution
 
