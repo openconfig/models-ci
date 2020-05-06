@@ -61,18 +61,18 @@ func init() {
 func scriptHeader(resultsDir string) string {
 	return fmt.Sprintf(`#!/bin/bash
 mkdir -p %[1]s
-sleep 120 && echo "\nprocesses remaining after 120s:" >> %[1]s/out && jobs >> %[1]s/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> %[1]s/out && jobs >> %[1]s/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> %[1]s/out && jobs >> %[1]s/out &
 pids=""
 `, resultsDir)
 }
 
-func scriptTrailer() string {
-	return `for pid in $pids; do
+func scriptTrailer(resultsDir string) string {
+	return fmt.Sprintf(`sleep 120 && echo "\nprocesses remaining after 120s:" >> %[1]s/out && jobs >> %[1]s/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> %[1]s/out && jobs >> %[1]s/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> %[1]s/out && jobs >> %[1]s/out &
+for pid in $pids; do
     wait $pid
 done
-`
+`, resultsDir)
 }
 
 // ModelInfo represents the yaml model of an OpenConfig .spec.yml file.
@@ -230,7 +230,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 		builder.WriteString(cmdStr)
 	}
 
-	builder.WriteString(scriptTrailer())
+	builder.WriteString(scriptTrailer(resultsDir))
 	return builder.String(), nil
 }
 

@@ -127,9 +127,6 @@ func TestGenOpenConfigLinterScript(t *testing.T) {
 		inValidatorName: "pyang",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyang
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
 pids=""
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/pyang/acl==openconfig-acl==pass /workspace/results/pyang/acl==openconfig-acl==fail
@@ -140,6 +137,9 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
+sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
 for pid in $pids; do
     wait $pid
 done
@@ -152,9 +152,6 @@ done
 		wantSkipLabels:       []string{"skipped: acl"},
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyang
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
 pids=""
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
@@ -162,6 +159,9 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
+sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
 for pid in $pids; do
     wait $pid
 done
@@ -172,9 +172,6 @@ done
 		inValidatorName: "oc-pyang",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/oc-pyang
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
 pids=""
 if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/oc-pyang/acl==openconfig-acl==pass /workspace/results/oc-pyang/acl==openconfig-acl==fail
@@ -185,6 +182,9 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
+sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
 for pid in $pids; do
     wait $pid
 done
@@ -195,9 +195,6 @@ done
 		inValidatorName: "pyangbind",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyangbind
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
 pids=""
 if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o /workspace/results/pyangbind/acl==openconfig-acl==pass==binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
   mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
@@ -211,6 +208,9 @@ if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o /workspace/resul
   mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
 fi &
 pids+="$! "
+sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
 for pid in $pids; do
     wait $pid
 done
@@ -221,9 +221,6 @@ done
 		inValidatorName: "goyang-ygot",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/goyang-ygot
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
 pids=""
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
@@ -252,6 +249,9 @@ if ! /go/bin/generator \
 testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==fail
 fi
+sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
 for pid in $pids; do
     wait $pid
 done
@@ -262,9 +262,6 @@ done
 		inValidatorName: "yanglint",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/yanglint
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
 pids=""
 if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/yanglint/acl==openconfig-acl==pass; then
   mv /workspace/results/yanglint/acl==openconfig-acl==pass /workspace/results/yanglint/acl==openconfig-acl==fail
@@ -275,6 +272,9 @@ fi
 if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==fail
 fi
+sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
 for pid in $pids; do
     wait $pid
 done
