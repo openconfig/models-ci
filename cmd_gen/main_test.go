@@ -137,9 +137,6 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
 for pid in $pids; do
     wait $pid
 done
@@ -159,9 +156,6 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyang/out && jobs >> /workspace/results/pyang/out &
 for pid in $pids; do
     wait $pid
 done
@@ -182,9 +176,6 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/oc-pyang/out && jobs >> /workspace/results/oc-pyang/out &
 for pid in $pids; do
     wait $pid
 done
@@ -208,9 +199,6 @@ if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o /workspace/resul
   mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
 fi &
 pids+="$! "
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/pyangbind/out && jobs >> /workspace/results/pyangbind/out &
 for pid in $pids; do
     wait $pid
 done
@@ -249,9 +237,6 @@ if ! /go/bin/generator \
 testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==fail
 fi
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/goyang-ygot/out && jobs >> /workspace/results/goyang-ygot/out &
 for pid in $pids; do
     wait $pid
 done
@@ -272,9 +257,6 @@ fi
 if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==fail
 fi
-sleep 120 && echo "\nprocesses remaining after 120s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> /workspace/results/yanglint/out && jobs >> /workspace/results/yanglint/out &
 for pid in $pids; do
     wait $pid
 done
