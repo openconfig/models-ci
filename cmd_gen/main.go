@@ -58,6 +58,15 @@ func init() {
 	flag.StringVar(&localModelDirName, "modelDirName", "", "")
 }
 
+func scriptHeader(resultsDir string) string {
+	return fmt.Sprintf(`#!/bin/bash
+mkdir -p %[1]s
+sleep 120 && echo "\nprocesses remaining after 120s:" >> %[1]s/out && ps -o comm= >> %[1]s/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> %[1]s/out && ps -o comm= >> %[1]s/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> %[1]s/out && ps -o comm= >> %[1]s/out &
+`, resultsDir)
+}
+
 // ModelInfo represents the yaml model of an OpenConfig .spec.yml file.
 type ModelInfo struct {
 	Name       string
@@ -191,7 +200,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 	var builder strings.Builder
 
-	builder.WriteString(fmt.Sprintf("#!/bin/bash\nmkdir -p %s\n", resultsDir))
+	builder.WriteString(scriptHeader(resultsDir))
 
 	modelDirNames := make([]string, 0, len(modelMap.ModelInfoMap))
 	for modelDirName := range modelMap.ModelInfoMap {
