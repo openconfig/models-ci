@@ -61,9 +61,9 @@ func init() {
 func scriptHeader(resultsDir string) string {
 	return fmt.Sprintf(`#!/bin/bash
 mkdir -p %[1]s
-sleep 120 && echo "\nprocesses remaining after 120s:" >> %[1]s/out && ps -o comm= >> %[1]s/out &
-sleep 150 && echo "\nprocesses remaining after 150s:" >> %[1]s/out && ps -o comm= >> %[1]s/out &
-sleep 180 && echo "\nprocesses remaining after 180s:" >> %[1]s/out && ps -o comm= >> %[1]s/out &
+sleep 120 && echo "\nprocesses remaining after 120s:" >> %[1]s/out && jobs >> %[1]s/out &
+sleep 150 && echo "\nprocesses remaining after 150s:" >> %[1]s/out && jobs >> %[1]s/out &
+sleep 180 && echo "\nprocesses remaining after 180s:" >> %[1]s/out && jobs >> %[1]s/out &
 `, resultsDir)
 }
 
