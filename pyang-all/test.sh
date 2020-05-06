@@ -146,7 +146,7 @@ if stat $PYANGBIND_RESULTSDIR; then
 
   pip3 install pyang
   {
-    if timeout 180s bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME; then
+    if timeout 500s bash $PYANGBIND_RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_DIR > $PYANGBIND_RESULTSDIR/$OUTFILE_NAME 2> $PYANGBIND_RESULTSDIR/$FAILFILE_NAME; then
       # Delete fail file if it's empty and the script passed.
       find $PYANGBIND_RESULTSDIR/$FAILFILE_NAME -size 0 -delete
     fi
