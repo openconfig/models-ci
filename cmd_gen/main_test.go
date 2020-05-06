@@ -127,6 +127,7 @@ func TestGenOpenConfigLinterScript(t *testing.T) {
 		inValidatorName: "pyang",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyang
+pids=""
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/pyang/acl==openconfig-acl==pass /workspace/results/pyang/acl==openconfig-acl==fail
 fi
@@ -136,6 +137,9 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
+for pid in $pids; do
+    wait $pid
+done
 `,
 	}, {
 		name:                 "basic pyang with model to be skipped",
@@ -145,12 +149,16 @@ fi
 		wantSkipLabels:       []string{"skipped: acl"},
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyang
+pids=""
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
 fi
 if ! $@ -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
+for pid in $pids; do
+    wait $pid
+done
 `,
 	}, {
 		name:            "basic oc-pyang",
@@ -158,6 +166,7 @@ fi
 		inValidatorName: "oc-pyang",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/oc-pyang
+pids=""
 if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/oc-pyang/acl==openconfig-acl==pass /workspace/results/oc-pyang/acl==openconfig-acl==fail
 fi
@@ -167,6 +176,9 @@ fi
 if ! $@ -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==fail
 fi
+for pid in $pids; do
+    wait $pid
+done
 `,
 	}, {
 		name:            "basic pyangbind",
@@ -174,15 +186,22 @@ fi
 		inValidatorName: "pyangbind",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/pyangbind
-if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
+pids=""
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o /workspace/results/pyangbind/acl==openconfig-acl==pass==binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
   mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
-fi
-if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
+fi &
+pids+="$! "
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass==binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==fail
-fi
-if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
+fi &
+pids+="$! "
+if ! $@ -p testdata -p /workspace/third_party/ietf -f pybind -o /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass==binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
-fi
+fi &
+pids+="$! "
+for pid in $pids; do
+    wait $pid
+done
 `,
 	}, {
 		name:            "basic goyang-ygot",
@@ -190,6 +209,7 @@ fi
 		inValidatorName: "goyang-ygot",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/goyang-ygot
+pids=""
 if ! /go/bin/generator \
 -path=testdata,/workspace/third_party/ietf \
 -output_file=/workspace/results/goyang-ygot/oc.go \
@@ -217,6 +237,9 @@ if ! /go/bin/generator \
 testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==fail
 fi
+for pid in $pids; do
+    wait $pid
+done
 `,
 	}, {
 		name:            "basic yanglint",
@@ -224,6 +247,7 @@ fi
 		inValidatorName: "yanglint",
 		wantCmd: `#!/bin/bash
 mkdir -p /workspace/results/yanglint
+pids=""
 if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/yanglint/acl==openconfig-acl==pass; then
   mv /workspace/results/yanglint/acl==openconfig-acl==pass /workspace/results/yanglint/acl==openconfig-acl==fail
 fi
@@ -233,6 +257,9 @@ fi
 if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==fail
 fi
+for pid in $pids; do
+    wait $pid
+done
 `,
 	}, {
 		name:            "unrecognized validatorID",

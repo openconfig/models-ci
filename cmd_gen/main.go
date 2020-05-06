@@ -58,6 +58,20 @@ func init() {
 	flag.StringVar(&localModelDirName, "modelDirName", "", "")
 }
 
+func scriptHeader(resultsDir string) string {
+	return fmt.Sprintf(`#!/bin/bash
+mkdir -p %[1]s
+pids=""
+`, resultsDir)
+}
+
+func scriptTrailer() string {
+	return `for pid in $pids; do
+    wait $pid
+done
+`
+}
+
 // ModelInfo represents the yaml model of an OpenConfig .spec.yml file.
 type ModelInfo struct {
 	Name       string
@@ -129,9 +143,10 @@ fi
 fi
 `, nil
 	case "pyangbind":
-		return `if ! $@ -p %s -p %s/third_party/ietf -f pybind -o binding.py %s &> %s; then
-  mv %s %s
-fi
+		return `if ! $@ -p %[1]s -p %[2]s/third_party/ietf -f pybind -o %[4]s==binding.py %[3]s &> %[4]s; then
+  mv %[5]s %[6]s
+fi &
+pids+="$! "
 `, nil
 	case "goyang-ygot":
 		return `if ! /go/bin/generator \
@@ -191,7 +206,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 	var builder strings.Builder
 
-	builder.WriteString(fmt.Sprintf("#!/bin/bash\nmkdir -p %s\n", resultsDir))
+	builder.WriteString(scriptHeader(resultsDir))
 
 	modelDirNames := make([]string, 0, len(modelMap.ModelInfoMap))
 	for modelDirName := range modelMap.ModelInfoMap {
@@ -212,6 +227,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 		builder.WriteString(cmdStr)
 	}
 
+	builder.WriteString(scriptTrailer())
 	return builder.String(), nil
 }
 
