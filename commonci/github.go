@@ -149,8 +149,7 @@ func (g *GithubRequestHandler) UpdatePRStatus(update *GithubPRUpdate) error {
 }
 
 // IsPRApproved checks whether a PR is approved or not.
-// TODO(wenbli): If the SkipIfNotApproved feature is used, this function should
-// undergo testing due to having some logic.
+// TODO: If this function is actually used, it should undergo testing due to having some logic.
 // unit tests can be created based onon actual models-ci repo data that's sent back for a particular PR.
 func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
