@@ -157,9 +157,13 @@ func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string
 	if err != nil {
 		return "", err
 	}
+	validator, ok := commonci.Validators[validatorId]
+	if !ok {
+		return "", err
+	}
 	for _, modelInfo := range modelMap.ModelInfoMap[modelDirName] {
 		// First check whether to skip CI.
-		if !modelInfo.RunCi || len(modelInfo.BuildFiles) == 0 {
+		if len(modelInfo.BuildFiles) == 0 || (!modelInfo.RunCi && !validator.IgnoreRunCi) {
 			continue
 		}
 		if err := cmdTemplate.Execute(&builder, &cmdParams{

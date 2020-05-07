@@ -63,6 +63,11 @@ type Validator struct {
 	// IsPerModel means the validator is run per-model, not across the
 	// entire repo of YANG files.
 	IsPerModel bool
+	// IgnoreRunCi says that the validator's commands should be generated
+	// regardless of what the "run-ci" value in the .spec.yml is -- namely,
+	// that it is a per-build validator, and bypasses the "run-ci" flag
+	// that turns on more advanced testing.
+	IgnoreRunCi bool
 	// SkipIfNotApproved means to avoid running the test on a PR before being approved.
 	// This is used for long-running and less important validators.
 	SkipIfNotApproved bool
@@ -113,6 +118,7 @@ var (
 		"misc-checks": &Validator{
 			Name:              "Miscellaneous Checks",
 			IsPerModel:        true,
+			IgnoreRunCi:       true,
 			SkipIfNotApproved: false,
 		},
 		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:

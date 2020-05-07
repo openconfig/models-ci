@@ -177,8 +177,14 @@ fi
 if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang > /workspace/results/misc-checks/optical-transport.openconfig-optical-amplifier.pr-file-parse-log; then
   >&2 echo "parse of optical-transport.openconfig-optical-amplifier reported non-zero status."
 fi
+if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-connectivity.yang testdata/optical-transport/openconfig-wavelength-router.yang > /workspace/results/misc-checks/optical-transport.openconfig-wavelength-router.pr-file-parse-log; then
+  >&2 echo "parse of optical-transport.openconfig-wavelength-router reported non-zero status."
+fi
 if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang > /workspace/results/misc-checks/optical-transport.openconfig-transport-line-protection.pr-file-parse-log; then
   >&2 echo "parse of optical-transport.openconfig-transport-line-protection reported non-zero status."
+fi
+if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/optical-transport/openconfig-optical-attenuator.yang > /workspace/results/misc-checks/optical-transport.openconfig-optical-attenuator.pr-file-parse-log; then
+  >&2 echo "parse of optical-transport.openconfig-optical-attenuator reported non-zero status."
 fi
 wait
 `,
