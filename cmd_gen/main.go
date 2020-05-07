@@ -310,18 +310,11 @@ func main() {
 		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
 	}
 
-	compatValidators := map[string]bool{}
-	for _, validator := range strings.Split(compatReports, ",") {
-		compatValidators[validator] = true
-	}
-	var compatReportFileContent string
-	if len(compatValidators) > 0 {
-		compatReportFileContent = strings.ReplaceAll(compatReports, ",", " ")
-	}
 	// Notify later CI steps of the validators that should be reported as a compatibility report.
-	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReportFileContent), 0444); err != nil {
+	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
 		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
 	}
+	_, compatValidatorsMap := commonci.GetCompatReportValidators(compatReports)
 
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
@@ -359,7 +352,7 @@ func main() {
 		// Generate validation commands for the validator.
 		for _, version := range versionsToRun {
 			// Post initial PR status.
-			if !compatValidators[validatorId] {
+			if !compatValidatorsMap[validatorId][version] {
 				if errs := postInitialStatus(h, validatorId, version); errs != nil {
 					log.Fatal(errs)
 				}

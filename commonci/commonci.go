@@ -228,3 +228,28 @@ func ParseOCModels(modelRoot string) (OpenConfigModelMap, error) {
 
 	return OpenConfigModelMap{ModelRoot: modelRoot, ModelInfoMap: modelInfoMap}, err
 }
+
+type ValidatorAndVersion struct {
+	ValidatorId string
+	Version     string
+}
+
+func GetCompatReportValidators(compatReportsStr string) ([]ValidatorAndVersion, map[string]map[string]bool) {
+	var compatValidators []ValidatorAndVersion
+	compatValidatorsMap := map[string]map[string]bool{}
+	for _, vvStr := range strings.Fields(strings.ReplaceAll(compatReportsStr, ",", " ")) {
+		vvSegments := strings.SplitN(vvStr, "@", 2)
+		vv := ValidatorAndVersion{ValidatorId: vvSegments[0]}
+		if len(vvSegments) == 2 {
+			vv.Version = vvSegments[1]
+		}
+		compatValidators = append(compatValidators, vv)
+		m, ok := compatValidatorsMap[vv.ValidatorId]
+		if !ok {
+			m = map[string]bool{}
+			compatValidatorsMap[vv.ValidatorId] = m
+		}
+		m[vv.Version] = true
+	}
+	return compatValidators, compatValidatorsMap
+}
