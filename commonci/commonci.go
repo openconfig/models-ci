@@ -49,7 +49,7 @@ const (
 	FailFileName = "fail"
 )
 
-func validatorVersionName(validatorId, version string) string {
+func ValidatorVersionName(validatorId, version string) string {
 	if version != "" {
 		version = "@" + version
 	}
@@ -60,7 +60,7 @@ func validatorVersionName(validatorId, version string) string {
 // results are
 // stored.
 func ValidatorResultsDir(validatorId, version string) string {
-	return filepath.Join(ResultsDir, validatorVersionName(validatorId, version))
+	return filepath.Join(ResultsDir, ValidatorVersionName(validatorId, version))
 }
 
 // Validator describes a validation tool.
@@ -82,7 +82,7 @@ func (v *Validator) StatusName(version string) string {
 	if v == nil {
 		return ""
 	}
-	return validatorVersionName(v.Name, version)
+	return ValidatorVersionName(v.Name, version)
 }
 
 var (
@@ -90,7 +90,7 @@ var (
 	// The key is a unique identifier that's safe to use as a directory name.
 	Validators = map[string]*Validator{
 		"pyang": &Validator{
-			Name:       "Pyang",
+			Name:       "pyang",
 			IsPerModel: true,
 		},
 		"oc-pyang": &Validator{
@@ -98,7 +98,7 @@ var (
 			IsPerModel: true,
 		},
 		"pyangbind": &Validator{
-			Name:       "Pyangbind",
+			Name:       "pyangbind",
 			IsPerModel: true,
 		},
 		"goyang-ygot": &Validator{

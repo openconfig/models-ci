@@ -458,8 +458,10 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 		if outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName)); err != nil {
 			log.Printf("did not read latest version for %s: %v", validatorId, err)
 		} else {
-			// Get the first line of the version output as the tool's display title, with extra spacing in between words removed.
-			validatorDesc = strings.Join(strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0])), " ")
+			// Get the first line of the version output as the tool's display title.
+			nameAndVersionParts = strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0]))
+			// Format it a little.
+			validatorDesc = commonci.ValidatorVersionName(nameAndVersionParts[0], strings.Join(nameAndVersionParts[1:], " "))
 		}
 	}
 
