@@ -479,11 +479,14 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 	return validatorDesc, content, nil
 }
 
+type validatorAndVersion struct {
+	validatorId string
+	version     string
+}
+
 // postCompatibilityReport posts the results for the validators to be reported
 // under a compatibility report.
-// TODO(wenbli): compatReports doesn't support extra versions for a
-// validator -- should support extra versions.
-func postCompatibilityReport(validatorIds []string) error {
+func postCompatibilityReport(validatorAndVersions []validatorAndVersion) error {
 	validator, ok := commonci.Validators["compat-report"]
 	if !ok {
 		return fmt.Errorf("CI infra failure: compatibility report validator not found in commonci.Validators")
@@ -491,12 +494,12 @@ func postCompatibilityReport(validatorIds []string) error {
 
 	var executionOutput string
 	var validatorDescs []string
-	for _, validatorId := range validatorIds {
-		resultsDir := commonci.ValidatorResultsDir(validatorId, version)
+	for _, vv := range validatorAndVersions {
+		resultsDir := commonci.ValidatorResultsDir(vv.validatorId, vv.version)
 
 		// Create gist representing test results. The "validatorDesc" is the
 		// title of the gist, and "content" is the script execution output.
-		validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
+		validatorDesc, content, err := getGistHeading(vv.validatorId, vv.version, resultsDir)
 		if err != nil {
 			return fmt.Errorf("postResult: %v", err)
 		}
@@ -520,11 +523,11 @@ func postCompatibilityReport(validatorIds []string) error {
 
 	var commentBuilder strings.Builder
 	commentBuilder.WriteString(fmt.Sprintf("Compatibility Report for commit %s:\n", commitSHA))
-	for i, validatorId := range validatorIds {
-		resultsDir := commonci.ValidatorResultsDir(validatorId, version)
+	for i, vv := range validatorAndVersions {
+		resultsDir := commonci.ValidatorResultsDir(vv.validatorId, vv.version)
 
 		// Post parsed test results as a gist comment.
-		testResultString, pass, err := getResult(validatorId, resultsDir)
+		testResultString, pass, err := getResult(vv.validatorId, resultsDir)
 		if err != nil {
 			return fmt.Errorf("postResult: couldn't parse results: %v", err)
 		}
@@ -558,17 +561,26 @@ func postResult(validatorId, version string) error {
 	var err error
 	var g *commonci.GithubRequestHandler
 
-	var compatValidators []string
+	// TODO(wenovus): add test for this block of code.
+	var compatValidators []validatorAndVersion
 	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	for _, validator := range strings.Fields(compatReportsStr) {
-		if validator == validatorId {
-			log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", validatorId)
+	for _, vvStr := range strings.Fields(compatReportsStr) {
+		vvSegments := strings.SplitN(vvStr, "@", 2)
+		if len(vvSegments) != 2 {
+			return fmt.Errorf("Infra error: unexpected <validator>@<version> format when parsing %q within line:\n%s", vvStr, compatReportsStr)
+		}
+		vv := validatorAndVersion{
+			validatorId: vvSegments[0],
+			version:     vvSegments[1],
+		}
+		if validatorId == vv.validatorId && version == vv.version {
+			log.Printf("Validator %s@%s part of compatibility report, skipping reporting standalone PR status.", validatorId, version)
 			return nil
 		}
-		compatValidators = append(compatValidators, validator)
+		compatValidators = append(compatValidators, vv)
 	}
 
 	if validatorId == "compat-report" {

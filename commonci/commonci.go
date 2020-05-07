@@ -127,10 +127,9 @@ var (
 		// report as a compatibility check instead of as a standalone
 		// PR status.
 		"compat-report": &Validator{
-			Name:              "Compatibility Report",
-			IsPerModel:        false,
-			IsVirtual:         true,
-			SkipIfNotApproved: false,
+			Name:       "Compatibility Report",
+			IsPerModel: false,
+			IsVirtual:  true,
 		},
 	}
 

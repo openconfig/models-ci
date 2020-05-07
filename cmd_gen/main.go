@@ -34,7 +34,7 @@ var (
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
 	prNumber           int
-	compatReports      string // e.g. "goyang-ygot,pyangbind,oc-pyang"
+	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
 
 	// Derived flags (for ease of use)
@@ -67,7 +67,7 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
-	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators to be included in compatibility report instead of a standalone PR status")
+	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
 
 	// Local run flags
