@@ -46,6 +46,7 @@ var (
 	validatorId  string // validatorId is the unique name identifying the validator (see commonci for all of them)
 	modelRoot    string // modelRoot is the root directory of the models.
 	repoSlug     string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
+	prNumber     int
 	prBranchName string
 	commitSHA    string
 	version      string // version is a specific version of the validator that's being run (empty means latest).
@@ -59,6 +60,7 @@ func init() {
 	flag.StringVar(&validatorId, "validator", "", "unique name of the validator")
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
+	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
 	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
@@ -475,6 +477,73 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 	return validatorDesc, content, nil
 }
 
+// postCompatibilityReport posts the results for the validators to be reported
+// under a compatibility report.
+// TODO(wenbli): compatReports doesn't support extra versions for a
+// validator -- should support extra versions.
+func postCompatibilityReport(validatorIds []string) error {
+	validator, ok := commonci.Validators["compat-report"]
+	if !ok {
+		return fmt.Errorf("CI infra failure: compatibility report validator not found in commonci.Validators")
+	}
+
+	var executionOutput string
+	var validatorDescs []string
+	for _, validatorId := range validatorIds {
+		resultsDir := commonci.ValidatorResultsDir(validatorId, version)
+
+		// Create gist representing test results. The "validatorDesc" is the
+		// title of the gist, and "content" is the script execution output.
+		validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
+		if err != nil {
+			return fmt.Errorf("postResult: %v", err)
+		}
+		executionOutput += validatorDesc + ":\n" + content + "\n"
+		validatorDescs = append(validatorDescs, validatorDesc)
+	}
+
+	var g *commonci.GithubRequestHandler
+	var err error
+	var gistID string
+	if err := commonci.Retry(5, "CreateCIOutputGist", func() error {
+		g, err = commonci.NewGitHubRequestHandler()
+		if err != nil {
+			return err
+		}
+		_, gistID, err = g.CreateCIOutputGist(validator.Name, executionOutput)
+		return err
+	}); err != nil {
+		return fmt.Errorf("postResult: couldn't create gist: %v", err)
+	}
+
+	var commentBuilder strings.Builder
+	commentBuilder.WriteString(fmt.Sprintf("Compatibility Report for commit %s:\n", commitSHA))
+	for i, validatorId := range validatorIds {
+		resultsDir := commonci.ValidatorResultsDir(validatorId, version)
+
+		// Post parsed test results as a gist comment.
+		testResultString, pass, err := getResult(validatorId, resultsDir)
+		if err != nil {
+			return fmt.Errorf("postResult: couldn't parse results: %v", err)
+		}
+
+		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
+		gistContent := testResultString
+		url, err := g.AddGistComment(gistID, gistTitle, gistContent)
+		if err != nil {
+			fmt.Errorf("postResult: could not add gist comment: %v", err)
+		}
+
+		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s)\n", lintSymbol(pass), validatorDescs[i], url))
+	}
+
+	comment := commentBuilder.String()
+	if err := g.AddPRComment(&comment, owner, repo, prNumber); err != nil {
+		return fmt.Errorf("postCompatibilityReport: couldn't post comment: %v", err)
+	}
+	return nil
+}
+
 // postResult retrieves the test output for the given validator and version
 // from its results folder and posts a gist and PR status linking to the gist.
 func postResult(validatorId, version string) error {
@@ -486,6 +555,24 @@ func postResult(validatorId, version string) error {
 	var url, gistID string
 	var err error
 	var g *commonci.GithubRequestHandler
+
+	var compatValidators []string
+	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
+	if err != nil {
+		return fmt.Errorf("postResult: %v", err)
+	}
+	for _, validator := range strings.Fields(compatReportsStr) {
+		if validator == validatorId {
+			log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", validatorId)
+			return nil
+		}
+		compatValidators = append(compatValidators, validator)
+	}
+
+	if validatorId == "compat-report" {
+		log.Printf("Processing compatibility report for %s", compatReportsStr)
+		return postCompatibilityReport(compatValidators)
+	}
 
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
@@ -511,7 +598,9 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
-	g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString)
+	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString); err != nil {
+		fmt.Errorf("postResult: could not add gist comment: %v", err)
+	}
 
 	prUpdate := &commonci.GithubPRUpdate{
 		Owner:   owner,

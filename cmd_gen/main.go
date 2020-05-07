@@ -34,6 +34,7 @@ var (
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
 	prNumber           int
+	compatReports      string // e.g. "goyang-ygot,pyangbind,oc-pyang"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
 
 	// Derived flags (for ease of use)
@@ -66,6 +67,7 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
+	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators to be included in compatibility report instead of a standalone PR status")
 	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
 
 	// Local run flags
@@ -322,6 +324,19 @@ func main() {
 		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
 	}
 
+	compatValidators := map[string]bool{}
+	for _, validator := range strings.Split(compatReports, ",") {
+		compatValidators[validator] = true
+	}
+	var compatReportFileContent string
+	if len(compatValidators) > 0 {
+		compatReportFileContent = strings.ReplaceAll(compatReports, ",", " ")
+	}
+	// Notify later CI steps of the validators that should be reported as a compatibility report.
+	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReportFileContent), 0444); err != nil {
+		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
+	}
+
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
 		var extraVersions []string
@@ -344,8 +359,12 @@ func main() {
 		if validatorId == "pyang" {
 			versionsToRun = append(versionsToRun, "-head")
 		}
-		if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
-			log.Fatal(errs)
+
+		// Post standalone PR status for validator if it's not to be in the compatibility report.
+		if compatValidators[validatorId] {
+			if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
+				log.Fatal(errs)
+			}
 		}
 
 		// Generate validation commands for the validator.

@@ -36,6 +36,9 @@ const (
 	// passed from cmd_gen to later stages of the CI. It is common to all
 	// CI steps.
 	UserConfigDir = "/workspace/user-config"
+	// CompatReportValidatorsFile notifies later CI steps of the validators
+	// that should be reported as a compatibility report.
+	CompatReportValidatorsFile = UserConfigDir + "/compat-report-validators.txt"
 	// ScriptFileName by convention is the script with the validator commands.
 	ScriptFileName = "script.sh"
 	// LatestVersionFileName by convention contains the version description
@@ -119,6 +122,14 @@ var (
 			Name:              "Miscellaneous Checks",
 			IsPerModel:        true,
 			IgnoreRunCi:       true,
+			SkipIfNotApproved: false,
+		},
+		// This is a virtual entry for all validators configured to
+		// report as a compatibility check instead of as a standalone
+		// PR status.
+		"compat-report": &Validator{
+			Name:              "Compatibility Report",
+			IsPerModel:        false,
 			SkipIfNotApproved: false,
 		},
 		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:

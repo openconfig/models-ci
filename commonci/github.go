@@ -98,17 +98,25 @@ func (g *GithubRequestHandler) CreateCIOutputGist(description, content string) (
 	return *gist.HTMLURL, *gist.ID, nil
 }
 
-// AddGistComment adds a comment to a gist.
-func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) error {
+// AddGistComment adds a comment to a gist and returns its URL.
+func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
 
 	gistComment := fmt.Sprintf("# %s\n%s", title, output)
 
-	return Retry(5, "gist comment creation", func() error {
-		_, _, err := g.client.Gists.CreateComment(ctx, gistID, &github.GistComment{Body: &gistComment})
-		return err
-	})
+	var url string
+	if err := Retry(5, "gist comment creation", func() error {
+		c, _, err := g.client.Gists.CreateComment(ctx, gistID, &github.GistComment{Body: &gistComment})
+		if err != nil {
+			return err
+		}
+		url = *c.URL
+		return nil
+	}); err != nil {
+		return "", err
+	}
+	return url, nil
 }
 
 // UpdatePRStatus takes an input githubPRUpdate struct and updates a GitHub
@@ -226,6 +234,19 @@ func (g *GithubRequestHandler) DeleteLabel(labelName, owner, repo string, prNumb
 	// we're only interested in deleting the label from the PR.
 
 	delete(g.labels, labelName)
+	return nil
+}
+
+// AddPRComment posts a comment to the PR.
+func (g *GithubRequestHandler) AddPRComment(body *string, owner, repo string, prNumber int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
+	if err := Retry(5, "posting issue comment to PR", func() error {
+		_, _, err := g.client.Issues.CreateComment(ctx, owner, repo, prNumber, &github.IssueComment{Body: body})
+		return err
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
