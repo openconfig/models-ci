@@ -1,9 +1,12 @@
 #!/bin/bash
 
+ROOT_DIR=/workspace
 USERCONFIG_DIR=$ROOT_DIR/user-config
 
+echo validators to be put in compability report:
+cat $USERCONFIG_DIR/compat-report-validators.txt
+
 if ! [ -s $USERCONFIG_DIR/compat-report-validators.txt ]; then
-  # no validator needs a compability report.
   exit 0
 fi
 

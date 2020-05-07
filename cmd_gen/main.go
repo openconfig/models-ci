@@ -361,7 +361,7 @@ func main() {
 		}
 
 		// Post standalone PR status for validator if it's not to be in the compatibility report.
-		if compatValidators[validatorId] {
+		if !compatValidators[validatorId] {
 			if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
 				log.Fatal(errs)
 			}
