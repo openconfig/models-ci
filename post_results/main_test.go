@@ -354,7 +354,7 @@ func TestGetGistInfo(t *testing.T) {
 		name:                 "oc-pyang with output and latest-version.txt file",
 		inValidatorResultDir: "testdata/oc-pyang",
 		inValidatorId:        "oc-pyang",
-		wantDescription:      "yanglint SO 1.5.5",
+		wantDescription:      "yanglint@SO 1.5.5",
 		wantContent:          "foo\n",
 	}, {
 		name:                 "invalid validator name",

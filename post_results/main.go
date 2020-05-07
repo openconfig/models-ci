@@ -459,7 +459,7 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 			log.Printf("did not read latest version for %s: %v", validatorId, err)
 		} else {
 			// Get the first line of the version output as the tool's display title.
-			nameAndVersionParts = strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0]))
+			nameAndVersionParts := strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0]))
 			// Format it a little.
 			validatorDesc = commonci.ValidatorVersionName(nameAndVersionParts[0], strings.Join(nameAndVersionParts[1:], " "))
 		}
