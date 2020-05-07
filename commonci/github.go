@@ -98,25 +98,25 @@ func (g *GithubRequestHandler) CreateCIOutputGist(description, content string) (
 	return *gist.HTMLURL, *gist.ID, nil
 }
 
-// AddGistComment adds a comment to a gist and returns its URL.
+// AddGistComment adds a comment to a gist and returns its ID.
 func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
 
 	gistComment := fmt.Sprintf("# %s\n%s", title, output)
 
-	var url string
+	var id int64
 	if err := Retry(5, "gist comment creation", func() error {
 		c, _, err := g.client.Gists.CreateComment(ctx, gistID, &github.GistComment{Body: &gistComment})
 		if err != nil {
 			return err
 		}
-		url = *c.URL
+		id = c.GetID()
 		return nil
 	}); err != nil {
 		return "", err
 	}
-	return url, nil
+	return id, nil
 }
 
 // UpdatePRStatus takes an input githubPRUpdate struct and updates a GitHub

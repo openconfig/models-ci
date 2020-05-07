@@ -504,13 +504,13 @@ func postCompatibilityReport(validatorIds []string) error {
 
 	var g *commonci.GithubRequestHandler
 	var err error
-	var gistID string
+	var gistURL, gistID string
 	if err := commonci.Retry(5, "CreateCIOutputGist", func() error {
 		g, err = commonci.NewGitHubRequestHandler()
 		if err != nil {
 			return err
 		}
-		_, gistID, err = g.CreateCIOutputGist(validator.Name, executionOutput)
+		gistURL, gistID, err = g.CreateCIOutputGist(validator.Name, executionOutput)
 		return err
 	}); err != nil {
 		return fmt.Errorf("postResult: couldn't create gist: %v", err)
@@ -529,12 +529,12 @@ func postCompatibilityReport(validatorIds []string) error {
 
 		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
 		gistContent := testResultString
-		url, err := g.AddGistComment(gistID, gistTitle, gistContent)
+		id, err := g.AddGistComment(gistID, gistTitle, gistContent)
 		if err != nil {
 			fmt.Errorf("postResult: could not add gist comment: %v", err)
 		}
 
-		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s)\n", lintSymbol(pass), validatorDescs[i], url))
+		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", lintSymbol(pass), validatorDescs[i], gistURL, id))
 	}
 
 	comment := commentBuilder.String()
