@@ -569,15 +569,12 @@ func postResult(validatorId, version string) error {
 	}
 	for _, vvStr := range strings.Fields(compatReportsStr) {
 		vvSegments := strings.SplitN(vvStr, "@", 2)
-		if len(vvSegments) != 2 {
-			return fmt.Errorf("Infra error: unexpected <validator>@<version> format when parsing %q within line:\n%s", vvStr, compatReportsStr)
-		}
-		vv := validatorAndVersion{
-			validatorId: vvSegments[0],
-			version:     vvSegments[1],
+		vv := validatorAndVersion{validatorId: vvSegments[0]}
+		if len(vvSegments) == 2 {
+			vv.version = vvSegments[1]
 		}
 		if validatorId == vv.validatorId && version == vv.version {
-			log.Printf("Validator %s@%s part of compatibility report, skipping reporting standalone PR status.", validatorId, version)
+			log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.ValidatorVersionName(validatorId, version))
 			return nil
 		}
 		compatValidators = append(compatValidators, vv)
