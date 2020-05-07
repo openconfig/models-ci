@@ -334,7 +334,7 @@ func main() {
 		// Empty string means the latest version, which is always run.
 		versionsToRun := append([]string{""}, extraVersions...)
 		if validatorId == "pyang" {
-			versionsToRun = append(versionsToRun, "-head")
+			versionsToRun = append(versionsToRun, "head")
 		}
 
 		// Generate validation commands for the validator.

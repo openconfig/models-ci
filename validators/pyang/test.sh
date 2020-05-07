@@ -18,8 +18,8 @@ fi
 # For running older versions of pyang
 run-pyang-version() {
   echo running extra pyang version $1
-  local RESULTSDIR=$ROOT_DIR/results/pyang$1
-  local VENVDIR=$TESTDIR/pyangvenv$1
+  local RESULTSDIR=$ROOT_DIR/results/pyang@$1
+  local VENVDIR=$TESTDIR/pyangvenv@$1
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   pip3 install pyang==$1
@@ -32,8 +32,8 @@ run-pyang-version() {
 
 run-pyang-head() {
   echo running pyang head
-  local RESULTSDIR=$ROOT_DIR/results/pyang-head
-  local VENVDIR=$TESTDIR/pyangvenv-head
+  local RESULTSDIR=$ROOT_DIR/results/pyang@head
+  local VENVDIR=$TESTDIR/pyangvenv@head
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   local REPODIR=$RESULTSDIR/pyang
@@ -46,7 +46,7 @@ run-pyang-head() {
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
-  $GOPATH/bin/post_results -validator=pyang -version="-head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  $GOPATH/bin/post_results -validator=pyang -version="head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
 }
 
 run-pyang-head &
