@@ -53,7 +53,10 @@ const (
 // results are
 // stored.
 func ValidatorResultsDir(validatorId, version string) string {
-	return filepath.Join(ResultsDir, validatorId+"@"+version)
+	if version != "" {
+		version = "@" + version
+	}
+	return filepath.Join(ResultsDir, validatorId+version)
 }
 
 // Validator describes a validation tool.
