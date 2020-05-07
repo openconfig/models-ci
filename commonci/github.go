@@ -99,7 +99,7 @@ func (g *GithubRequestHandler) CreateCIOutputGist(description, content string) (
 }
 
 // AddGistComment adds a comment to a gist and returns its ID.
-func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) (string, error) {
+func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel() // cancel context if the function returns before the timeout
 
@@ -114,7 +114,7 @@ func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) (str
 		id = c.GetID()
 		return nil
 	}); err != nil {
-		return "", err
+		return 0, err
 	}
 	return id, nil
 }
