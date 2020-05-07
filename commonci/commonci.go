@@ -49,14 +49,18 @@ const (
 	FailFileName = "fail"
 )
 
+func validatorVersionName(validatorId, version string) string {
+	if version != "" {
+		version = "@" + version
+	}
+	return validatorId + version
+}
+
 // ValidatorResultsDir determines where a particular validator and version's
 // results are
 // stored.
 func ValidatorResultsDir(validatorId, version string) string {
-	if version != "" {
-		version = "@" + version
-	}
-	return filepath.Join(ResultsDir, validatorId+version)
+	return filepath.Join(ResultsDir, validatorVersionName(validatorId, version))
 }
 
 // Validator describes a validation tool.
@@ -78,7 +82,7 @@ func (v *Validator) StatusName(version string) string {
 	if v == nil {
 		return ""
 	}
-	return ValidatorResultsDir(v.Name, version)
+	return validatorVersionName(v.Name, version)
 }
 
 var (
