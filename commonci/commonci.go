@@ -73,9 +73,6 @@ type Validator struct {
 	IgnoreRunCi bool
 	// IsVirtual indicates that it's not a direct validator.
 	IsVirtual bool
-	// SkipIfNotApproved means to avoid running the test on a PR before being approved.
-	// This is used for long-running and less important validators.
-	SkipIfNotApproved bool
 }
 
 // StatusName determines the status description for the version of the validator.
@@ -91,40 +88,33 @@ var (
 	// The key is a unique identifier that's safe to use as a directory name.
 	Validators = map[string]*Validator{
 		"pyang": &Validator{
-			Name:              "Pyang",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "Pyang",
+			IsPerModel: true,
 		},
 		"oc-pyang": &Validator{
-			Name:              "OpenConfig Linter",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "OpenConfig Linter",
+			IsPerModel: true,
 		},
 		"pyangbind": &Validator{
-			Name:              "Pyangbind",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "Pyangbind",
+			IsPerModel: true,
 		},
 		"goyang-ygot": &Validator{
-			Name:              "goyang/ygot",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "goyang/ygot",
+			IsPerModel: true,
 		},
 		"yanglint": &Validator{
-			Name:              "yanglint",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "yanglint",
+			IsPerModel: true,
 		},
 		"regexp": &Validator{
-			Name:              "regexp tests",
-			IsPerModel:        false,
-			SkipIfNotApproved: false,
+			Name:       "regexp tests",
+			IsPerModel: false,
 		},
 		"misc-checks": &Validator{
-			Name:              "Miscellaneous Checks",
-			IsPerModel:        true,
-			IgnoreRunCi:       true,
-			SkipIfNotApproved: false,
+			Name:        "Miscellaneous Checks",
+			IsPerModel:  true,
+			IgnoreRunCi: true,
 		},
 		// This is a virtual entry for all validators configured to
 		// report as a compatibility check instead of as a standalone
@@ -135,11 +125,6 @@ var (
 			IsVirtual:         true,
 			SkipIfNotApproved: false,
 		},
-		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:
-		// 1. It is inconvenient to force the user to always re-invoke the build after approval
-		// if the changes were trivial.
-		// 2. GCB can't rebuild GitHub App builds more than 3 days ago, so it requires an
-		// approval less than 3 days later for a "rerun" to be executed without a new push.
 	}
 
 	// LabelColors are some helper hex colours for posting to GitHub.
@@ -177,6 +162,9 @@ type OpenConfigModelMap struct {
 	ModelInfoMap map[string][]ModelInfo
 }
 
+// SingleLineBuildFiles returns all of the build files defined by all the
+// .spec.yml files in the models, if run-ci is true, as a single,
+// space-separated line.
 func (m OpenConfigModelMap) SingleLineBuildFiles() string {
 	modelDirNames := make([]string, 0, len(m.ModelInfoMap))
 	for modelDirName := range m.ModelInfoMap {
