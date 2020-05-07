@@ -71,6 +71,8 @@ type Validator struct {
 	// that it is a per-build validator, and bypasses the "run-ci" flag
 	// that turns on more advanced testing.
 	IgnoreRunCi bool
+	// IsVirtual indicates that it's not a direct validator.
+	IsVirtual bool
 	// SkipIfNotApproved means to avoid running the test on a PR before being approved.
 	// This is used for long-running and less important validators.
 	SkipIfNotApproved bool
@@ -130,6 +132,7 @@ var (
 		"compat-report": &Validator{
 			Name:              "Compatibility Report",
 			IsPerModel:        false,
+			IsVirtual:         true,
 			SkipIfNotApproved: false,
 		},
 		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:

@@ -339,6 +339,10 @@ func main() {
 
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
+		if validator.IsVirtual {
+			continue
+		}
+
 		var extraVersions []string
 		if validatorId == "pyang" {
 			// pyang also runs a HEAD version.
