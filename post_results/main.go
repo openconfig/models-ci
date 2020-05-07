@@ -529,7 +529,7 @@ func postCompatibilityReport(validatorAndVersions []validatorAndVersion) error {
 		// Post parsed test results as a gist comment.
 		testResultString, pass, err := getResult(vv.validatorId, resultsDir)
 		if err != nil {
-			return fmt.Errorf("postResult: couldn't parse results: %v", err)
+			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.validatorId, vv.version, resultsDir, err)
 		}
 
 		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
