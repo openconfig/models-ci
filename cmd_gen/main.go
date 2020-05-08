@@ -88,24 +88,24 @@ func mustTemplate(name, src string) *template.Template {
 type cmdParams struct {
 	ModelRoot    string
 	RepoRoot     string
-	BuildFiles   string
+	BuildFiles   []string
 	ModelDirName string
 	ModelName    string
 	ResultsDir   string
 }
 
 var (
-	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
@@ -116,17 +116,17 @@ fi &
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
-{{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+{{ range $i, $buildFile := .BuildFiles -}} {{ $buildFile }} {{ end -}} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	yanglintCmdTemplate = mustTemplate("yanglint", `if ! yanglint -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	yanglintCmdTemplate = mustTemplate("yanglint", `if ! yanglint -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi
 `)
 
-	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/ocversion -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
+	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/ocversion -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
   >&2 echo "parse of {{ .ModelDirName }}.{{ .ModelName }} reported non-zero status."
 fi
 `)
@@ -171,7 +171,7 @@ func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string
 		if err := cmdTemplate.Execute(&builder, &cmdParams{
 			ModelRoot:    modelMap.ModelRoot,
 			RepoRoot:     commonci.RootDir,
-			BuildFiles:   strings.Join(modelInfo.BuildFiles, " "),
+			BuildFiles:   modelInfo.BuildFiles,
 			ModelDirName: modelDirName,
 			ModelName:    modelInfo.Name,
 			ResultsDir:   resultsDir,

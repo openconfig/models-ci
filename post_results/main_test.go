@@ -368,6 +368,12 @@ func TestGetGistInfo(t *testing.T) {
 		wantDescription:      "regexp tests",
 		wantContent:          "No output",
 	}, {
+		name:                 "regexp with no output but with latest-version.txt file with no spaces in the version name",
+		inValidatorResultDir: "testdata/regexp-tests2",
+		inValidatorId:        "regexp",
+		wantDescription:      "regexp-1.2",
+		wantContent:          "No output",
+	}, {
 		name:                 "pyang with missing output file",
 		inValidatorResultDir: "testdata/pyang-with-invalid-files",
 		inValidatorId:        "pyang",

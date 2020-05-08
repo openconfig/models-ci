@@ -463,7 +463,10 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 			// Get the first line of the version output as the tool's display title.
 			nameAndVersionParts := strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0]))
 			// Format it a little.
-			validatorDesc = commonci.AppendVersionToName(nameAndVersionParts[0], strings.Join(nameAndVersionParts[1:], " "))
+			validatorDesc = nameAndVersionParts[0]
+			if len(nameAndVersionParts) > 1 {
+				validatorDesc = commonci.AppendVersionToName(validatorDesc, strings.Join(nameAndVersionParts[1:], " "))
+			}
 		}
 	}
 
