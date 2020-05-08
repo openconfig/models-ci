@@ -52,18 +52,19 @@ const (
 	FailFileName = "fail"
 )
 
-func ValidatorVersionName(validatorId, version string) string {
+// AppendVersionToName appends the version to the given validator name
+func AppendVersionToName(validatorName, version string) string {
 	if version != "" {
 		version = "@" + version
 	}
-	return validatorId + version
+	return validatorName + version
 }
 
 // ValidatorResultsDir determines where a particular validator and version's
 // results are
 // stored.
 func ValidatorResultsDir(validatorId, version string) string {
-	return filepath.Join(ResultsDir, ValidatorVersionName(validatorId, version))
+	return filepath.Join(ResultsDir, AppendVersionToName(validatorId, version))
 }
 
 // Validator describes a validation tool.
@@ -78,8 +79,9 @@ type Validator struct {
 	// that it is a per-build validator, and bypasses the "run-ci" flag
 	// that turns on more advanced testing.
 	IgnoreRunCi bool
-	// IsVirtual indicates that it's not a direct validator.
-	IsVirtual bool
+	// ReportOnly indicates that it's not itself a validator, it's just a
+	// CI item that does reporting on other validators.
+	ReportOnly bool
 }
 
 // StatusName determines the status description for the version of the validator.
@@ -87,7 +89,7 @@ func (v *Validator) StatusName(version string) string {
 	if v == nil {
 		return ""
 	}
-	return ValidatorVersionName(v.Name, version)
+	return AppendVersionToName(v.Name, version)
 }
 
 var (
@@ -123,13 +125,13 @@ var (
 			IsPerModel:  true,
 			IgnoreRunCi: true,
 		},
-		// This is a virtual entry for all validators configured to
+		// This is a report-only entry for all validators configured to
 		// report as a compatibility check instead of as a standalone
 		// PR status.
 		"compat-report": &Validator{
 			Name:       "Compatibility Report",
 			IsPerModel: false,
-			IsVirtual:  true,
+			ReportOnly: true,
 		},
 	}
 
@@ -234,6 +236,9 @@ type ValidatorAndVersion struct {
 	Version     string
 }
 
+// GetCompatReportValidators converts a comma-separated list of
+// <validatorId>@<version> names to a list of ValidatorAndVersion and nested
+// map of validatorId to version for checking existence.
 func GetCompatReportValidators(compatReportsStr string) ([]ValidatorAndVersion, map[string]map[string]bool) {
 	var compatValidators []ValidatorAndVersion
 	compatValidatorsMap := map[string]map[string]bool{}

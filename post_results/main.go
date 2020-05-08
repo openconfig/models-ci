@@ -463,7 +463,7 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 			// Get the first line of the version output as the tool's display title.
 			nameAndVersionParts := strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0]))
 			// Format it a little.
-			validatorDesc = commonci.ValidatorVersionName(nameAndVersionParts[0], strings.Join(nameAndVersionParts[1:], " "))
+			validatorDesc = commonci.AppendVersionToName(nameAndVersionParts[0], strings.Join(nameAndVersionParts[1:], " "))
 		}
 	}
 
@@ -570,7 +570,7 @@ func postResult(validatorId, version string) error {
 
 	// Skip reporting if validator is part of compatibility report.
 	if compatValidatorsMap[validatorId][version] {
-		log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.ValidatorVersionName(validatorId, version))
+		log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
 		return nil
 	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
