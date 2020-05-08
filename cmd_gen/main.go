@@ -126,6 +126,15 @@ fi &
 fi
 `)
 
+	confdCmdTemplate = mustTemplate("confd", `status=0
+{{- range $i, $buildFile := .BuildFiles }}
+$1 -c --yangpath $2 {{ $buildFile }} &>> {{ $.ResultsDir }}/{{ $.ModelDirName }}=={{ $.ModelName }}==pass || status=1
+{{- end }}
+if [[ $status -eq "1" ]]; then
+  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
+fi
+`)
+
 	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/ocversion -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
   >&2 echo "parse of {{ .ModelDirName }}.{{ .ModelName }} reported non-zero status."
 fi
@@ -146,6 +155,8 @@ func validatorTemplate(validatorId string) (*template.Template, error) {
 		return goyangYgotCmdTemplate, nil
 	case "yanglint":
 		return yanglintCmdTemplate, nil
+	case "confd":
+		return confdCmdTemplate, nil
 	case "misc-checks":
 		return miscChecksCmdTemplate, nil
 	}

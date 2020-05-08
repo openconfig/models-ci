@@ -166,6 +166,30 @@ fi
 wait
 `,
 	}, {
+		name:            "basic confd",
+		inModelMap:      basicModelMap,
+		inValidatorName: "confd",
+		wantCmd: `#!/bin/bash
+mkdir -p /workspace/results/confd
+status=0
+$1 -c --yangpath $2 testdata/acl/openconfig-acl.yang &>> /workspace/results/confd/acl==openconfig-acl==pass || status=1
+$1 -c --yangpath $2 testdata/acl/openconfig-acl-evil-twin.yang &>> /workspace/results/confd/acl==openconfig-acl==pass || status=1
+if [[ $status -eq "1" ]]; then
+  mv /workspace/results/confd/acl==openconfig-acl==pass /workspace/results/confd/acl==openconfig-acl==fail
+fi
+status=0
+$1 -c --yangpath $2 testdata/optical-transport/openconfig-optical-amplifier.yang &>> /workspace/results/confd/optical-transport==openconfig-optical-amplifier==pass || status=1
+if [[ $status -eq "1" ]]; then
+  mv /workspace/results/confd/optical-transport==openconfig-optical-amplifier==pass /workspace/results/confd/optical-transport==openconfig-optical-amplifier==fail
+fi
+status=0
+$1 -c --yangpath $2 testdata/optical-transport/openconfig-transport-line-protection.yang &>> /workspace/results/confd/optical-transport==openconfig-transport-line-protection==pass || status=1
+if [[ $status -eq "1" ]]; then
+  mv /workspace/results/confd/optical-transport==openconfig-transport-line-protection==pass /workspace/results/confd/optical-transport==openconfig-transport-line-protection==fail
+fi
+wait
+`,
+	}, {
 		name:            "basic misc-checks",
 		inModelMap:      basicModelMap,
 		inValidatorName: "misc-checks",

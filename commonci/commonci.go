@@ -116,6 +116,10 @@ var (
 			Name:       "yanglint",
 			IsPerModel: true,
 		},
+		"confd": &Validator{
+			Name:       "ConfD Basic",
+			IsPerModel: true,
+		},
 		"regexp": &Validator{
 			Name:       "regexp tests",
 			IsPerModel: false,
