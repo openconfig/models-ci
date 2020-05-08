@@ -11,7 +11,7 @@ if ! stat $RESULTSDIR; then
 fi
 
 apt install -qy unzip
-unzip $ZIP_FILE $RESULTSDIR/confd-unzipped
+unzip $ZIP_FILE -d $RESULTSDIR/confd-unzipped
 find $RESULTSDIR/confd-unzipped -name 'confd-basic-*.linux.x86_64.installer.bin' -exec {} $RESULTSDIR/confd-install \;
 CONFDC=$RESULTSDIR/confd-install/bin/confdc
 
