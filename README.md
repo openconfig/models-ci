@@ -150,7 +150,10 @@ preparation steps. The high-level build steps needed in the `cloudbuild.yaml`
 are,
 
 1.  Clone models-ci repo into GOPATH and get dependencies using `go get ./...`.
-2.  Call `cmd_gen` to generate the validator scripts for each validator tool.
+2.  Call `cmd_gen` to generate the validator scripts for each validator tool. If
+    a validator script should not gate the changes, but should only serve as a
+    reference for committers, then they could be explicitly specified to appear
+    in the compatibility report instead using -compat-report flag.
 3.  Prepare each validator tool if necessary.
 4.  Run each validator tool either directly, or through the `script.sh`
     generated from `cmd_gen`, redirecting the result into specified files.

@@ -487,13 +487,12 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		return fmt.Errorf("CI infra failure: compatibility report validator not found in commonci.Validators")
 	}
 
+	// Get the combined execution output, as well as each validator's header description.
 	var executionOutput string
 	var validatorDescs []string
 	for _, vv := range validatorAndVersions {
 		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
 
-		// Create gist representing test results. The "validatorDesc" is the
-		// title of the gist, and "content" is the script execution output.
 		validatorDesc, content, err := getGistHeading(vv.ValidatorId, vv.Version, resultsDir)
 		if err != nil {
 			return fmt.Errorf("postResult: %v", err)
@@ -502,6 +501,7 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		validatorDescs = append(validatorDescs, validatorDesc)
 	}
 
+	// Post the gist to contain each validator's results.
 	var g *commonci.GithubRequestHandler
 	var err error
 	var gistURL, gistID string
@@ -516,6 +516,8 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		return fmt.Errorf("postResult: couldn't create gist: %v", err)
 	}
 
+	// Post a gist comment for each validator.
+	// Also, build a PR comment to be posted on the PR page linking to each gist comment.
 	var commentBuilder strings.Builder
 	commentBuilder.WriteString(fmt.Sprintf("Compatibility Report for commit %s:\n", commitSHA))
 	for i, vv := range validatorAndVersions {
@@ -536,7 +538,6 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 
 		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", lintSymbol(pass), validatorDescs[i], gistURL, id))
 	}
-
 	comment := commentBuilder.String()
 	if err := g.AddPRComment(&comment, owner, repo, prNumber); err != nil {
 		return fmt.Errorf("postCompatibilityReport: couldn't post comment: %v", err)
