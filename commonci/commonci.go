@@ -36,6 +36,9 @@ const (
 	// passed from cmd_gen to later stages of the CI. It is common to all
 	// CI steps.
 	UserConfigDir = "/workspace/user-config"
+	// CompatReportValidatorsFile notifies later CI steps of the validators
+	// that should be reported as a compatibility report.
+	CompatReportValidatorsFile = UserConfigDir + "/compat-report-validators.txt"
 	// ScriptFileName by convention is the script with the validator commands.
 	ScriptFileName = "script.sh"
 	// LatestVersionFileName by convention contains the version description
@@ -49,11 +52,19 @@ const (
 	FailFileName = "fail"
 )
 
+// AppendVersionToName appends the version to the given validator name
+func AppendVersionToName(validatorName, version string) string {
+	if version != "" {
+		version = "@" + version
+	}
+	return validatorName + version
+}
+
 // ValidatorResultsDir determines where a particular validator and version's
 // results are
 // stored.
 func ValidatorResultsDir(validatorId, version string) string {
-	return filepath.Join(ResultsDir, validatorId+version)
+	return filepath.Join(ResultsDir, AppendVersionToName(validatorId, version))
 }
 
 // Validator describes a validation tool.
@@ -68,9 +79,9 @@ type Validator struct {
 	// that it is a per-build validator, and bypasses the "run-ci" flag
 	// that turns on more advanced testing.
 	IgnoreRunCi bool
-	// SkipIfNotApproved means to avoid running the test on a PR before being approved.
-	// This is used for long-running and less important validators.
-	SkipIfNotApproved bool
+	// ReportOnly indicates that it's not itself a validator, it's just a
+	// CI item that does reporting on other validators.
+	ReportOnly bool
 }
 
 // StatusName determines the status description for the version of the validator.
@@ -78,7 +89,7 @@ func (v *Validator) StatusName(version string) string {
 	if v == nil {
 		return ""
 	}
-	return v.Name + version
+	return AppendVersionToName(v.Name, version)
 }
 
 var (
@@ -86,46 +97,42 @@ var (
 	// The key is a unique identifier that's safe to use as a directory name.
 	Validators = map[string]*Validator{
 		"pyang": &Validator{
-			Name:              "Pyang",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "pyang",
+			IsPerModel: true,
 		},
 		"oc-pyang": &Validator{
-			Name:              "OpenConfig Linter",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "OpenConfig Linter",
+			IsPerModel: true,
 		},
 		"pyangbind": &Validator{
-			Name:              "Pyangbind",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "pyangbind",
+			IsPerModel: true,
 		},
 		"goyang-ygot": &Validator{
-			Name:              "goyang/ygot",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "goyang/ygot",
+			IsPerModel: true,
 		},
 		"yanglint": &Validator{
-			Name:              "yanglint",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "yanglint",
+			IsPerModel: true,
 		},
 		"regexp": &Validator{
-			Name:              "regexp tests",
-			IsPerModel:        false,
-			SkipIfNotApproved: false,
+			Name:       "regexp tests",
+			IsPerModel: false,
 		},
 		"misc-checks": &Validator{
-			Name:              "Miscellaneous Checks",
-			IsPerModel:        true,
-			IgnoreRunCi:       true,
-			SkipIfNotApproved: false,
+			Name:        "Miscellaneous Checks",
+			IsPerModel:  true,
+			IgnoreRunCi: true,
 		},
-		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:
-		// 1. It is inconvenient to force the user to always re-invoke the build after approval
-		// if the changes were trivial.
-		// 2. GCB can't rebuild GitHub App builds more than 3 days ago, so it requires an
-		// approval less than 3 days later for a "rerun" to be executed without a new push.
+		// This is a report-only entry for all validators configured to
+		// report as a compatibility check instead of as a standalone
+		// PR status.
+		"compat-report": &Validator{
+			Name:       "Compatibility Report",
+			IsPerModel: false,
+			ReportOnly: true,
+		},
 	}
 
 	// LabelColors are some helper hex colours for posting to GitHub.
@@ -163,6 +170,9 @@ type OpenConfigModelMap struct {
 	ModelInfoMap map[string][]ModelInfo
 }
 
+// SingleLineBuildFiles returns all of the build files defined by all the
+// .spec.yml files in the models, if run-ci is true, as a single,
+// space-separated line.
 func (m OpenConfigModelMap) SingleLineBuildFiles() string {
 	modelDirNames := make([]string, 0, len(m.ModelInfoMap))
 	for modelDirName := range m.ModelInfoMap {
@@ -219,4 +229,32 @@ func ParseOCModels(modelRoot string) (OpenConfigModelMap, error) {
 	})
 
 	return OpenConfigModelMap{ModelRoot: modelRoot, ModelInfoMap: modelInfoMap}, err
+}
+
+type ValidatorAndVersion struct {
+	ValidatorId string
+	Version     string
+}
+
+// GetCompatReportValidators converts a comma-separated list of
+// <validatorId>@<version> names to a list of ValidatorAndVersion and nested
+// map of validatorId to version for checking existence.
+func GetCompatReportValidators(compatReportsStr string) ([]ValidatorAndVersion, map[string]map[string]bool) {
+	var compatValidators []ValidatorAndVersion
+	compatValidatorsMap := map[string]map[string]bool{}
+	for _, vvStr := range strings.Fields(strings.ReplaceAll(compatReportsStr, ",", " ")) {
+		vvSegments := strings.SplitN(vvStr, "@", 2)
+		vv := ValidatorAndVersion{ValidatorId: vvSegments[0]}
+		if len(vvSegments) == 2 {
+			vv.Version = vvSegments[1]
+		}
+		compatValidators = append(compatValidators, vv)
+		m, ok := compatValidatorsMap[vv.ValidatorId]
+		if !ok {
+			m = map[string]bool{}
+			compatValidatorsMap[vv.ValidatorId] = m
+		}
+		m[vv.Version] = true
+	}
+	return compatValidators, compatValidatorsMap
 }

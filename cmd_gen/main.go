@@ -34,6 +34,7 @@ var (
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
 	prNumber           int
+	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
 
 	// Derived flags (for ease of use)
@@ -66,6 +67,7 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
+	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
 
 	// Local run flags
@@ -225,36 +227,29 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	return builder.String(), nil
 }
 
-// postInitialStatuses posts the initial status for all versions of a validator.
-func postInitialStatuses(g *commonci.GithubRequestHandler, validatorId string, versions []string, prApproved bool) []error {
-	var errs []error
+// postInitialStatus posts the initial status for all versions of a validator.
+func postInitialStatus(g *commonci.GithubRequestHandler, validatorId string, version string) error {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return append(errs, fmt.Errorf("validator %q not recognized", validatorId))
+		return fmt.Errorf("validator %q not recognized", validatorId)
 	}
-	for _, version := range versions {
-		validatorName := validator.StatusName(version)
-		// Update the status to pending so that the user can see that we have received
-		// this request and are ready to run the CI.
-		update := &commonci.GithubPRUpdate{
-			Owner:       owner,
-			Repo:        repo,
-			Ref:         commitSHA,
-			Description: validatorName + " Running",
-			NewStatus:   "pending",
-			Context:     validatorName,
-		}
-		if !prApproved && validator.SkipIfNotApproved {
-			update.Description = validatorName + " Skipped (PR not approved)"
-			update.NewStatus = "error"
-		}
+	validatorName := validator.StatusName(version)
+	// Update the status to pending so that the user can see that we have received
+	// this request and are ready to run the CI.
+	update := &commonci.GithubPRUpdate{
+		Owner:       owner,
+		Repo:        repo,
+		Ref:         commitSHA,
+		Description: validatorName + " Running",
+		NewStatus:   "pending",
+		Context:     validatorName,
+	}
 
-		if err := g.UpdatePRStatus(update); err != nil {
-			log.Printf("error: couldn't update PR: %s", err)
-			errs = append(errs, err)
-		}
+	if err := g.UpdatePRStatus(update); err != nil {
+		log.Printf("error: couldn't update PR: %s", err)
+		return err
 	}
-	return errs
+	return nil
 }
 
 func main() {
@@ -264,7 +259,6 @@ func main() {
 	if modelRoot == "" {
 		log.Fatalf("Must supply modelRoot path")
 	}
-
 	// Populate information necessary for validation script generation.
 	modelMap, err := commonci.ParseOCModels(modelRoot)
 	if err != nil {
@@ -309,12 +303,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	prApproved, err := h.IsPRApproved(owner, repo, prNumber)
-	if err != nil {
-		log.Fatalf("warning: Could not check PR approved status, running all checks: %v", err)
-		prApproved = true
-	}
-
 	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
 		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
 	}
@@ -322,8 +310,18 @@ func main() {
 		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
 	}
 
+	// Notify later CI steps of the validators that should be reported as a compatibility report.
+	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
+		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
+	}
+	_, compatValidatorsMap := commonci.GetCompatReportValidators(compatReports)
+
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
+		if validator.ReportOnly {
+			continue
+		}
+
 		var extraVersions []string
 		if validatorId == "pyang" {
 			// pyang also runs a HEAD version.
@@ -339,25 +337,26 @@ func main() {
 			}
 		}
 
-		// Empty string means the latest version, which is always run.
-		versionsToRun := append([]string{""}, extraVersions...)
-		if validatorId == "pyang" {
-			versionsToRun = append(versionsToRun, "-head")
-		}
-		if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
-			log.Fatal(errs)
-		}
-
-		// Generate validation commands for the validator.
 		switch {
 		case !validator.IsPerModel:
 			// We don't generate commands when the tool is just ran on the entire models directory.
 			continue
-		case !prApproved && validator.SkipIfNotApproved:
-			// We don't generate commands for less important and long tests until PR is approved.
-			continue
 		}
+
+		// Empty string means the latest version, which is always run.
+		versionsToRun := append([]string{""}, extraVersions...)
+		if validatorId == "pyang" {
+			versionsToRun = append(versionsToRun, "head")
+		}
+
+		// Generate validation commands for the validator.
 		for _, version := range versionsToRun {
+			// Post initial PR status.
+			if !compatValidatorsMap[validatorId][version] {
+				if errs := postInitialStatus(h, validatorId, version); errs != nil {
+					log.Fatal(errs)
+				}
+			}
 			validatorResultsDir := commonci.ValidatorResultsDir(validatorId, version)
 			if err := os.MkdirAll(validatorResultsDir, 0644); err != nil {
 				log.Fatalf("error while creating directory %q: %v", validatorResultsDir, err)
