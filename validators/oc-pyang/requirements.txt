@@ -1,3 +1,6 @@
+lxml
+MarkupSafe
+cython
 wheel
 pyaml
 setuptools

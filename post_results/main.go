@@ -1,3 +1,17 @@
+// Copyright 2020 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -6,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"log"
@@ -31,6 +46,7 @@ var (
 	validatorId  string // validatorId is the unique name identifying the validator (see commonci for all of them)
 	modelRoot    string // modelRoot is the root directory of the models.
 	repoSlug     string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
+	prNumber     int
 	prBranchName string
 	commitSHA    string
 	version      string // version is a specific version of the validator that's being run (empty means latest).
@@ -44,6 +60,7 @@ func init() {
 	flag.StringVar(&validatorId, "validator", "", "unique name of the validator")
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
+	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
 	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
@@ -56,8 +73,189 @@ func lintSymbol(pass bool) string {
 	return mdPassSymbol
 }
 
-func sprintLineHTML(line string) string {
-	return fmt.Sprintf("  <li>%s</li>\n", line)
+// sprintLineHTML prints a single list item to be put under a top-level summary item.
+func sprintLineHTML(format string, a ...interface{}) string {
+	return fmt.Sprintf("  <li>"+format+"</li>\n", a...)
+}
+
+// sprintSummaryHTML prints a top-level summary item containing free-form or list items.
+func sprintSummaryHTML(pass bool, title, format string, a ...interface{}) string {
+	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n"+format+"</details>\n", append([]interface{}{lintSymbol(pass), title}, a...)...)
+}
+
+// readFile reads the entire file into a string and returns it along with an error if any.
+func readFile(path string) (string, error) {
+	outBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file at path %q: %v\n", path, err)
+	}
+	return string(outBytes), nil
+}
+
+// readYangFilesList reads a file containing a list of YANG files, and returns
+// a slice of these files. An unrecognized line causes an error to be returned.
+// The error checking is not robust, but should be sufficient for our limited use.
+func readYangFilesList(path string) ([]string, error) {
+	filesStr, err := readFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	fileMap := map[string]bool{}
+	for _, line := range strings.Split(filesStr, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fileSegments := strings.Split(line, "/")
+		yangFileName := strings.TrimSpace(fileSegments[len(fileSegments)-1])
+		if !strings.HasSuffix(yangFileName, ".yang") {
+			return nil, fmt.Errorf("while parsing %s: unrecognized line, expected a path ending in a YANG file: %s", path, line)
+		}
+		fileMap[yangFileName] = true
+	}
+
+	var files []string
+	for f := range fileMap {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+// readGoyangVersionsLog returns a map of YANG files to file attributes as parsed from the log.
+// The file should be a list of YANG file to space-separated attributes.
+// e.g.
+// foo.yang: openconfig-version:"1.2.3" revision-version:"2.3.4"
+func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map[string]map[string]string) error {
+	fileLog, err := readFile(logPath)
+	if err != nil {
+		return err
+	}
+	for _, line := range strings.Split(fileLog, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fileSegments := strings.SplitN(line, ":", 2)
+		yangFileName := strings.TrimSpace(fileSegments[0])
+		if !strings.HasSuffix(yangFileName, ".yang") {
+			return fmt.Errorf("while parsing %s: unrecognized line heading %q, expected a \"<name>.yang:\" start to the line: %q", logPath, yangFileName, line)
+		}
+		propertyMap, ok := fileProperties[yangFileName]
+		if !ok {
+			propertyMap = map[string]string{}
+			fileProperties[yangFileName] = propertyMap
+		}
+
+		if !masterBranch {
+			propertyMap["reachable"] = "true"
+		}
+
+		for _, property := range strings.Fields(strings.TrimSpace(fileSegments[1])) {
+			segments := strings.SplitN(property, ":", 2)
+			if len(segments) != 2 {
+				return fmt.Errorf("while parsing %s: unrecognized property substring, expected \"<property name>:\"<property>\"\" separated by spaces: %q", logPath, property)
+			}
+			name, value := segments[0], segments[1]
+			if value[0] == '"' {
+				if len(value) == 1 || value[len(value)-1] != '"' {
+					return fmt.Errorf("while parsing %s: Got invalid property value format: %s -- if the property value starts with a quote, it is assumed to be an enclosing quote", logPath, property)
+				}
+				value = value[1 : len(value)-1] // Remove enclosing quotes.
+			}
+			switch name {
+			case "openconfig-version":
+				fallthrough
+			case "latest-revision-version":
+				if masterBranch {
+					name = "master-" + name
+				}
+				propertyMap[name] = value
+			default:
+				log.Printf("skipped unrecognized YANG file property: %s", property)
+			}
+		}
+	}
+	return nil
+}
+
+// processMiscChecksOutput takes the raw result output from the misc-checks
+// results directory and returns its formatted report and pass/fail status.
+func processMiscChecksOutput(resultsDir string) (string, bool, error) {
+	fileProperties := map[string]map[string]string{}
+	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
+	if err != nil {
+		return "", false, err
+	}
+	for _, file := range changedFiles {
+		if _, ok := fileProperties[file]; !ok {
+			fileProperties[file] = map[string]string{}
+		}
+		fileProperties[file]["changed"] = "true"
+	}
+	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "pr-file-parse-log"), false, fileProperties); err != nil {
+		return "", false, err
+	}
+	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "master-file-parse-log"), true, fileProperties); err != nil {
+		return "", false, err
+	}
+
+	var ocVersionViolations []string
+	ocVersionChangedCount := 0
+	var reachabilityViolations []string
+	filesReachedCount := 0
+	// Only look at the PR's files as they might be different from the master's files.
+	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(resultsDir, "all-non-empty-files.txt"))
+	if err != nil {
+		return "", false, err
+	}
+	for _, file := range allNonEmptyPRFiles {
+		properties, ok := fileProperties[file]
+
+		// Reachability check
+		if !ok || properties["reachable"] != "true" {
+			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: file not used by any .spec.yml build.", file))
+			// If the file was not reached, then its other
+			// parameters would not have been parsed by goyang, so
+			// simply skip the rest of the checks.
+			continue
+		}
+		filesReachedCount += 1
+
+		// openconfig-version update check
+		ocVersion, hasVersion := properties["openconfig-version"]
+		masterOcVersion, hadVersion := properties["master-openconfig-version"]
+		switch {
+		case properties["changed"] != "true":
+			// We assume the versioning is correct without change.
+		case hasVersion:
+			// TODO(wenovus): This logic can be improved to check whether the increment follows semver rules.
+			if ocVersion == masterOcVersion {
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
+				break
+			}
+			ocVersionChangedCount += 1
+		case hadVersion:
+			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
+		}
+	}
+
+	// Compute HTML string and pass/fail status.
+	var out strings.Builder
+	var pass = true
+	appendViolationOut := func(desc string, violations []string, passString string) {
+		if len(violations) == 0 {
+			out.WriteString(sprintSummaryHTML(true, desc, passString))
+		} else {
+			out.WriteString(sprintSummaryHTML(false, desc, strings.Join(violations, "")))
+			pass = false
+		}
+	}
+	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d file(s) correctly updated.\n", ocVersionChangedCount))
+	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
+
+	return out.String(), pass, nil
 }
 
 // processAnyPyangOutput takes the raw pyang output and transforms it to an
@@ -128,10 +326,6 @@ func processAnyPyangOutput(rawOut string, pass, noWarnings bool) (string, error)
 	return out.String(), nil
 }
 
-func sprintSummaryHTML(pass bool, modelName, message string) string {
-	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n%s</details>\n", lintSymbol(pass), modelName, message)
-}
-
 // parseModelResultsHTML transforms the output files of the validator script into HTML
 // to be displayed on GitHub.
 func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool, error) {
@@ -173,11 +367,10 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 			}
 
 			// Get output string.
-			outBytes, err := ioutil.ReadFile(path)
+			outString, err := readFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read file at path %q: %v\n", path, err)
 			}
-			outString := string(outBytes)
 
 			// Transform output string into HTML.
 			if strings.Contains(validatorId, "pyang") {
@@ -238,25 +431,27 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 			outString = "Validator script failed -- infra bug?\n" + outString
 		}
 		pass = false
-	case !validator.IsPerModel:
+	case validator.IsPerModel && validatorId == "misc-checks":
+		outString, pass, err = processMiscChecksOutput(resultsDir)
+	case validator.IsPerModel:
+		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
+	default:
 		outString = "Test passed."
 		pass = true
-	default:
-		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
 	}
 
 	return outString, pass, err
 }
 
-// getGistInfo gets the description and content of the result gist for the
+// getGistHeading gets the description and content of the result gist for the
 // given validator from its script output file. The "description" is the title
 // of the gist, and "content" is the script execution output.
 // NOTE: The parsed test result output (distinct from the script execution
 // output) should be attached as a comment on the same gist.
-func getGistInfo(validatorId, version, resultsDir string) (string, string, error) {
+func getGistHeading(validatorId, version, resultsDir string) (string, string, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", "", fmt.Errorf("getGistInfo: validator %q not found!", validatorId)
+		return "", "", fmt.Errorf("getGistHeading: validator %q not found!", validatorId)
 	}
 
 	validatorDesc := validator.StatusName(version)
@@ -265,8 +460,10 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 		if outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName)); err != nil {
 			log.Printf("did not read latest version for %s: %v", validatorId, err)
 		} else {
-			// Get the first line of the version output as the tool's display title, with extra spacing in between words removed.
-			validatorDesc = strings.Join(strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 1)[0])), " ")
+			// Get the first line of the version output as the tool's display title.
+			nameAndVersionParts := strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0]))
+			// Format it a little.
+			validatorDesc = commonci.AppendVersionToName(nameAndVersionParts[0], strings.Join(nameAndVersionParts[1:], " "))
 		}
 	}
 
@@ -282,9 +479,74 @@ func getGistInfo(validatorId, version, resultsDir string) (string, string, error
 	return validatorDesc, content, nil
 }
 
-// postResult runs the OpenConfig linter, and Go-based tests for the models
-// repo. The results are written to a GitHub Gist, and into the PR that was
-// modified, associated with the commit reference SHA.
+// postCompatibilityReport posts the results for the validators to be reported
+// under a compatibility report.
+func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion) error {
+	validator, ok := commonci.Validators["compat-report"]
+	if !ok {
+		return fmt.Errorf("CI infra failure: compatibility report validator not found in commonci.Validators")
+	}
+
+	// Get the combined execution output, as well as each validator's header description.
+	var executionOutput string
+	var validatorDescs []string
+	for _, vv := range validatorAndVersions {
+		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
+
+		validatorDesc, content, err := getGistHeading(vv.ValidatorId, vv.Version, resultsDir)
+		if err != nil {
+			return fmt.Errorf("postResult: %v", err)
+		}
+		executionOutput += validatorDesc + ":\n" + content + "\n"
+		validatorDescs = append(validatorDescs, validatorDesc)
+	}
+
+	// Post the gist to contain each validator's results.
+	var g *commonci.GithubRequestHandler
+	var err error
+	var gistURL, gistID string
+	if err := commonci.Retry(5, "CreateCIOutputGist", func() error {
+		g, err = commonci.NewGitHubRequestHandler()
+		if err != nil {
+			return err
+		}
+		gistURL, gistID, err = g.CreateCIOutputGist(validator.Name, executionOutput)
+		return err
+	}); err != nil {
+		return fmt.Errorf("postResult: couldn't create gist: %v", err)
+	}
+
+	// Post a gist comment for each validator.
+	// Also, build a PR comment to be posted on the PR page linking to each gist comment.
+	var commentBuilder strings.Builder
+	commentBuilder.WriteString(fmt.Sprintf("Compatibility Report for commit %s:\n", commitSHA))
+	for i, vv := range validatorAndVersions {
+		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
+
+		// Post parsed test results as a gist comment.
+		testResultString, pass, err := getResult(vv.ValidatorId, resultsDir)
+		if err != nil {
+			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
+		}
+
+		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
+		gistContent := testResultString
+		id, err := g.AddGistComment(gistID, gistTitle, gistContent)
+		if err != nil {
+			fmt.Errorf("postResult: could not add gist comment: %v", err)
+		}
+
+		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", lintSymbol(pass), validatorDescs[i], gistURL, id))
+	}
+	comment := commentBuilder.String()
+	if err := g.AddPRComment(&comment, owner, repo, prNumber); err != nil {
+		return fmt.Errorf("postCompatibilityReport: couldn't post comment: %v", err)
+	}
+	return nil
+}
+
+// postResult retrieves the test output for the given validator and version
+// from its results folder and posts a gist and PR status linking to the gist.
 func postResult(validatorId, version string) error {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
@@ -295,11 +557,27 @@ func postResult(validatorId, version string) error {
 	var err error
 	var g *commonci.GithubRequestHandler
 
+	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
+	if err != nil {
+		return fmt.Errorf("postResult: %v", err)
+	}
+	compatValidators, compatValidatorsMap := commonci.GetCompatReportValidators(compatReportsStr)
+
+	if validatorId == "compat-report" {
+		log.Printf("Processing compatibility report for %s", compatReportsStr)
+		return postCompatibilityReport(compatValidators)
+	}
+
+	// Skip reporting if validator is part of compatibility report.
+	if compatValidatorsMap[validatorId][version] {
+		log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
+		return nil
+	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
 	// Create gist representing test results. The "validatorDesc" is the
 	// title of the gist, and "content" is the script execution output.
-	validatorDesc, content, err := getGistInfo(validatorId, version, resultsDir)
+	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
@@ -319,7 +597,9 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
-	g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString)
+	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString); err != nil {
+		fmt.Errorf("postResult: could not add gist comment: %v", err)
+	}
 
 	prUpdate := &commonci.GithubPRUpdate{
 		Owner:   owner,

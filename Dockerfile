@@ -1,7 +1,7 @@
 FROM gcr.io/cloud-builders/go:debian
 SHELL ["/bin/bash", "-c"]
 
-#RUN git clone https://github.com/mbj4668/pyang.git /workspace/results/pyang-head/pyang
+#RUN git clone https://github.com/mbj4668/pyang.git /workspace/results/pyang@head/pyang
 RUN git clone https://github.com/openconfig/oc-pyang /workspace/oc-pyang-repo
 RUN git clone https://github.com/robshakir/pyangbind /workspace/pyangbind-repo
 

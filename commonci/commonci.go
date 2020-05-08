@@ -1,17 +1,27 @@
+// Copyright 2020 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package commonci
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
-	"time"
 
-	"github.com/google/go-github/github"
-	"golang.org/x/oauth2"
+	"gopkg.in/yaml.v3"
 )
 
 // commonci contains definitions and constants common to the CI process in
@@ -22,6 +32,13 @@ const (
 	RootDir = "/workspace"
 	// ResultsDir contains all results of the CI process.
 	ResultsDir = "/workspace/results"
+	// UserConfigDir by convention contains the user config that is
+	// passed from cmd_gen to later stages of the CI. It is common to all
+	// CI steps.
+	UserConfigDir = "/workspace/user-config"
+	// CompatReportValidatorsFile notifies later CI steps of the validators
+	// that should be reported as a compatibility report.
+	CompatReportValidatorsFile = UserConfigDir + "/compat-report-validators.txt"
 	// ScriptFileName by convention is the script with the validator commands.
 	ScriptFileName = "script.sh"
 	// LatestVersionFileName by convention contains the version description
@@ -35,11 +52,19 @@ const (
 	FailFileName = "fail"
 )
 
+// AppendVersionToName appends the version to the given validator name
+func AppendVersionToName(validatorName, version string) string {
+	if version != "" {
+		version = "@" + version
+	}
+	return validatorName + version
+}
+
 // ValidatorResultsDir determines where a particular validator and version's
 // results are
 // stored.
 func ValidatorResultsDir(validatorId, version string) string {
-	return filepath.Join(ResultsDir, validatorId+version)
+	return filepath.Join(ResultsDir, AppendVersionToName(validatorId, version))
 }
 
 // Validator describes a validation tool.
@@ -49,9 +74,14 @@ type Validator struct {
 	// IsPerModel means the validator is run per-model, not across the
 	// entire repo of YANG files.
 	IsPerModel bool
-	// SkipIfNotApproved means to avoid running the test on a PR before being approved.
-	// This is used for long-running and less important validators.
-	SkipIfNotApproved bool
+	// IgnoreRunCi says that the validator's commands should be generated
+	// regardless of what the "run-ci" value in the .spec.yml is -- namely,
+	// that it is a per-build validator, and bypasses the "run-ci" flag
+	// that turns on more advanced testing.
+	IgnoreRunCi bool
+	// ReportOnly indicates that it's not itself a validator, it's just a
+	// CI item that does reporting on other validators.
+	ReportOnly bool
 }
 
 // StatusName determines the status description for the version of the validator.
@@ -59,7 +89,7 @@ func (v *Validator) StatusName(version string) string {
 	if v == nil {
 		return ""
 	}
-	return v.Name + version
+	return AppendVersionToName(v.Name, version)
 }
 
 var (
@@ -67,40 +97,42 @@ var (
 	// The key is a unique identifier that's safe to use as a directory name.
 	Validators = map[string]*Validator{
 		"pyang": &Validator{
-			Name:              "Pyang",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "pyang",
+			IsPerModel: true,
 		},
 		"oc-pyang": &Validator{
-			Name:              "OpenConfig Linter",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "OpenConfig Linter",
+			IsPerModel: true,
 		},
 		"pyangbind": &Validator{
-			Name:              "Pyangbind",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "pyangbind",
+			IsPerModel: true,
 		},
 		"goyang-ygot": &Validator{
-			Name:              "goyang/ygot",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "goyang/ygot",
+			IsPerModel: true,
 		},
 		"yanglint": &Validator{
-			Name:              "yanglint",
-			IsPerModel:        true,
-			SkipIfNotApproved: false,
+			Name:       "yanglint",
+			IsPerModel: true,
 		},
 		"regexp": &Validator{
-			Name:              "regexp tests",
-			IsPerModel:        false,
-			SkipIfNotApproved: false,
+			Name:       "regexp tests",
+			IsPerModel: false,
 		},
-		// NOTE: SkipIfNotApproved is currently not used due to 2 practical problems:
-		// 1. It is inconvenient to force the user to always re-invoke the build after approval
-		// if the changes were trivial.
-		// 2. GCB can't rebuild GitHub App builds more than 3 days ago, so it requires an
-		// approval less than 3 days later for a "rerun" to be executed without a new push.
+		"misc-checks": &Validator{
+			Name:        "Miscellaneous Checks",
+			IsPerModel:  true,
+			IgnoreRunCi: true,
+		},
+		// This is a report-only entry for all validators configured to
+		// report as a compatibility check instead of as a standalone
+		// PR status.
+		"compat-report": &Validator{
+			Name:       "Compatibility Report",
+			IsPerModel: false,
+			ReportOnly: true,
+		},
 	}
 
 	// LabelColors are some helper hex colours for posting to GitHub.
@@ -120,237 +152,109 @@ var (
 	}
 )
 
-// GithubRequestHandler carries information relating to the GitHub session that
-// is being used for the continuous integration.
-type GithubRequestHandler struct {
-	// hashSecret is the GitHub secret that is specified with the hook, it is
-	// used to validate whether the response that is received is from GitHub.
-	hashSecret string
-	// Client is the connection to GitHub that should be utilised.
-	client *github.Client
-	// accessToken is the OAuth token that should be used for interactions with
-	// the GitHub API and to retrieve repo contents.
-	accessToken string
-	labels      map[string]bool
+// ModelInfo represents the yaml model of an OpenConfig .spec.yml file.
+type ModelInfo struct {
+	Name       string
+	DocFiles   []string `yaml:"docs"`
+	BuildFiles []string `yaml:"build"`
+	RunCi      bool     `yaml:"run-ci"`
 }
 
-// GithubPRUpdate is used to specify how an update to the status of a PR should
-// be made with the UpdatePRStatus method.
-type GithubPRUpdate struct {
-	Owner       string
-	Repo        string
-	Ref         string
-	NewStatus   string
-	URL         string
-	Description string
-	Context     string
+// OpenConfigModelMap represents the directory structure and model information
+// of the entire OpenConfig models required for CI.
+type OpenConfigModelMap struct {
+	// ModelRoot is the path to the OpenConfig models root directory.
+	ModelRoot string
+	// ModelInfoMap stores all ModelInfo for each model directory keyed by
+	// the relative path to the model directory's .spec.yml.
+	ModelInfoMap map[string][]ModelInfo
 }
 
-// Retry retries a function maxN times or when it returns true.
-// In between each retry there is a small delay.
-// This is intended to be used for posting results to GitHub from GCB, which
-// frequently experiences errors likely due to connection issues.
-func Retry(maxN uint, name string, f func() error) error {
-	var err error
-	for i := uint(0); i <= maxN; i++ {
-		if err = f(); err == nil {
-			return nil
-		}
-		log.Printf("Retry %d of %s, error: %v", i, name, err)
-		time.Sleep(250 * time.Millisecond)
+// SingleLineBuildFiles returns all of the build files defined by all the
+// .spec.yml files in the models, if run-ci is true, as a single,
+// space-separated line.
+func (m OpenConfigModelMap) SingleLineBuildFiles() string {
+	modelDirNames := make([]string, 0, len(m.ModelInfoMap))
+	for modelDirName := range m.ModelInfoMap {
+		modelDirNames = append(modelDirNames, modelDirName)
 	}
-	return err
-}
+	sort.Strings(modelDirNames)
 
-// CreateCIOutputGist creates a GitHub Gist, and appends a comment with the
-// result of the validator into it.  The function returns the URL and ID of the
-// Gist that was created, and an error if experienced during processing.
-func (g *GithubRequestHandler) CreateCIOutputGist(description, content string) (string, string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel() // cancel context if the function returns before the timeout
-
-	public := false
-	// Create a new Gist struct - the description is used as the tag-line of
-	// the created content, and the GistFilename (within the Files map) as
-	// the input filename in the GitHub UI.
-	gist := &github.Gist{
-		Description: &description,
-		Public:      &public,
-		Files: map[github.GistFilename]github.GistFile{
-			"oc-ci-run": {Content: &content},
-		},
-	}
-
-	if err := Retry(5, fmt.Sprintf("gist creation for %s with content\n%s\n", description, content), func() error {
-		var err error
-		gist, _, err = g.client.Gists.Create(ctx, gist)
-		return err
-	}); err != nil {
-		return "", "", fmt.Errorf("could not create gist: %s", err)
-	}
-	return *gist.HTMLURL, *gist.ID, nil
-}
-
-// AddGistComment adds a comment to a gist.
-func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel() // cancel context if the function returns before the timeout
-
-	gistComment := fmt.Sprintf("# %s\n%s", title, output)
-
-	return Retry(5, "gist comment creation", func() error {
-		_, _, err := g.client.Gists.CreateComment(ctx, gistID, &github.GistComment{Body: &gistComment})
-		return err
-	})
-}
-
-// UpdatePRStatus takes an input githubPRUpdate struct and updates a GitHub
-// pull request's status with the relevant details. It returns an error if
-// the update was not successful.
-func (g *GithubRequestHandler) UpdatePRStatus(update *GithubPRUpdate) error {
-	if !validStatuses[update.NewStatus] {
-		return fmt.Errorf("invalid status %s", update.NewStatus)
-	}
-
-	if update.NewStatus == "" || update.Repo == "" || update.Ref == "" || update.Owner == "" {
-		return fmt.Errorf("must specify required fields (status (%s), repo (%s), reference (%s) and owner (%s)) for update", update.NewStatus, update.Repo, update.Ref, update.Owner)
-	}
-
-	// The go-github library takes string pointers within the struct, and hence
-	// we have to provide everything as a pointer.
-	status := &github.RepoStatus{
-		State:       &update.NewStatus,
-		TargetURL:   &update.URL,
-		Description: &update.Description,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel() // cancel context if the function returns before the timeout
-
-	// Context is an optional argument.
-	if update.Context != "" {
-		status.Context = &update.Context
-	}
-
-	if update.Description != "" {
-		status.Description = &update.Description
-	}
-
-	return Retry(5, "PR status update", func() error {
-		_, _, err := g.client.Repositories.CreateStatus(ctx, update.Owner, update.Repo, update.Ref, status)
-		return err
-	})
-}
-
-// IsPRApproved checks whether a PR is approved or not.
-// TODO(wenbli): If the SkipIfNotApproved feature is used, this function should
-// undergo testing due to having some logic.
-// unit tests can be created based onon actual models-ci repo data that's sent back for a particular PR.
-func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel() // cancel context if the function returns before the timeout
-	var reviews []*github.PullRequestReview
-	if err := Retry(5, "get PR reviews list", func() error {
-		var err error
-		reviews, _, err = g.client.PullRequests.ListReviews(ctx, owner, repo, prNumber, nil)
-		return err
-	}); err != nil {
-		return false, err
-	}
-
-	for i := len(reviews) - 1; i != -1; i-- {
-		review := reviews[i]
-		switch strings.ToLower(review.GetState()) {
-		case "approved":
-			return true, nil
-		case "changes_requested":
-			return false, nil
+	var buildFiles []string
+	for _, modelDirName := range modelDirNames {
+		fmt.Println(modelDirName)
+		for _, modelInfo := range m.ModelInfoMap[modelDirName] {
+			if !modelInfo.RunCi {
+				continue
+			}
+			buildFiles = append(buildFiles, modelInfo.BuildFiles...)
 		}
 	}
-	return false, nil
+	return strings.Join(buildFiles, " ")
 }
 
-// PostLabel posts the given label to the PR. It is idempotent.
-// unit tests can be created based onon actual models-ci repo data that's sent back.
-func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo string, prNumber int) error {
-	if g.labels[labelName] {
-		// Label already exists.
+// ParseOCModels walks the path given at modelRoot to populate the OpenConfigModelMap.
+func ParseOCModels(modelRoot string) (OpenConfigModelMap, error) {
+	modelInfoMap := map[string][]ModelInfo{}
+	err := filepath.Walk(modelRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+		}
+		if !info.IsDir() && info.Name() == ".spec.yml" {
+			file, err := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("failed to open spec file at path %q: %v\n", path, err)
+			}
+			m := []ModelInfo{}
+			if err := yaml.NewDecoder(file).Decode(&m); err != nil {
+				return fmt.Errorf("error while unmarshalling spec file at path %q: %v\n", path, err)
+			}
+
+			// Change the build paths to the absolute correct paths.
+			for _, info := range m {
+				for i, fileName := range info.BuildFiles {
+					info.BuildFiles[i] = filepath.Join(modelRoot, strings.TrimPrefix(fileName, "yang/"))
+				}
+			}
+
+			relPath, err := filepath.Rel(modelRoot, filepath.Dir(path))
+			if err != nil {
+				return fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q): %v\n", path, modelRoot, err)
+			}
+			// Allow nested model directories to be used later on as a partial file name.
+			relPath = strings.ReplaceAll(relPath, "/", ":")
+			modelInfoMap[relPath] = m
+		}
 		return nil
-	}
-
-	label := &github.Label{Name: &labelName, Color: &labelColor}
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel()
-
-	// Label may very well already exist within the repo, so skip creation if we see it.
-	_, _, err := g.client.Issues.GetLabel(ctx, owner, repo, labelName)
-	if err != nil {
-		if err := Retry(5, "creating label", func() error {
-			_, _, err = g.client.Issues.CreateLabel(ctx, owner, repo, label)
-			return err
-		}); err != nil {
-			return err
-		}
-	}
-
-	err = Retry(5, "adding label to PR", func() error {
-		_, _, err = g.client.Issues.AddLabelsToIssue(ctx, owner, repo, prNumber, []string{labelName})
-		return err
 	})
-	if err == nil {
-		g.labels[labelName] = true
-	}
 
-	return err
+	return OpenConfigModelMap{ModelRoot: modelRoot, ModelInfoMap: modelInfoMap}, err
 }
 
-// DeleteLabel removes the given label from the PR. It does not remove the
-// label from the repo.
-func (g *GithubRequestHandler) DeleteLabel(labelName, owner, repo string, prNumber int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel()
-	if err := Retry(5, "removing label from PR", func() error {
-		_, err := g.client.Issues.RemoveLabelForIssue(ctx, owner, repo, prNumber, labelName)
-		return err
-	}); err != nil {
-		return err
-	}
-
-	// Do not take the second step to delete the label from the repo as
-	// we're only interested in deleting the label from the PR.
-
-	delete(g.labels, labelName)
-	return nil
+type ValidatorAndVersion struct {
+	ValidatorId string
+	Version     string
 }
 
-// NewGitHubRequestHandler sets up a new GithubRequestHandler struct which
-// creates an oauth2 client with a GitHub access token (as specified by the
-// GITHUB_ACCESS_TOKEN environment variable), and a connection to the GitHub
-// API through the github.com/google/go-github/github library. It returns the
-// initialised GithubRequestHandler struct, or an error as to why the
-// initialisation failed.
-func NewGitHubRequestHandler() (*GithubRequestHandler, error) {
-	accesstk := os.Getenv("GITHUB_ACCESS_TOKEN")
-	if accesstk == "" {
-		return nil, errors.New("newGitHubRequestHandler: invalid access token environment variable set")
+// GetCompatReportValidators converts a comma-separated list of
+// <validatorId>@<version> names to a list of ValidatorAndVersion and nested
+// map of validatorId to version for checking existence.
+func GetCompatReportValidators(compatReportsStr string) ([]ValidatorAndVersion, map[string]map[string]bool) {
+	var compatValidators []ValidatorAndVersion
+	compatValidatorsMap := map[string]map[string]bool{}
+	for _, vvStr := range strings.Fields(strings.ReplaceAll(compatReportsStr, ",", " ")) {
+		vvSegments := strings.SplitN(vvStr, "@", 2)
+		vv := ValidatorAndVersion{ValidatorId: vvSegments[0]}
+		if len(vvSegments) == 2 {
+			vv.Version = vvSegments[1]
+		}
+		compatValidators = append(compatValidators, vv)
+		m, ok := compatValidatorsMap[vv.ValidatorId]
+		if !ok {
+			m = map[string]bool{}
+			compatValidatorsMap[vv.ValidatorId] = m
+		}
+		m[vv.Version] = true
 	}
-
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: accesstk},
-	)
-	tc := oauth2.NewClient(oauth2.NoContext, ts)
-
-	// Set the timeout for the oauth client such that we do not hang around
-	// waiting for the client to complete.
-	tc.Timeout = 2 * time.Second
-
-	// Create a new GitHub client using the go-github library.
-	client := github.NewClient(tc)
-	return &GithubRequestHandler{
-		// If the environment variable GITHUB_SECRET was set then we store it in
-		// the struct, this is a secret that is used to calculate a hash of the
-		// message so that we can validate it.
-		client:      client,
-		accessToken: accesstk,
-		labels:      map[string]bool{},
-	}, nil
+	return compatValidators, compatValidatorsMap
 }

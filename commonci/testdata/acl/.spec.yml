@@ -1,0 +1,8 @@
+- name: openconfig-acl
+  docs:
+    - yang/acl/openconfig-packet-match-types.yang
+    - yang/acl/openconfig-acl.yang
+  build:
+    - yang/acl/openconfig-acl.yang
+    - yang/acl/openconfig-acl-evil-twin.yang
+  run-ci: true

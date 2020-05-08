@@ -1,0 +1,14 @@
+module openconfig-single-extension {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/telemetry-types";
+
+  prefix "oc-telemetry-types";
+
+  import openconfig-extensions { prefix oc-ext; }
+
+  oc-ext:openconfig-version "0.4.2";
+
+}
