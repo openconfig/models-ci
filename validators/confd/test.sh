@@ -10,6 +10,7 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
+apt install -qy unzip
 unzip $ZIP_FILE $RESULTSDIR/confd-unzipped
 find $RESULTSDIR/confd-unzipped -name 'confd-basic-*.linux.x86_64.installer.bin' -exec {} $RESULTSDIR/confd-install \;
 CONFDC=$RESULTSDIR/confd-install/bin/confdc
