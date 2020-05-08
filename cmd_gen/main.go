@@ -34,6 +34,7 @@ var (
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
 	prNumber           int
+	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
 
 	// Derived flags (for ease of use)
@@ -66,6 +67,7 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
+	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
 
 	// Local run flags
@@ -95,28 +97,28 @@ type cmdParams struct {
 var (
 	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
+fi &
 `)
 
 	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
+fi &
 `)
 
-	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o binding.py {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
+fi &
 `)
 
 	goyangYgotCmdTemplate = mustTemplate("goyang-ygot", `if ! /go/bin/generator \
 -path={{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf \
--output_file=`+commonci.ResultsDir+`/goyang-ygot/oc.go \
+-output_file=`+commonci.ResultsDir+`/goyang-ygot/{{ .ModelDirName }}.{{ .ModelName }}.oc.go \
 -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
 -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
 -generate_leaf_getters -generate_delete -annotations \
 {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
+fi &
 `)
 
 	yanglintCmdTemplate = mustTemplate("yanglint", `if ! yanglint -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{ .BuildFiles }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
@@ -220,39 +222,34 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 		builder.WriteString(cmdStr)
 	}
 
+	// In case there are parallel commands.
+	builder.WriteString("wait\n")
 	return builder.String(), nil
 }
 
-// postInitialStatuses posts the initial status for all versions of a validator.
-func postInitialStatuses(g *commonci.GithubRequestHandler, validatorId string, versions []string, prApproved bool) []error {
-	var errs []error
+// postInitialStatus posts the initial status for all versions of a validator.
+func postInitialStatus(g *commonci.GithubRequestHandler, validatorId string, version string) error {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return append(errs, fmt.Errorf("validator %q not recognized", validatorId))
+		return fmt.Errorf("validator %q not recognized", validatorId)
 	}
-	for _, version := range versions {
-		validatorName := validator.StatusName(version)
-		// Update the status to pending so that the user can see that we have received
-		// this request and are ready to run the CI.
-		update := &commonci.GithubPRUpdate{
-			Owner:       owner,
-			Repo:        repo,
-			Ref:         commitSHA,
-			Description: validatorName + " Running",
-			NewStatus:   "pending",
-			Context:     validatorName,
-		}
-		if !prApproved && validator.SkipIfNotApproved {
-			update.Description = validatorName + " Skipped (PR not approved)"
-			update.NewStatus = "error"
-		}
+	validatorName := validator.StatusName(version)
+	// Update the status to pending so that the user can see that we have received
+	// this request and are ready to run the CI.
+	update := &commonci.GithubPRUpdate{
+		Owner:       owner,
+		Repo:        repo,
+		Ref:         commitSHA,
+		Description: validatorName + " Running",
+		NewStatus:   "pending",
+		Context:     validatorName,
+	}
 
-		if err := g.UpdatePRStatus(update); err != nil {
-			log.Printf("error: couldn't update PR: %s", err)
-			errs = append(errs, err)
-		}
+	if err := g.UpdatePRStatus(update); err != nil {
+		log.Printf("error: couldn't update PR: %s", err)
+		return err
 	}
-	return errs
+	return nil
 }
 
 func main() {
@@ -262,7 +259,6 @@ func main() {
 	if modelRoot == "" {
 		log.Fatalf("Must supply modelRoot path")
 	}
-
 	// Populate information necessary for validation script generation.
 	modelMap, err := commonci.ParseOCModels(modelRoot)
 	if err != nil {
@@ -307,18 +303,25 @@ func main() {
 		log.Fatal(err)
 	}
 
-	prApproved, err := h.IsPRApproved(owner, repo, prNumber)
-	if err != nil {
-		log.Fatalf("warning: Could not check PR approved status, running all checks: %v", err)
-		prApproved = true
-	}
-
 	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
 		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
 	}
+	if err := os.MkdirAll(commonci.UserConfigDir, 0644); err != nil {
+		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
+	}
+
+	// Notify later CI steps of the validators that should be reported as a compatibility report.
+	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
+		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
+	}
+	_, compatValidatorsMap := commonci.GetCompatReportValidators(compatReports)
 
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
+		if validator.ReportOnly {
+			continue
+		}
+
 		var extraVersions []string
 		if validatorId == "pyang" {
 			// pyang also runs a HEAD version.
@@ -328,31 +331,32 @@ func main() {
 		// designated extra versions file in order to be relayed to the
 		// corresponding test.sh (next stage of the CI pipeline).
 		if len(extraVersions) > 0 {
-			extraVersionFile := filepath.Join(commonci.ResultsDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
+			extraVersionFile := filepath.Join(commonci.UserConfigDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
 			if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
 				log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
 			}
 		}
 
-		// Empty string means the latest version, which is always run.
-		versionsToRun := append([]string{""}, extraVersions...)
-		if validatorId == "pyang" {
-			versionsToRun = append(versionsToRun, "-head")
-		}
-		if errs := postInitialStatuses(h, validatorId, versionsToRun, prApproved); errs != nil {
-			log.Fatal(errs)
-		}
-
-		// Generate validation commands for the validator.
 		switch {
 		case !validator.IsPerModel:
 			// We don't generate commands when the tool is just ran on the entire models directory.
 			continue
-		case !prApproved && validator.SkipIfNotApproved:
-			// We don't generate commands for less important and long tests until PR is approved.
-			continue
 		}
+
+		// Empty string means the latest version, which is always run.
+		versionsToRun := append([]string{""}, extraVersions...)
+		if validatorId == "pyang" {
+			versionsToRun = append(versionsToRun, "head")
+		}
+
+		// Generate validation commands for the validator.
 		for _, version := range versionsToRun {
+			// Post initial PR status.
+			if !compatValidatorsMap[validatorId][version] {
+				if errs := postInitialStatus(h, validatorId, version); errs != nil {
+					log.Fatal(errs)
+				}
+			}
 			validatorResultsDir := commonci.ValidatorResultsDir(validatorId, version)
 			if err := os.MkdirAll(validatorResultsDir, 0644); err != nil {
 				log.Fatalf("error while creating directory %q: %v", validatorResultsDir, err)
