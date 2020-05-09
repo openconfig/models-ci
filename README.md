@@ -2,6 +2,20 @@
 
 Continuous integration for OpenConfig models.
 
+## Versioning and Making Changes
+
+`models-ci` should always be used with a specified major version within the
+repository's `cloudbuild.yaml`, e.g.
+
+`go get github.com/openconfig/models-ci@v0`
+
+New minor and patch versions are guaranteed to be backwards compatible per
+[semantic versioning rules](https://semver.org/)
+
+Each `cloudbuild.yaml`-incompatible change to `models-ci` should come with major
+version updates. Activated repositories should then make a change to
+`cloudbuild.yaml` to make use of the updated version.
+
 ## Purpose
 
 There are several widely-used YANG tools that form an important part of what
