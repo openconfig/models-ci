@@ -10,15 +10,14 @@ OUTFILE_NAME=out
 FAILFILE_NAME=fail
 EXTRA_VERSIONS_FILE=$ROOT_DIR/user-config/extra-pyang-versions.txt
 
-if ! stat $RESULTSDIR; then
-  exit 0
-fi
-
 ########################## PYANG #############################
 # For running older versions of pyang
 run-pyang-version() {
-  echo running extra pyang version $1
   local RESULTSDIR=$ROOT_DIR/results/pyang@$1
+  if ! stat $RESULTSDIR; then
+    exit 0
+  fi
+  echo running extra pyang version $1
   local VENVDIR=$TESTDIR/pyangvenv@$1
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
@@ -31,8 +30,11 @@ run-pyang-version() {
 }
 
 run-pyang-head() {
-  echo running pyang head
   local RESULTSDIR=$ROOT_DIR/results/pyang@head
+  if ! stat $RESULTSDIR; then
+    exit 0
+  fi
+  echo running pyang head
   local VENVDIR=$TESTDIR/pyangvenv@head
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
@@ -56,6 +58,9 @@ for version in $(< $EXTRA_VERSIONS_FILE); do
 done
 
 # Run latest pyang version
+if ! stat $RESULTSDIR; then
+  exit 0
+fi
 virtualenv $VENVDIR
 source $VENVDIR/bin/activate
 pip3 install pyang
