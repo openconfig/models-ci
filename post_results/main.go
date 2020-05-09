@@ -486,7 +486,7 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 // under a compatibility report.
 func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion) error {
 	if len(validatorAndVersions) == 0 {
-		// Nothing to report.
+		log.Printf("Skipping compatibility report -- no validator to report.")
 		return nil
 	}
 

@@ -362,6 +362,7 @@ func main() {
 		// Generate validation commands for the validator.
 		for _, version := range versionsToRun {
 			if skippedValidatorsMap[validatorId][version] {
+				log.Printf("Not activating skipped validator %s", commonci.AppendVersionToName(validatorId, version))
 				continue
 			}
 
