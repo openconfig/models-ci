@@ -15,7 +15,7 @@ unzip $ZIP_FILE -d $RESULTSDIR/confd-unzipped
 find $RESULTSDIR/confd-unzipped -name 'confd-basic-*.linux.x86_64.installer.bin' -exec {} $RESULTSDIR/confd-install \;
 CONFDC=$RESULTSDIR/confd-install/bin/confdc
 
-CONFDPATH=`find $_MODEL_ROOT -type d | tr '\n' ':'`:$_MODEL_ROOT/third_party/ietf
+CONFDPATH=`find $_MODEL_ROOT -type d | tr '\n' ':'`:$_MODEL_ROOT/../third_party/ietf
 
 $CONFDC --version > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh $CONFDC $CONFDPATH > $OUTFILE 2> $FAILFILE; then
