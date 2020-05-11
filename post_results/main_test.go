@@ -31,6 +31,7 @@ func TestProcessStandardOutput(t *testing.T) {
 		inPass       bool
 		inNoWarnings bool
 		want         string
+		wantWarning  bool
 	}{{
 		name: "only warnings with subpath",
 		in: `/workspace/release/yang/acl/openconfig-packet-match-types.yang:1: warning: Module openconfig-packet-match-types is missing a grouping suffixed with -top
@@ -41,7 +42,8 @@ func TestProcessStandardOutput(t *testing.T) {
 /workspace/release/yang/types/openconfig-types.yang:1: warning: Module openconfig-types is missing a grouping suffixed with -top
 /workspace/release/yang/types/openconfig-yang-types.yang:1: warning: Module openconfig-yang-types is missing a grouping suffixed with -top
 `,
-		inPass: true,
+		inPass:      true,
+		wantWarning: true,
 		want: `Passed.
 <ul>
   <li>acl/openconfig-packet-match-types.yang (1): warning: <pre>Module openconfig-packet-match-types is missing a grouping suffixed with -top</pre></li>
@@ -69,7 +71,8 @@ func TestProcessStandardOutput(t *testing.T) {
 /workspace/release/yang/wifi/types/openconfig-wifi-types.yang:1: warning: Module openconfig-wifi-types is missing a grouping suffixed with -top
 /workspace/release/yang/wifi/types/openconfig-wifi-types.yang:288: error: identity name "BETTER-CHANNEL" should be of the form UPPERCASE_WITH_UNDERSCORES: "BETTER-CHANNEL"
 `,
-		inPass: false,
+		inPass:      false,
+		wantWarning: true,
 		want: `<ul>
   <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "A" should be of the form UPPERCASE_WITH_UNDERSCORES: A</pre></li>
   <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B</pre></li>
@@ -97,6 +100,7 @@ func TestProcessStandardOutput(t *testing.T) {
 /workspace/release/yang/types/openconfig-yang-types.yang:1: warning: Module openconfig-yang-types is missing a grouping suffixed with -top
 `,
 		inPass:       true,
+		wantWarning:  false,
 		inNoWarnings: true,
 		want: `Passed.
 `,
@@ -117,6 +121,7 @@ func TestProcessStandardOutput(t *testing.T) {
 /workspace/release/yang/wifi/types/openconfig-wifi-types.yang:288: error: identity name "BETTER-CHANNEL" should be of the form UPPERCASE_WITH_UNDERSCORES: "BETTER-CHANNEL"
 `,
 		inPass:       false,
+		wantWarning:  false,
 		inNoWarnings: true,
 		want: `<ul>
   <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "A" should be of the form UPPERCASE_WITH_UNDERSCORES: A</pre></li>
@@ -134,6 +139,7 @@ func TestProcessStandardOutput(t *testing.T) {
 `,
 		inPass:       true,
 		inNoWarnings: false,
+		wantWarning:  true,
 		want: `Passed.
 <ul>
   <li>platform/openconfig-platform-port.yang (139): warning: <pre>the node is config, but refers to a non-config node 'type' defined at /workspace/release/yang/platform/openconfig-platform.yang:302</pre></li>
@@ -145,10 +151,12 @@ func TestProcessStandardOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// FIXME(wenovus): test return value.
-			got, _, err := processStandardOutput(tt.in, tt.inPass, tt.inNoWarnings)
+			got, gotWarning, err := processStandardOutput(tt.in, tt.inPass, tt.inNoWarnings)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if gotWarning != tt.wantWarning {
+				t.Errorf("gotWarning %v, want %v", gotWarning, tt.wantWarning)
 			}
 			if diff := cmp.Diff(strings.Split(tt.want, "\n"), strings.Split(got, "\n")); diff != "" {
 				t.Errorf("(-want, +got):\n%s", diff)
@@ -164,14 +172,14 @@ func TestGetResult(t *testing.T) {
 		name                 string
 		inValidatorResultDir string
 		inValidatorId        string
-		wantPass             bool
+		wantStatus           CheckStatus
 		wantOut              string
 		wantErrSubstr        string
 	}{{
 		name:                 "basic pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
 		inValidatorId:        "oc-pyang",
-		wantPass:             true,
+		wantStatus:           Pass,
 		wantOut: `<details>
   <summary>:white_check_mark: acl</summary>
 <details>
@@ -198,14 +206,14 @@ Passed.
 		name:                 "pyang with an empty fail file",
 		inValidatorResultDir: "testdata/oc-pyang-with-fail-file",
 		inValidatorId:        "oc-pyang",
-		wantPass:             false,
+		wantStatus:           Fail,
 		wantOut: `Validator script failed -- infra bug?
 Test failed with no stderr output.`,
 	}, {
 		name:                 "basic non-pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
 		inValidatorId:        "goyang-ygot",
-		wantPass:             true,
+		wantStatus:           Pass,
 		wantOut: `<details>
   <summary>:white_check_mark: acl</summary>
 <details>
@@ -230,7 +238,7 @@ warning foo<br>
 		name:                 "pyang with pass and fails",
 		inValidatorResultDir: "testdata/pyang-with-invalid-files",
 		inValidatorId:        "pyang",
-		wantPass:             false,
+		wantStatus:           Fail,
 		wantOut: `<details>
   <summary>:no_entry: acl</summary>
 <details>
@@ -259,7 +267,7 @@ Passed.
 		name:                 "non-pyang with pass and fails",
 		inValidatorResultDir: "testdata/pyang-with-invalid-files",
 		inValidatorId:        "yanglint",
-		wantPass:             false,
+		wantStatus:           Fail,
 		wantOut: `<details>
   <summary>:no_entry: acl</summary>
 <details>
@@ -284,31 +292,31 @@ warning foo<br>
 		name:                 "non-per-model pass -- no fail file",
 		inValidatorResultDir: "testdata/regexp-tests",
 		inValidatorId:        "regexp",
-		wantPass:             true,
+		wantStatus:           Pass,
 		wantOut:              `Test passed.`,
 	}, {
 		name:                 "non-per-model fail -- empty fail file",
 		inValidatorResultDir: "testdata/regexp-tests2",
 		inValidatorId:        "regexp",
-		wantPass:             false,
+		wantStatus:           Fail,
 		wantOut:              `Test failed with no stderr output.`,
 	}, {
 		name:                 "non-per-model fail",
 		inValidatorResultDir: "testdata/regexp-tests-fail",
 		inValidatorId:        "regexp",
-		wantPass:             false,
+		wantStatus:           Fail,
 		wantOut:              "I failed\n",
 	}, {
 		name:                 "pyang script fail",
 		inValidatorResultDir: "testdata/oc-pyang-script-fail",
 		inValidatorId:        "oc-pyang",
-		wantPass:             false,
+		wantStatus:           Fail,
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 	}, {
 		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
 		inValidatorResultDir: "testdata/misc-checks-pass",
 		inValidatorId:        "misc-checks",
-		wantPass:             true,
+		wantStatus:           Pass,
 		wantOut: `<details>
   <summary>:white_check_mark: openconfig-version update check</summary>
 4 file(s) correctly updated.
@@ -322,7 +330,7 @@ warning foo<br>
 		name:                 "openconfig-version, revision version, and .spec.yml checks all fail",
 		inValidatorResultDir: "testdata/misc-checks-fail",
 		inValidatorId:        "misc-checks",
-		wantPass:             false,
+		wantStatus:           Fail,
 		wantOut: `<details>
   <summary>:no_entry: openconfig-version update check</summary>
   <li>changed-version-to-noversion.yang: openconfig-version was removed</li>
@@ -340,17 +348,16 @@ warning foo<br>
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotOut, _, err := getResult(tt.inValidatorId, tt.inValidatorResultDir)
+			gotOut, gotStatus, err := getResult(tt.inValidatorId, tt.inValidatorResultDir)
 			if err != nil {
 				if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 					t.Fatalf("did not get expected error, %s", diff)
 				}
 				return
 			}
-			// FIXME(wenovus)
-			// if gotPass != tt.wantPass {
-			// 	t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
-			// }
+			if gotStatus != tt.wantStatus {
+				t.Errorf("gotStatus %v, want %v", gotStatus, tt.wantStatus)
+			}
 			if diff := cmp.Diff(strings.Split(tt.wantOut, "\n"), strings.Split(gotOut, "\n")); diff != "" {
 				t.Errorf("(-want, +got):\n%s", diff)
 			}

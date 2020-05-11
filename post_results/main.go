@@ -399,12 +399,12 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, Chec
 			}
 
 			// Transform output string into HTML.
-			var warnings bool
+			var warning bool
 			switch {
 			case strings.Contains(validatorId, "pyang"):
-				outString, warnings, err = processStandardOutput(outString, modelPass, IgnorePyangWarnings)
+				outString, warning, err = processStandardOutput(outString, modelPass, IgnorePyangWarnings)
 			case validatorId == "confd":
-				outString, warnings, err = processStandardOutput(outString, modelPass, IgnoreConfdWarnings)
+				outString, warning, err = processStandardOutput(outString, modelPass, IgnoreConfdWarnings)
 			default:
 				outString = strings.Join(strings.Split(outString, "\n"), "<br>\n")
 				if modelPass {
@@ -414,12 +414,13 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, Chec
 			if !modelPass && outString == "" {
 				outString = "Failed.\n"
 			}
-			if warnings {
+			if warning {
 				if overallStatus != Fail {
 					overallStatus = Warning
 				}
 				if modelDirStatus != Fail {
-					overallStatus = Warning
+					// FIXME(wenovus): Add tests.
+					modelDirStatus = Warning
 				}
 			}
 			if err != nil {
@@ -479,7 +480,7 @@ func getResult(validatorId, resultsDir string) (string, CheckStatus, error) {
 		outString, status, err = parseModelResultsHTML(validatorId, resultsDir)
 	default:
 		outString = "Test passed."
-		status = Fail
+		status = Pass
 	}
 
 	return outString, status, err
@@ -659,7 +660,7 @@ func postResult(validatorId, version string) error {
 		prUpdate.Description = validatorDesc + " Succeeded"
 	case Warning:
 		prUpdate.NewStatus = "success"
-		prUpdate.Description = validatorDesc + " Succeeded with warnings"
+		prUpdate.Description = validatorDesc + " Succeeded (warnings)"
 	case Fail:
 		prUpdate.NewStatus = "failure"
 		prUpdate.Description = validatorDesc + " Failed"
