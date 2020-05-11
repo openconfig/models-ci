@@ -35,8 +35,9 @@ import (
 const (
 	// The title of the results uses the relevant emoji to show whether it
 	// succeeded or failed.
-	mdPassSymbol = ":white_check_mark:"
-	mdFailSymbol = ":no_entry:"
+	mdPassSymbol    = ":white_check_mark:"
+	mdWarningSymbol = ":warning:"
+	mdFailSymbol    = ":no_entry:"
 	// IgnorePyangWarnings ignores all warnings from pyang or pyang-based tools.
 	IgnorePyangWarnings = false
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
@@ -68,11 +69,26 @@ func init() {
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
 }
 
-func lintSymbol(pass bool) string {
-	if !pass {
-		return mdFailSymbol
+type CheckStatus int
+
+const (
+	Pass CheckStatus = iota
+	Warning
+	Fail
+)
+
+func (c CheckStatus) String() string {
+	return [...]string{"Pass", "Warning", "Fail"}[c]
+}
+
+func lintSymbol(status CheckStatus) string {
+	switch status {
+	case Pass:
+		return mdPassSymbol
+	case Warning:
+		return mdWarningSymbol
 	}
-	return mdPassSymbol
+	return mdFailSymbol
 }
 
 // sprintLineHTML prints a single list item to be put under a top-level summary item.
@@ -81,8 +97,8 @@ func sprintLineHTML(format string, a ...interface{}) string {
 }
 
 // sprintSummaryHTML prints a top-level summary item containing free-form or list items.
-func sprintSummaryHTML(pass bool, title, format string, a ...interface{}) string {
-	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n"+format+"</details>\n", append([]interface{}{lintSymbol(pass), title}, a...)...)
+func sprintSummaryHTML(status CheckStatus, title, format string, a ...interface{}) string {
+	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n"+format+"</details>\n", append([]interface{}{lintSymbol(status), title}, a...)...)
 }
 
 // readFile reads the entire file into a string and returns it along with an error if any.
@@ -183,12 +199,12 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 }
 
 // processMiscChecksOutput takes the raw result output from the misc-checks
-// results directory and returns its formatted report and pass/fail status.
-func processMiscChecksOutput(resultsDir string) (string, bool, error) {
+// results directory and returns its formatted report and status.
+func processMiscChecksOutput(resultsDir string) (string, CheckStatus, error) {
 	fileProperties := map[string]map[string]string{}
 	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
 	if err != nil {
-		return "", false, err
+		return "", Fail, err
 	}
 	for _, file := range changedFiles {
 		if _, ok := fileProperties[file]; !ok {
@@ -197,10 +213,10 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		fileProperties[file]["changed"] = "true"
 	}
 	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "pr-file-parse-log"), false, fileProperties); err != nil {
-		return "", false, err
+		return "", Fail, err
 	}
 	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "master-file-parse-log"), true, fileProperties); err != nil {
-		return "", false, err
+		return "", Fail, err
 	}
 
 	var ocVersionViolations []string
@@ -210,7 +226,7 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	// Only look at the PR's files as they might be different from the master's files.
 	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(resultsDir, "all-non-empty-files.txt"))
 	if err != nil {
-		return "", false, err
+		return "", Fail, err
 	}
 	for _, file := range allNonEmptyPRFiles {
 		properties, ok := fileProperties[file]
@@ -243,21 +259,21 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		}
 	}
 
-	// Compute HTML string and pass/fail status.
+	// Compute HTML string and status.
 	var out strings.Builder
-	var pass = true
+	status := Pass
 	appendViolationOut := func(desc string, violations []string, passString string) {
 		if len(violations) == 0 {
-			out.WriteString(sprintSummaryHTML(true, desc, passString))
+			out.WriteString(sprintSummaryHTML(Pass, desc, passString))
 		} else {
-			out.WriteString(sprintSummaryHTML(false, desc, strings.Join(violations, "")))
-			pass = false
+			out.WriteString(sprintSummaryHTML(Fail, desc, strings.Join(violations, "")))
+			status = Fail
 		}
 	}
 	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d file(s) correctly updated.\n", ocVersionChangedCount))
 	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
 
-	return out.String(), pass, nil
+	return out.String(), status, nil
 }
 
 // processStandardOutput takes raw pyang/confd output and transforms it to an
@@ -267,8 +283,9 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 // pyang also has a second format:
 // <file path>:<line#>(<sub file path>:<line#>):<error/warning>:<message>
 // Errors are displayed in front of warnings.
-func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error) {
-	var errorLines, nonErrorLines strings.Builder
+// The bool return value indicates whether there is any warning in the output.
+func processStandardOutput(rawOut string, pass, noWarnings bool) (string, bool, error) {
+	var errorLines, warningLines, unrecognizedLines strings.Builder
 	for _, line := range strings.Split(rawOut, "\n") {
 		if line = strings.TrimSpace(line); line == "" {
 			continue
@@ -277,7 +294,7 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 		sections := strings.SplitN(line, ":", 4)
 		// warning/error lines from pyang/confd have a "path:line#:status:message" format.
 		if len(sections) < 4 {
-			nonErrorLines.WriteString(sprintLineHTML(line))
+			unrecognizedLines.WriteString(sprintLineHTML(line))
 			continue
 		}
 		filePath := strings.TrimSpace(sections[0])
@@ -288,7 +305,7 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 		// Convert file path to relative path.
 		var err error
 		if filePath, err = filepath.Rel(modelRoot, filePath); err != nil {
-			return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from message %q: %v\n", filePath, modelRoot, line, err)
+			return "", false, fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from message %q: %v\n", filePath, modelRoot, line, err)
 		}
 
 		// When there is subpath information, remove it (as it's not useful to users) and re-compute information.
@@ -299,7 +316,7 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 			if len(messageSections) == 1 {
 				// When there is subpath information, we expect there to be an extra colon due to the
 				// subpath line number; so, this is unrecognized format.
-				nonErrorLines.WriteString(sprintLineHTML(line))
+				unrecognizedLines.WriteString(sprintLineHTML(line))
 				continue
 			}
 			lineNumber = strings.TrimSpace(sections[1][:subpathIndex])
@@ -313,10 +330,10 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 			errorLines.WriteString(sprintLineHTML(processedLine))
 		case strings.Contains(status, "warning"):
 			if !noWarnings {
-				nonErrorLines.WriteString(sprintLineHTML(processedLine))
+				warningLines.WriteString(sprintLineHTML(processedLine))
 			}
 		default: // Unrecognized line, so write unprocessed output.
-			nonErrorLines.WriteString(sprintLineHTML(line))
+			unrecognizedLines.WriteString(sprintLineHTML(line))
 		}
 	}
 
@@ -324,23 +341,24 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 	if pass {
 		out.WriteString("Passed.\n")
 	}
-	if errorLines.Len() > 0 || nonErrorLines.Len() > 0 {
+	if errorLines.Len() > 0 || warningLines.Len() > 0 || unrecognizedLines.Len() > 0 {
 		out.WriteString("<ul>\n")
 		out.WriteString(errorLines.String())
-		out.WriteString(nonErrorLines.String())
+		out.WriteString(warningLines.String())
+		out.WriteString(unrecognizedLines.String())
 		out.WriteString("</ul>\n")
 	}
-	return out.String(), nil
+	return out.String(), warningLines.Len() > 0, nil
 }
 
 // parseModelResultsHTML transforms the output files of the validator script into HTML
 // to be displayed on GitHub.
-func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool, error) {
+func parseModelResultsHTML(validatorId, validatorResultDir string) (string, CheckStatus, error) {
 	var htmlOut, modelHTML strings.Builder
 	var prevModelDirName string
 
-	allPass := true
-	modelDirPass := true
+	overallStatus := Pass
+	modelDirStatus := Pass
 	// Process each result file in lexical order.
 	// Since result files are in "modelDir==model==status" format, this ensures we're processing by directory.
 	// (Note that each modelDir has multiple models. Each model corresponds to a result file).
@@ -356,18 +374,19 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 
 			// Write results one modelDir at a time in order to report overall modelDir status.
 			if prevModelDirName != "" && modelDirName != prevModelDirName {
-				htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+				htmlOut.WriteString(sprintSummaryHTML(modelDirStatus, prevModelDirName, modelHTML.String()))
 				modelHTML.Reset()
-				modelDirPass = true
+				modelDirStatus = Pass
 			}
 			prevModelDirName = modelDirName
 
+			// modelPass can only be either pass or fail from the validator's execution return code.
 			modelPass := true
 			switch status {
 			case "pass":
 			case "fail":
-				allPass = false
-				modelDirPass = false
+				overallStatus = Fail
+				modelDirStatus = Fail
 				modelPass = false
 			default:
 				return fmt.Errorf("expect status at path %q to be true or false, got %v", path, status)
@@ -380,11 +399,12 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 			}
 
 			// Transform output string into HTML.
+			var warnings bool
 			switch {
 			case strings.Contains(validatorId, "pyang"):
-				outString, err = processStandardOutput(outString, modelPass, IgnorePyangWarnings)
+				outString, warnings, err = processStandardOutput(outString, modelPass, IgnorePyangWarnings)
 			case validatorId == "confd":
-				outString, err = processStandardOutput(outString, modelPass, IgnoreConfdWarnings)
+				outString, warnings, err = processStandardOutput(outString, modelPass, IgnoreConfdWarnings)
 			default:
 				outString = strings.Join(strings.Split(outString, "\n"), "<br>\n")
 				if modelPass {
@@ -394,36 +414,48 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 			if !modelPass && outString == "" {
 				outString = "Failed.\n"
 			}
+			if warnings {
+				if overallStatus != Fail {
+					overallStatus = Warning
+				}
+				if modelDirStatus != Fail {
+					overallStatus = Warning
+				}
+			}
 			if err != nil {
 				return fmt.Errorf("error encountered while processing output for validator %q: %v", validatorId, err)
 			}
 
-			modelHTML.WriteString(sprintSummaryHTML(modelPass, modelName, outString))
+			if modelPass {
+				modelHTML.WriteString(sprintSummaryHTML(Pass, modelName, outString))
+			} else {
+				modelHTML.WriteString(sprintSummaryHTML(Fail, modelName, outString))
+			}
 		}
 		return nil
 	}); err != nil {
-		return "", false, err
+		return "", Fail, err
 	}
 
 	// Edge case: handle last modelDir.
-	htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+	htmlOut.WriteString(sprintSummaryHTML(modelDirStatus, prevModelDirName, modelHTML.String()))
 
-	return htmlOut.String(), allPass, nil
+	return htmlOut.String(), overallStatus, nil
 }
 
 // getResult parses the results for the given validator and its results
 // directory, and returns the string to be put in a GitHub gist comment as well
-// as the status (i.e. pass or fail).
-func getResult(validatorId, resultsDir string) (string, bool, error) {
+// as the status.
+func getResult(validatorId, resultsDir string) (string, CheckStatus, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", false, fmt.Errorf("validator %q not found!", validatorId)
+		return "", Fail, fmt.Errorf("validator %q not found!", validatorId)
 	}
 
 	// outString is parsed stdout.
 	var outString string
-	// pass is the overall validation result.
-	var pass bool
+	// status is the overall validation result.
+	var status CheckStatus
 
 	failFileBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
 	// existent fail file == failure.
@@ -440,17 +472,17 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 		if validator.IsPerModel {
 			outString = "Validator script failed -- infra bug?\n" + outString
 		}
-		pass = false
+		status = Fail
 	case validator.IsPerModel && validatorId == "misc-checks":
-		outString, pass, err = processMiscChecksOutput(resultsDir)
+		outString, status, err = processMiscChecksOutput(resultsDir)
 	case validator.IsPerModel:
-		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
+		outString, status, err = parseModelResultsHTML(validatorId, resultsDir)
 	default:
 		outString = "Test passed."
-		pass = true
+		status = Fail
 	}
 
-	return outString, pass, err
+	return outString, status, err
 }
 
 // getGistHeading gets the description and content of the result gist for the
@@ -537,19 +569,19 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
 
 		// Post parsed test results as a gist comment.
-		testResultString, pass, err := getResult(vv.ValidatorId, resultsDir)
+		testResultString, status, err := getResult(vv.ValidatorId, resultsDir)
 		if err != nil {
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
 
-		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
+		gistTitle := fmt.Sprintf("%s %s", lintSymbol(status), validatorDescs[i])
 		gistContent := testResultString
 		id, err := g.AddGistComment(gistID, gistTitle, gistContent)
 		if err != nil {
 			fmt.Errorf("postResult: could not add gist comment: %v", err)
 		}
 
-		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", lintSymbol(pass), validatorDescs[i], gistURL, id))
+		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", lintSymbol(status), validatorDescs[i], gistURL, id))
 	}
 	comment := commentBuilder.String()
 	if err := g.AddPRComment(&comment, owner, repo, prNumber); err != nil {
@@ -606,11 +638,11 @@ func postResult(validatorId, version string) error {
 	}
 
 	// Post parsed test results as a gist comment.
-	testResultString, pass, err := getResult(validatorId, resultsDir)
+	testResultString, status, err := getResult(validatorId, resultsDir)
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
-	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString); err != nil {
+	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(status), validatorDesc), testResultString); err != nil {
 		fmt.Errorf("postResult: could not add gist comment: %v", err)
 	}
 
@@ -621,10 +653,14 @@ func postResult(validatorId, version string) error {
 		URL:     url,
 		Context: validator.StatusName(version),
 	}
-	if pass {
+	switch status {
+	case Pass:
 		prUpdate.NewStatus = "success"
 		prUpdate.Description = validatorDesc + " Succeeded"
-	} else {
+	case Warning:
+		prUpdate.NewStatus = "success"
+		prUpdate.Description = validatorDesc + " Succeeded with warnings"
+	case Fail:
 		prUpdate.NewStatus = "failure"
 		prUpdate.Description = validatorDesc + " Failed"
 	}
