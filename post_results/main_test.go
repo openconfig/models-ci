@@ -22,7 +22,7 @@ import (
 	"github.com/openconfig/gnmi/errdiff"
 )
 
-func TestProcessAnyPyangOutput(t *testing.T) {
+func TestProcessStandardOutput(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
 	tests := []struct {
@@ -126,11 +126,26 @@ func TestProcessAnyPyangOutput(t *testing.T) {
   <li>wifi/types/openconfig-wifi-types.yang (288): error: <pre>identity name "BETTER-CHANNEL" should be of the form UPPERCASE_WITH_UNDERSCORES: "BETTER-CHANNEL"</pre></li>
 </ul>
 `,
+	}, {
+		name: "ConfD sample output",
+		in: `/workspace/release/yang/platform/openconfig-platform-port.yang:139: warning: the node is config, but refers to a non-config node 'type' defined at /workspace/release/yang/platform/openconfig-platform.yang:302
+/workspace/release/yang/platform/openconfig-platform-port.yang:139: warning: the node is config, but refers to a non-config node 'type' defined at /workspace/release/yang/platform/openconfig-platform.yang:302
+/workspace/release/yang/platform/openconfig-platform-transceiver.yang:557: warning: the node is config, but refers to a non-config node 'type' defined at /workspace/release/yang/platform/openconfig-platform.yang:302
+`,
+		inPass:       true,
+		inNoWarnings: false,
+		want: `Passed.
+<ul>
+  <li>platform/openconfig-platform-port.yang (139): warning: <pre>the node is config, but refers to a non-config node 'type' defined at /workspace/release/yang/platform/openconfig-platform.yang:302</pre></li>
+  <li>platform/openconfig-platform-port.yang (139): warning: <pre>the node is config, but refers to a non-config node 'type' defined at /workspace/release/yang/platform/openconfig-platform.yang:302</pre></li>
+  <li>platform/openconfig-platform-transceiver.yang (557): warning: <pre>the node is config, but refers to a non-config node 'type' defined at /workspace/release/yang/platform/openconfig-platform.yang:302</pre></li>
+</ul>
+`,
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := processAnyPyangOutput(tt.in, tt.inPass, tt.inNoWarnings)
+			got, err := processStandardOutput(tt.in, tt.inPass, tt.inNoWarnings)
 			if err != nil {
 				t.Fatal(err)
 			}
