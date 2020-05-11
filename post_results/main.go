@@ -427,9 +427,13 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, Chec
 				return fmt.Errorf("error encountered while processing output for validator %q: %v", validatorId, err)
 			}
 
-			if modelPass {
+			// FIXME(wenovus): Add tests.
+			switch {
+			case modelPass && warning:
+				modelHTML.WriteString(sprintSummaryHTML(Warning, modelName, outString))
+			case modelPass:
 				modelHTML.WriteString(sprintSummaryHTML(Pass, modelName, outString))
-			} else {
+			default:
 				modelHTML.WriteString(sprintSummaryHTML(Fail, modelName, outString))
 			}
 		}
