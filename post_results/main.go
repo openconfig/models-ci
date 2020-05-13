@@ -39,7 +39,7 @@ const (
 	mdWarningSymbol = ":warning:"
 	mdFailSymbol    = ":no_entry:"
 	// IgnorePyangWarnings ignores all warnings from pyang or pyang-based tools.
-	IgnorePyangWarnings = false
+	IgnorePyangWarnings = true
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
 	IgnoreConfdWarnings = false
 )
@@ -532,6 +532,11 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 // postCompatibilityReport posts the results for the validators to be reported
 // under a compatibility report.
 func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion) error {
+	if len(validatorAndVersions) == 0 {
+		log.Printf("Skipping compatibility report -- no validator to report.")
+		return nil
+	}
+
 	validator, ok := commonci.Validators["compat-report"]
 	if !ok {
 		return fmt.Errorf("CI infra failure: compatibility report validator not found in commonci.Validators")
@@ -611,7 +616,7 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	compatValidators, compatValidatorsMap := commonci.GetCompatReportValidators(compatReportsStr)
+	compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
 
 	if validatorId == "compat-report" {
 		log.Printf("Processing compatibility report for %s", compatReportsStr)

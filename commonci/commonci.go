@@ -240,13 +240,13 @@ type ValidatorAndVersion struct {
 	Version     string
 }
 
-// GetCompatReportValidators converts a comma-separated list of
+// GetValidatorAndVersionsFromString converts a comma-separated list of
 // <validatorId>@<version> names to a list of ValidatorAndVersion and nested
 // map of validatorId to version for checking existence.
-func GetCompatReportValidators(compatReportsStr string) ([]ValidatorAndVersion, map[string]map[string]bool) {
+func GetValidatorAndVersionsFromString(validatorsAndVersionsStr string) ([]ValidatorAndVersion, map[string]map[string]bool) {
 	var compatValidators []ValidatorAndVersion
 	compatValidatorsMap := map[string]map[string]bool{}
-	for _, vvStr := range strings.Fields(strings.ReplaceAll(compatReportsStr, ",", " ")) {
+	for _, vvStr := range strings.Fields(strings.ReplaceAll(validatorsAndVersionsStr, ",", " ")) {
 		vvSegments := strings.SplitN(vvStr, "@", 2)
 		vv := ValidatorAndVersion{ValidatorId: vvSegments[0]}
 		if len(vvSegments) == 2 {
@@ -261,4 +261,18 @@ func GetCompatReportValidators(compatReportsStr string) ([]ValidatorAndVersion, 
 		m[vv.Version] = true
 	}
 	return compatValidators, compatValidatorsMap
+}
+
+// ValidatorAndVersionsDiff removes the comma-separated list of
+// <validatorId>@<version> entries in bStr from aStr.
+func ValidatorAndVersionsDiff(aStr, bStr string) string {
+	aVVs, _ := GetValidatorAndVersionsFromString(aStr)
+	_, bVVMap := GetValidatorAndVersionsFromString(bStr)
+	var remainingVVs []string
+	for _, vv := range aVVs {
+		if !bVVMap[vv.ValidatorId][vv.Version] {
+			remainingVVs = append(remainingVVs, AppendVersionToName(vv.ValidatorId, vv.Version))
+		}
+	}
+	return strings.Join(remainingVVs, ",")
 }
