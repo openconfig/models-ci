@@ -38,7 +38,7 @@ const (
 	mdPassSymbol = ":white_check_mark:"
 	mdFailSymbol = ":no_entry:"
 	// IgnorePyangWarnings ignores all warnings from pyang or pyang-based tools.
-	IgnorePyangWarnings = false
+	IgnorePyangWarnings = true
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
 	IgnoreConfdWarnings = false
 )
