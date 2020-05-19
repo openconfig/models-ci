@@ -148,6 +148,7 @@ GitHub PR.
 
 Validator         | Installation
 ----------------- | -------------------------------------------------------
+confd             | Binary unzipped during build
 regexp            | Files moved into GOPATH from its folder during CI build
 pyang & pyangbind | pip
 oc-pyang          | git clone
