@@ -115,40 +115,50 @@ func TestParseOCModels(t *testing.T) {
 	}
 }
 
-func TestGetCompatReportValidators(t *testing.T) {
+func TestGetValidatorAndVersionsFromString(t *testing.T) {
 	tests := []struct {
-		desc               string
-		inCompatReportsStr string
-		wantVVList         []ValidatorAndVersion
-		wantVVMap          map[string]map[string]bool
+		desc       string
+		inStr      string
+		wantVVList []ValidatorAndVersion
+		wantVVMap  map[string]map[string]bool
 	}{{
-		desc:               "single no version",
-		inCompatReportsStr: "pyang",
-		wantVVList:         []ValidatorAndVersion{{ValidatorId: "pyang"}},
-		wantVVMap:          map[string]map[string]bool{"pyang": map[string]bool{"": true}},
+		desc:       "empty",
+		inStr:      "",
+		wantVVList: nil,
+		wantVVMap:  map[string]map[string]bool{},
 	}, {
-		desc:               "ending comma",
-		inCompatReportsStr: "pyang,",
-		wantVVList:         []ValidatorAndVersion{{ValidatorId: "pyang"}},
-		wantVVMap:          map[string]map[string]bool{"pyang": map[string]bool{"": true}},
+		desc:       "empty with a comma",
+		inStr:      ",",
+		wantVVList: nil,
+		wantVVMap:  map[string]map[string]bool{},
 	}, {
-		desc:               "ending comma with spaces around before",
-		inCompatReportsStr: "   pyang,   ",
-		wantVVList:         []ValidatorAndVersion{{ValidatorId: "pyang"}},
-		wantVVMap:          map[string]map[string]bool{"pyang": map[string]bool{"": true}},
+		desc:       "single no version",
+		inStr:      "pyang",
+		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang"}},
+		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"": true}},
 	}, {
-		desc:               "single with version",
-		inCompatReportsStr: "pyang@1.7.2",
-		wantVVList:         []ValidatorAndVersion{{ValidatorId: "pyang", Version: "1.7.2"}},
-		wantVVMap:          map[string]map[string]bool{"pyang": map[string]bool{"1.7.2": true}},
+		desc:       "ending comma",
+		inStr:      "pyang,",
+		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang"}},
+		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"": true}},
 	}, {
-		desc:               "single with version and comma",
-		inCompatReportsStr: "pyang@1.7.2,",
-		wantVVList:         []ValidatorAndVersion{{ValidatorId: "pyang", Version: "1.7.2"}},
-		wantVVMap:          map[string]map[string]bool{"pyang": map[string]bool{"1.7.2": true}},
+		desc:       "ending comma with spaces around before",
+		inStr:      "   pyang,   ",
+		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang"}},
+		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"": true}},
 	}, {
-		desc:               "more than one version",
-		inCompatReportsStr: "pyang@1.7.2,pyang,oc-pyang,pyang@head",
+		desc:       "single with version",
+		inStr:      "pyang@1.7.2",
+		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang", Version: "1.7.2"}},
+		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"1.7.2": true}},
+	}, {
+		desc:       "single with version and comma",
+		inStr:      "pyang@1.7.2,",
+		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang", Version: "1.7.2"}},
+		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"1.7.2": true}},
+	}, {
+		desc:  "more than one version",
+		inStr: "pyang@1.7.2,pyang,oc-pyang,pyang@head",
 		wantVVList: []ValidatorAndVersion{
 			{ValidatorId: "pyang", Version: "1.7.2"},
 			{ValidatorId: "pyang", Version: ""},
@@ -166,8 +176,8 @@ func TestGetCompatReportValidators(t *testing.T) {
 			},
 		},
 	}, {
-		desc:               "more than one version with ending comma",
-		inCompatReportsStr: "pyang@1.7.2,pyang,oc-pyang,pyang@head,",
+		desc:  "more than one version with ending comma",
+		inStr: "pyang@1.7.2,pyang,oc-pyang,pyang@head,",
 		wantVVList: []ValidatorAndVersion{
 			{ValidatorId: "pyang", Version: "1.7.2"},
 			{ValidatorId: "pyang", Version: ""},
@@ -188,12 +198,69 @@ func TestGetCompatReportValidators(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			gotVVList, gotVVMap := GetCompatReportValidators(tt.inCompatReportsStr)
+			gotVVList, gotVVMap := GetValidatorAndVersionsFromString(tt.inStr)
 			if diff := cmp.Diff(gotVVList, tt.wantVVList); diff != "" {
 				t.Errorf("[]ValidatorAndVersion (-got, +want):\n%s", diff)
 			}
 			if diff := cmp.Diff(gotVVMap, tt.wantVVMap); diff != "" {
 				t.Errorf("ValidatorAndVersion Map (-got, +want):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestValidatorAndVersionsDiff(t *testing.T) {
+	tests := []struct {
+		desc    string
+		inAStr  string
+		inBStr  string
+		wantStr string
+	}{{
+		desc:    "single no version",
+		inAStr:  "pyang",
+		inBStr:  "pyang",
+		wantStr: "",
+	}, {
+		desc:    "single with ending comma",
+		inAStr:  "pyang,",
+		inBStr:  "pyang",
+		wantStr: "",
+	}, {
+		desc:    "single version doesn't match latest",
+		inAStr:  "pyang@1.7.2",
+		inBStr:  "pyang",
+		wantStr: "pyang@1.7.2",
+	}, {
+		desc:    "single version doesn't match",
+		inAStr:  "pyang@1.7.2",
+		inBStr:  "pyang@1.7.1",
+		wantStr: "pyang@1.7.2",
+	}, {
+		desc:    "single with version",
+		inAStr:  "pyang@1.7.2",
+		inBStr:  "pyang@1.7.2",
+		wantStr: "",
+	}, {
+		desc:    "more than one version",
+		inAStr:  "pyang@1.7.2,pyang,oc-pyang,pyang@head",
+		inBStr:  "pyang@head",
+		wantStr: "pyang@1.7.2,pyang,oc-pyang",
+	}, {
+		desc:    "more than one version deletes",
+		inAStr:  "pyang@1.7.2,pyang,oc-pyang,pyang@head",
+		inBStr:  "oc-pyang,pyang@1.7.2",
+		wantStr: "pyang,pyang@head",
+	}, {
+		desc:    "more than one version deletes with deleting something not there",
+		inAStr:  "pyang@1.7.2,pyang,oc-pyang,pyang@head",
+		inBStr:  "oc-pyang,pyang@1.7.2,super-check",
+		wantStr: "pyang,pyang@head",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			if gotStr := ValidatorAndVersionsDiff(tt.inAStr, tt.inBStr); gotStr != tt.wantStr {
+				t.Errorf("got %q, want %q", gotStr, tt.wantStr)
 			}
 		})
 	}

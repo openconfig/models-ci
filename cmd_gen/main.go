@@ -36,6 +36,7 @@ var (
 	prNumber           int
 	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
+	skippedValidators  string // e.g. "yanglint,pyang@head"
 
 	// Derived flags (for ease of use)
 	owner string
@@ -68,6 +69,7 @@ func init() {
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
 	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
+	flag.StringVar(&skippedValidators, "skipped-validators", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) not to be ran at all, not even in the compatibility report")
 	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
 
 	// Local run flags
@@ -321,11 +323,14 @@ func main() {
 		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
 	}
 
+	compatReports = commonci.ValidatorAndVersionsDiff(compatReports, skippedValidators)
 	// Notify later CI steps of the validators that should be reported as a compatibility report.
 	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
 		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
 	}
-	_, compatValidatorsMap := commonci.GetCompatReportValidators(compatReports)
+
+	_, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReports)
+	_, skippedValidatorsMap := commonci.GetValidatorAndVersionsFromString(skippedValidators)
 
 	// Generate validation scripts, files, and post initial status on GitHub.
 	for validatorId, validator := range commonci.Validators {
@@ -348,12 +353,6 @@ func main() {
 			}
 		}
 
-		switch {
-		case !validator.IsPerModel:
-			// We don't generate commands when the tool is just ran on the entire models directory.
-			continue
-		}
-
 		// Empty string means the latest version, which is always run.
 		versionsToRun := append([]string{""}, extraVersions...)
 		if validatorId == "pyang" {
@@ -362,17 +361,31 @@ func main() {
 
 		// Generate validation commands for the validator.
 		for _, version := range versionsToRun {
+			if skippedValidatorsMap[validatorId][version] {
+				log.Printf("Not activating skipped validator %s", commonci.AppendVersionToName(validatorId, version))
+				continue
+			}
+
 			// Post initial PR status.
 			if !compatValidatorsMap[validatorId][version] {
 				if errs := postInitialStatus(h, validatorId, version); errs != nil {
 					log.Fatal(errs)
 				}
 			}
+
+			// Create results dir, which activates the validator script.
 			validatorResultsDir := commonci.ValidatorResultsDir(validatorId, version)
 			if err := os.MkdirAll(validatorResultsDir, 0644); err != nil {
 				log.Fatalf("error while creating directory %q: %v", validatorResultsDir, err)
 			}
 			log.Printf("Created results directory %q", validatorResultsDir)
+
+			if !validator.IsPerModel {
+				// We don't generate commands when the tool is
+				// ran directly on the entire models directory.
+				// (i.e. a repo-level validator)
+				continue
+			}
 
 			scriptStr, err := genOpenConfigValidatorScript(h, validatorId, version, modelMap)
 			if err != nil {
