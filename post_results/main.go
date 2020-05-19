@@ -39,6 +39,8 @@ const (
 	mdFailSymbol = ":no_entry:"
 	// IgnorePyangWarnings ignores all warnings from pyang or pyang-based tools.
 	IgnorePyangWarnings = true
+	// IgnoreConfdWarnings ignores all warnings from ConfD.
+	IgnoreConfdWarnings = false
 )
 
 var (
@@ -258,9 +260,14 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	return out.String(), pass, nil
 }
 
-// processAnyPyangOutput takes the raw pyang output and transforms it to an
+// processStandardOutput takes raw pyang/confd output and transforms it to an
 // HTML format for display on a GitHub gist comment.
-func processAnyPyangOutput(rawOut string, pass, noWarnings bool) (string, error) {
+// Both types of validators output a string following the format:
+// <file path>:<line no>:<error/warning>:<message>
+// pyang also has a second format:
+// <file path>:<line#>(<sub file path>:<line#>):<error/warning>:<message>
+// Errors are displayed in front of warnings.
+func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error) {
 	var errorLines, nonErrorLines strings.Builder
 	for _, line := range strings.Split(rawOut, "\n") {
 		if line = strings.TrimSpace(line); line == "" {
@@ -268,7 +275,7 @@ func processAnyPyangOutput(rawOut string, pass, noWarnings bool) (string, error)
 		}
 
 		sections := strings.SplitN(line, ":", 4)
-		// warning/error lines from pyang have a "path:line#:status:message" format.
+		// warning/error lines from pyang/confd have a "path:line#:status:message" format.
 		if len(sections) < 4 {
 			nonErrorLines.WriteString(sprintLineHTML(line))
 			continue
@@ -373,12 +380,12 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 			}
 
 			// Transform output string into HTML.
-			if strings.Contains(validatorId, "pyang") {
-				outString, err = processAnyPyangOutput(outString, modelPass, IgnorePyangWarnings)
-				if err != nil {
-					return fmt.Errorf("error encountered while processing output for validator %q: %v", validatorId, err)
-				}
-			} else {
+			switch {
+			case strings.Contains(validatorId, "pyang"):
+				outString, err = processStandardOutput(outString, modelPass, IgnorePyangWarnings)
+			case validatorId == "confd":
+				outString, err = processStandardOutput(outString, modelPass, IgnoreConfdWarnings)
+			default:
 				outString = strings.Join(strings.Split(outString, "\n"), "<br>\n")
 				if modelPass {
 					outString = "Passed.\n" + outString
@@ -386,6 +393,9 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 			}
 			if !modelPass && outString == "" {
 				outString = "Failed.\n"
+			}
+			if err != nil {
+				return fmt.Errorf("error encountered while processing output for validator %q: %v", validatorId, err)
 			}
 
 			modelHTML.WriteString(sprintSummaryHTML(modelPass, modelName, outString))
@@ -485,6 +495,11 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 // postCompatibilityReport posts the results for the validators to be reported
 // under a compatibility report.
 func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion) error {
+	if len(validatorAndVersions) == 0 {
+		log.Printf("Skipping compatibility report -- no validator to report.")
+		return nil
+	}
+
 	validator, ok := commonci.Validators["compat-report"]
 	if !ok {
 		return fmt.Errorf("CI infra failure: compatibility report validator not found in commonci.Validators")
@@ -564,7 +579,7 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	compatValidators, compatValidatorsMap := commonci.GetCompatReportValidators(compatReportsStr)
+	compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
 
 	if validatorId == "compat-report" {
 		log.Printf("Processing compatibility report for %s", compatReportsStr)
