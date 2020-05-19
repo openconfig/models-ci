@@ -17,7 +17,7 @@ run-pyang-version() {
   if ! stat $RESULTSDIR; then
     exit 0
   fi
-  echo running extra pyang version $1
+  echo "running extra pyang version $1"
   local VENVDIR=$TESTDIR/pyangvenv@$1
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
@@ -34,7 +34,7 @@ run-pyang-head() {
   if ! stat $RESULTSDIR; then
     exit 0
   fi
-  echo running pyang head
+  echo "running pyang head"
   local VENVDIR=$TESTDIR/pyangvenv@head
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
