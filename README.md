@@ -2,6 +2,20 @@
 
 Continuous integration for OpenConfig models.
 
+## Versioning and Making Changes
+
+`models-ci` should always be used with a specified major version within the
+repository's `cloudbuild.yaml`, e.g.
+
+`go get github.com/openconfig/models-ci@v0`
+
+New minor and patch versions are guaranteed to be backwards compatible per
+[semantic versioning rules](https://semver.org/)
+
+Each `cloudbuild.yaml`-incompatible change to `models-ci` should come with major
+version updates. Activated repositories should then make a change to
+`cloudbuild.yaml` to make use of the updated version.
+
 ## Purpose
 
 There are several widely-used YANG tools that form an important part of what
@@ -153,7 +167,9 @@ are,
 2.  Call `cmd_gen` to generate the validator scripts for each validator tool. If
     a validator script should not gate the changes, but should only serve as a
     reference for committers, then they could be explicitly specified to appear
-    in the compatibility report instead using -compat-report flag.
+    in the compatibility report instead using -compat-report flag. Any
+    validatorId@version can be skipped (from both the PR status as well as the
+    compatibility report) using the `-skipped-validators` flag.
 3.  Prepare each validator tool if necessary.
 4.  Run each validator tool either directly, or through the `script.sh`
     generated from `cmd_gen`, redirecting the result into specified files.
