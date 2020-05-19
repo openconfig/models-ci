@@ -2,19 +2,32 @@
 
 Continuous integration for OpenConfig models.
 
-## Versioning and Making Changes
+## Usage Notes and Versioning
 
-`models-ci` should always be used with a specified major version within the
-repository's `cloudbuild.yaml`, e.g.
+In order to avoid CI from breaking whenever an incompatible new change is
+merged, `models-ci` should always be used with a specified major version within
+the repository's `cloudbuild.yaml`, e.g.
 
 `go get github.com/openconfig/models-ci@v0`
 
 New minor and patch versions are guaranteed to be backwards compatible per
 [semantic versioning rules](https://semver.org/)
 
-Each `cloudbuild.yaml`-incompatible change to `models-ci` should come with major
-version updates. Activated repositories should then make a change to
-`cloudbuild.yaml` to make use of the updated version.
+Backwards incompatibility is defined to mean no changes required for any
+possible `cloudbuild.yaml` usage.
+
+-   Major revision changes involves any change required to a possible
+    `cloudbuild.yaml` use, e.g.
+    -   Existing `cmd_gen` flag altered in behaviour or deleted.
+    -   Changes to how the validator is called.
+-   Minor and patch revisions encompass the remainig changes, e.g.
+    -   Adding a new `cmd_gen` flag.
+    -   Adding a new validator.
+    -   Changing an existing validator's behaviour, or any other part of
+        `models-ci`, that doesn't break the current `cloudbuild.yaml` interface.
+
+When changing `models-ci`, it's ok to be liberal bumping up major revisions, and
+require an update in `cloubuild.yaml` to user repos to make use of new features.
 
 ## Purpose
 
