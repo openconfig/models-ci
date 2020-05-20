@@ -4,30 +4,33 @@ Continuous integration for OpenConfig models.
 
 ## Usage Notes and Versioning
 
-In order to avoid CI from breaking whenever an incompatible new change is
-merged, `models-ci` should always be used with a specified major version within
-the repository's `cloudbuild.yaml`, e.g.
+In order to avoid backwards-incompatible new changes from affecting and breaking
+CI, a user repository's `cloudbuild.yaml` should always use `models-ci` with a
+specified **major** version only, e.g.
 
-`go get github.com/openconfig/models-ci@v0`
+`go get github.com/openconfig/models-ci@v1`
 
 New minor and patch versions are guaranteed to be backwards compatible per
 [semantic versioning rules](https://semver.org/)
 
-Backwards incompatibility is defined to mean no changes required for any
-possible `cloudbuild.yaml` usage.
+A backwards compatible change is defined to mean a change not requiring changes
+to any possible `cloudbuild.yaml` usage provided by the existing `models-ci`.
 
--   Major revision changes involves any change required to a possible
-    `cloudbuild.yaml` use, e.g.
-    -   Existing `cmd_gen` flag altered in behaviour or deleted.
-    -   Changes to how the validator is called.
--   Minor and patch revisions encompass the remainig changes, e.g.
+-   Example of major revision changes:
+    -   Existing `cmd_gen` flag altered in behaviour or deleted by new
+        `models-ci` change.
+    -   Changes to how an existing validator is set-up or ran within
+        `cloudbuild.yaml`.
+-   Minor and patch revisions encompass the remaining changes, e.g.
     -   Adding a new `cmd_gen` flag.
     -   Adding a new validator.
     -   Changing an existing validator's behaviour, or any other part of
         `models-ci`, that doesn't break the current `cloudbuild.yaml` interface.
 
-When changing `models-ci`, it's ok to be liberal bumping up major revisions, and
-require an update in `cloubuild.yaml` to user repos to make use of new features.
+When changing `models-ci`, it's ok to be liberal when deciding whether to bump
+up major revisions. It simply requires an update in `cloubuild.yaml` in user
+repos to make use of the new features. The main point is to avoid breaking
+existing `cloudbuild.yaml`.
 
 ## Purpose
 
