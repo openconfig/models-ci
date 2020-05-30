@@ -58,8 +58,8 @@ var (
 	owner string
 	repo  string
 
-	badgeCmdTemplate = mustTemplate("badgeCmd", `badge {{ .Status }} {{ .ValidatorAndVersion }} :{{ .Colour }} > {{ .ValidatorAndVersion }}.svg
-gsutil cp {{ .ValidatorAndVersion }}.svg gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
+	badgeCmdTemplate = mustTemplate("badgeCmd", `badge {{ .Status }} {{ .ValidatorAndVersion }} :{{ .Colour }} > {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg
+gsutil cp {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 gsutil acl ch -u AllUsers:R gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 gsutil setmeta -h "Cache-Control:no-cache" gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 `)
@@ -75,6 +75,7 @@ type badgeCmdParams struct {
 	Status              string
 	ValidatorAndVersion string
 	Colour              string
+	ResultsDir          string
 }
 
 func init() {
@@ -487,6 +488,7 @@ func PostBadgeUploadCmd(vv commonci.ValidatorAndVersion, pass bool, resultsDir s
 		Status:              status,
 		ValidatorAndVersion: commonci.AppendVersionToName(vv.ValidatorId, vv.Version),
 		Colour:              colour,
+		ResultsDir:          resultsDir,
 	}); err != nil {
 		return err
 	}
@@ -617,16 +619,6 @@ func postResult(validatorId, version string) error {
 	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
-	testResultString, pass, err := getResult(validatorId, resultsDir)
-	if err != nil {
-		return fmt.Errorf("postResult: couldn't parse results: %v", err)
-	}
-	// Upload badge
-	vv := commonci.ValidatorAndVersion{ValidatorId: validatorId, Version: version}
-	if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
-		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
-	}
-
 	var url, gistID string
 	var g *commonci.GithubRequestHandler
 
@@ -639,6 +631,16 @@ func postResult(validatorId, version string) error {
 	if validatorId == "compat-report" {
 		log.Printf("Processing compatibility report for %s", compatReportsStr)
 		return postCompatibilityReport(compatValidators)
+	}
+
+	testResultString, pass, err := getResult(validatorId, resultsDir)
+	if err != nil {
+		return fmt.Errorf("postResult: couldn't parse results: %v", err)
+	}
+	// Upload badge for non-compat-report validators.
+	vv := commonci.ValidatorAndVersion{ValidatorId: validatorId, Version: version}
+	if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
+		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 	}
 
 	// Skip reporting if validator is part of compatibility report.
