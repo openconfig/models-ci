@@ -41,6 +41,7 @@ if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $PYANGBIND_PLUGIN_D
   find $FAILFILE -size 0 -delete
 fi
 $GOPATH/bin/post_results -validator=pyangbind -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+bash $RESULTSDIR/upload-badge.sh
 
 ########################## CLEANUP #############################
 teardown

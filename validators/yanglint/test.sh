@@ -18,3 +18,4 @@ if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
   find $FAILFILE -size 0 -delete
 fi
 $GOPATH/bin/post_results -validator=yanglint -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+bash $RESULTSDIR/upload-badge.sh

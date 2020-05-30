@@ -27,6 +27,7 @@ run-pyang-version() {
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
   $GOPATH/bin/post_results -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  bash $RESULTSDIR/upload-badge.sh
 }
 
 run-pyang-head() {
@@ -50,6 +51,7 @@ run-pyang-head() {
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
   $GOPATH/bin/post_results -validator=pyang -version="head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+  bash $RESULTSDIR/upload-badge.sh
 }
 
 run-pyang-head &
@@ -70,7 +72,7 @@ if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> 
   find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
 fi
 $GOPATH/bin/post_results -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
-bash upload-badge.sh
+bash $RESULTSDIR/upload-badge.sh
 
 ########################## CLEANUP #############################
 wait
