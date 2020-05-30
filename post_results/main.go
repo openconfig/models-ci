@@ -58,7 +58,7 @@ var (
 	owner string
 	repo  string
 
-	badgeCmdTemplate = mustTemplate("badgeCmd", `badge {{ .Status }} {{ .ValidatorAndVersion }} :{{ .Colour }} > {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg
+	badgeCmdTemplate = mustTemplate("badgeCmd", `badge {{ .Status }} {{ .ValidatorDesc }} :{{ .Colour }} > {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg
 gsutil cp {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 gsutil acl ch -u AllUsers:R gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 gsutil setmeta -h "Cache-Control:no-cache" gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
@@ -74,6 +74,7 @@ type badgeCmdParams struct {
 	RepoPrefix          string
 	Status              string
 	ValidatorAndVersion string
+	ValidatorDesc       string
 	Colour              string
 	ResultsDir          string
 }
@@ -474,7 +475,7 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 }
 
 // FIXME(wenbli): Comments
-func PostBadgeUploadCmd(vv commonci.ValidatorAndVersion, pass bool, resultsDir string) error {
+func PostBadgeUploadCmd(validatorDesc string, vv commonci.ValidatorAndVersion, pass bool, resultsDir string) error {
 	// Badge creation and upload command.
 	var builder strings.Builder
 	status := "fail"
@@ -487,6 +488,7 @@ func PostBadgeUploadCmd(vv commonci.ValidatorAndVersion, pass bool, resultsDir s
 		RepoPrefix:          strings.ReplaceAll(repoSlug, "/", "-"),
 		Status:              status,
 		ValidatorAndVersion: commonci.AppendVersionToName(vv.ValidatorId, vv.Version),
+		ValidatorDesc:       validatorDesc,
 		Colour:              colour,
 		ResultsDir:          resultsDir,
 	}); err != nil {
@@ -633,17 +635,23 @@ func postResult(validatorId, version string) error {
 		return postCompatibilityReport(compatValidators)
 	}
 
+	// Get information needed for posting badges.
+	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
+	if err != nil {
+		return fmt.Errorf("postResult: %v", err)
+	}
 	testResultString, pass, err := getResult(validatorId, resultsDir)
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
+
 	// Upload badge for non-compat-report validators.
 	vv := commonci.ValidatorAndVersion{ValidatorId: validatorId, Version: version}
-	if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
-		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
+	if err := PostBadgeUploadCmd(validatorDesc, vv, pass, resultsDir); err != nil {
+		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", validatorId, version, resultsDir, err)
 	}
 
-	// Skip reporting if validator is part of compatibility report.
+	// Skip PR status reporting if validator is part of compatibility report.
 	if compatValidatorsMap[validatorId][version] {
 		log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
 		return nil
@@ -651,10 +659,6 @@ func postResult(validatorId, version string) error {
 
 	// Create gist representing test results. The "validatorDesc" is the
 	// title of the gist, and "content" is the script execution output.
-	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
-	if err != nil {
-		return fmt.Errorf("postResult: %v", err)
-	}
 	if err := commonci.Retry(5, "CreateCIOutputGist", func() error {
 		g, err = commonci.NewGitHubRequestHandler()
 		if err != nil {
