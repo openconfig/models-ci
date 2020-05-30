@@ -592,10 +592,6 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
 
-		if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
-			return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
-		}
-
 		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
 		gistContent := testResultString
 		id, err := g.AddGistComment(gistID, gistTitle, gistContent)
@@ -619,9 +615,19 @@ func postResult(validatorId, version string) error {
 	if !ok {
 		return fmt.Errorf("postResult: validator %q not found!", validatorId)
 	}
+	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
+
+	testResultString, pass, err := getResult(validatorId, resultsDir)
+	if err != nil {
+		return fmt.Errorf("postResult: couldn't parse results: %v", err)
+	}
+	// Upload badge
+	vv := commonci.ValidatorAndVersion{ValidatorId: validatorId, Version: version}
+	if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
+		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
+	}
 
 	var url, gistID string
-	var err error
 	var g *commonci.GithubRequestHandler
 
 	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
@@ -640,7 +646,6 @@ func postResult(validatorId, version string) error {
 		log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
 		return nil
 	}
-	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
 	// Create gist representing test results. The "validatorDesc" is the
 	// title of the gist, and "content" is the script execution output.
@@ -660,16 +665,6 @@ func postResult(validatorId, version string) error {
 	}
 
 	// Post parsed test results as a gist comment.
-	testResultString, pass, err := getResult(validatorId, resultsDir)
-	if err != nil {
-		return fmt.Errorf("postResult: couldn't parse results: %v", err)
-	}
-
-	vv := commonci.ValidatorAndVersion{ValidatorId: validatorId, Version: version}
-	if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
-		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
-	}
-
 	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString); err != nil {
 		fmt.Errorf("postResult: could not add gist comment: %v", err)
 	}
