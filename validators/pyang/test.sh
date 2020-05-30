@@ -70,6 +70,7 @@ if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> 
   find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
 fi
 $GOPATH/bin/post_results -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+bash upload-badge.sh
 
 ########################## CLEANUP #############################
 wait

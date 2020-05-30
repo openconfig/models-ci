@@ -19,3 +19,5 @@ RUN pip3 install wheel && \
         pip3 install --no-cache-dir -r /workspace/oc-pyang-repo/requirements.txt && \
         pip3 install --no-cache-dir -r /workspace/pyangbind-repo/requirements.txt
 #        pip3 install pyangbind
+
+RUN apt install -y npm && npm install -g npm && npm install -g badge-maker

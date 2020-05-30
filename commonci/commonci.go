@@ -50,6 +50,9 @@ const (
 	OutFileName = "out"
 	// FailFileName by convention contains the stderr of the script file.
 	FailFileName = "fail"
+	// BadgeUploadCmdFile is output by post_results to upload the correct
+	// status badge to GCS.
+	BadgeUploadCmdFile = "upload-badge.sh"
 )
 
 // AppendVersionToName appends the version to the given validator name

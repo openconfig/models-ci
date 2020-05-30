@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 
 	"log"
 
@@ -56,7 +57,25 @@ var (
 	// derived flags
 	owner string
 	repo  string
+
+	badgeCmdTemplate = mustTemplate("badgeCmd", `badge {{ .Status }} {{ .ValidatorAndVersion }} :{{ .Colour }} > {{ .ValidatorAndVersion }}.svg
+gsutil cp {{ .ValidatorAndVersion }}.svg gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}{{ .ValidatorAndVersion }}.svg
+gsutil acl ch -u AllUsers:R gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}{{ .ValidatorAndVersion }}.svg
+gsutil setmeta -h "Cache-Control:no-cache" gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}{{ .ValidatorAndVersion }}.svg
+`)
 )
+
+// mustTemplate generates a template.Template for a particular named source template
+func mustTemplate(name, src string) *template.Template {
+	return template.Must(template.New(name).Parse(src))
+}
+
+type badgeCmdParams struct {
+	RepoPrefix          string
+	Status              string
+	ValidatorAndVersion string
+	Colour              string
+}
 
 func init() {
 	flag.StringVar(&validatorId, "validator", "", "unique name of the validator")
@@ -453,6 +472,32 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 	return outString, pass, err
 }
 
+// FIXME(wenbli): Comments
+func PostBadgeUploadCmd(vv commonci.ValidatorAndVersion, pass bool, resultsDir string) error {
+	// Badge creation and upload command.
+	var builder strings.Builder
+	status := "fail"
+	colour := "red"
+	if pass {
+		status = "pass"
+		colour = "brightgreen"
+	}
+	if err := badgeCmdTemplate.Execute(&builder, &badgeCmdParams{
+		RepoPrefix:          strings.ReplaceAll(repoSlug, "/", "-"),
+		Status:              status,
+		ValidatorAndVersion: commonci.AppendVersionToName(vv.ValidatorId, vv.Version),
+		Colour:              colour,
+	}); err != nil {
+		return err
+	}
+
+	err := ioutil.WriteFile(filepath.Join(resultsDir, commonci.BadgeUploadCmdFile), []byte(builder.String()), 0444)
+	if err != nil {
+		log.Fatalf("error while writing validator pass file %q: %v", commonci.BadgeUploadCmdFile, err)
+	}
+	return err
+}
+
 // getGistHeading gets the description and content of the result gist for the
 // given validator from its script output file. The "description" is the title
 // of the gist, and "content" is the script execution output.
@@ -547,6 +592,10 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
 
+		if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
+			return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
+		}
+
 		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
 		gistContent := testResultString
 		id, err := g.AddGistComment(gistID, gistTitle, gistContent)
@@ -615,6 +664,12 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
+
+	vv := commonci.ValidatorAndVersion{ValidatorId: validatorId, Version: version}
+	if err := PostBadgeUploadCmd(vv, pass, resultsDir); err != nil {
+		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
+	}
+
 	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString); err != nil {
 		fmt.Errorf("postResult: could not add gist comment: %v", err)
 	}
