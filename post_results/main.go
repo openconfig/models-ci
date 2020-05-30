@@ -58,7 +58,7 @@ var (
 	owner string
 	repo  string
 
-	badgeCmdTemplate = mustTemplate("badgeCmd", `badge {{ .Status }} {{ .ValidatorDesc }} :{{ .Colour }} > {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg
+	badgeCmdTemplate = mustTemplate("badgeCmd", `badge "{{ .Status }}" "{{ .ValidatorDesc }}" :{{ .Colour }} > {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg
 gsutil cp {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 gsutil acl ch -u AllUsers:R gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 gsutil setmeta -h "Cache-Control:no-cache" gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
