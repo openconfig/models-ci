@@ -26,8 +26,11 @@ run-pyang-version() {
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
-  $GOPATH/bin/post_results -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
-  bash $RESULTSDIR/upload-badge.sh
+  $GOPATH/bin/post_results -validator=pyang -version=$1 -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
+  BADGEFILE=$RESULTSDIR/upload-badge.sh
+  if stat $BADGEFILE; then
+    bash $BADGEFILE
+  fi
 }
 
 run-pyang-head() {
@@ -50,8 +53,7 @@ run-pyang-head() {
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
-  $GOPATH/bin/post_results -validator=pyang -version="head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
-  bash $RESULTSDIR/upload-badge.sh
+  $GOPATH/bin/post_results -validator=pyang -version="head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
 }
 
 run-pyang-head &
@@ -71,8 +73,11 @@ if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> 
   # Delete fail file if it's empty and the script passed.
   find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
 fi
-$GOPATH/bin/post_results -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
-bash $RESULTSDIR/upload-badge.sh
+$GOPATH/bin/post_results -validator=pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
+BADGEFILE=$RESULTSDIR/upload-badge.sh
+if stat $BADGEFILE; then
+  bash $BADGEFILE
+fi
 
 ########################## CLEANUP #############################
 wait

@@ -44,4 +44,4 @@ if find $REPODIR -name '*.yang' | xargs $GOPATH/bin/ocversion -p $REPODIR > $RES
   find $FAILFILE -size 0 -delete
 fi
 
-$GOPATH/bin/post_results -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+$GOPATH/bin/post_results -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME

@@ -50,7 +50,8 @@ var (
 	modelRoot    string // modelRoot is the root directory of the models.
 	repoSlug     string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	prNumber     int
-	prBranchName string
+	prBranchName string // prBranchName is populated only when GCB triggers on a PR.
+	branchName   string // branchName is populated when GCB triggers on a push, maybe at other times too.
 	commitSHA    string
 	version      string // version is a specific version of the validator that's being run (empty means latest).
 
@@ -58,6 +59,7 @@ var (
 	owner string
 	repo  string
 
+	// badgeCmdTemplate is the badge creation and upload command generated for pushes to the master branch.
 	badgeCmdTemplate = mustTemplate("badgeCmd", `badge "{{ .Status }}" "{{ .ValidatorDesc }}" :{{ .Colour }} > {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg
 gsutil cp {{ .ResultsDir }}/{{ .ValidatorAndVersion }}.svg gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
 gsutil acl ch -u AllUsers:R gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:{{ .ValidatorAndVersion }}.svg
@@ -85,6 +87,7 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
 	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
+	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
 }
@@ -474,8 +477,9 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 	return outString, pass, err
 }
 
-// FIXME(wenbli): Comments
-func PostBadgeUploadCmd(validatorDesc string, vv commonci.ValidatorAndVersion, pass bool, resultsDir string) error {
+// WriteBadgeUploadCmdFile writes a bash script into resultsDir that posts a
+// status badge for the given validator and result into cloud storage.
+func WriteBadgeUploadCmdFile(validatorDesc, validatorId, version string, pass bool, resultsDir string) error {
 	// Badge creation and upload command.
 	var builder strings.Builder
 	status := "fail"
@@ -485,9 +489,9 @@ func PostBadgeUploadCmd(validatorDesc string, vv commonci.ValidatorAndVersion, p
 		colour = "brightgreen"
 	}
 	if err := badgeCmdTemplate.Execute(&builder, &badgeCmdParams{
-		RepoPrefix:          strings.ReplaceAll(repoSlug, "/", "-"),
+		RepoPrefix:          strings.ReplaceAll(repoSlug, "/", "-"), // Make repo slug safe for use as file name.
 		Status:              status,
-		ValidatorAndVersion: commonci.AppendVersionToName(vv.ValidatorId, vv.Version),
+		ValidatorAndVersion: commonci.AppendVersionToName(validatorId, version),
 		ValidatorDesc:       validatorDesc,
 		Colour:              colour,
 		ResultsDir:          resultsDir,
@@ -621,6 +625,31 @@ func postResult(validatorId, version string) error {
 	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
+	// Get information needed for posting badge and GitHub gist.
+	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
+	if err != nil {
+		return fmt.Errorf("postResult: %v", err)
+	}
+	testResultString, pass, err := getResult(validatorId, resultsDir)
+	if err != nil {
+		return fmt.Errorf("postResult: couldn't parse results: %v", err)
+	}
+
+	// If it's a push on master, just upload badge for normal validators as the only action.
+	if prBranchName == "gcb-ci" {
+		// FIXME(wenbli): testing of master branch push behaviour, please revert before submission.
+		if branchName != "gcb-ci" {
+			return fmt.Errorf("postResult: There is no action to take for a non-master branch push, please re-examine your push triggers")
+		}
+		if validator.ReportOnly {
+			return nil
+		}
+		if err := WriteBadgeUploadCmdFile(validatorDesc, validatorId, version, pass, resultsDir); err != nil {
+			return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", validatorId, version, resultsDir, err)
+		}
+		return nil
+	}
+
 	var url, gistID string
 	var g *commonci.GithubRequestHandler
 
@@ -633,22 +662,6 @@ func postResult(validatorId, version string) error {
 	if validatorId == "compat-report" {
 		log.Printf("Processing compatibility report for %s", compatReportsStr)
 		return postCompatibilityReport(compatValidators)
-	}
-
-	// Get information needed for posting badges.
-	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
-	if err != nil {
-		return fmt.Errorf("postResult: %v", err)
-	}
-	testResultString, pass, err := getResult(validatorId, resultsDir)
-	if err != nil {
-		return fmt.Errorf("postResult: couldn't parse results: %v", err)
-	}
-
-	// Upload badge for non-compat-report validators.
-	vv := commonci.ValidatorAndVersion{ValidatorId: validatorId, Version: version}
-	if err := PostBadgeUploadCmd(validatorDesc, vv, pass, resultsDir); err != nil {
-		return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", validatorId, version, resultsDir, err)
 	}
 
 	// Skip PR status reporting if validator is part of compatibility report.
@@ -707,8 +720,8 @@ func main() {
 	if commitSHA == "" {
 		log.Fatalf("no commit SHA")
 	}
-	if prBranchName == "" {
-		log.Fatalf("no PR branch name supplied")
+	if prBranchName == "" && branchName != "master" {
+		log.Fatalf("no PR branch name supplied or push trigger not on master branch")
 	}
 
 	if err := postResult(validatorId, version); err != nil {
