@@ -51,7 +51,7 @@ var (
 	repoSlug     string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	prNumber     int
 	prBranchName string // prBranchName is populated only when GCB triggers on a PR.
-	branchName   string // branchName is populated when GCB triggers on a push, maybe at other times too.
+	branchName   string // branchName is the name of the branch where the commit occurred.
 	commitSHA    string
 	version      string // version is a specific version of the validator that's being run (empty means latest).
 
@@ -625,7 +625,36 @@ func postResult(validatorId, version string) error {
 	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
-	// Get information needed for posting badge and GitHub gist.
+	pushToMaster := false
+	// If it's a push on master, just upload badge for normal validators as the only action.
+	if prBranchName == "gcb-ci" {
+		// FIXME(wenbli): testing of master branch push behaviour, please revert before submission.
+		if branchName != "gcb-ci" {
+			return fmt.Errorf("postResult: There is no action to take for a non-master branch push, please re-examine your push triggers")
+		}
+		pushToMaster = true
+	}
+
+	if !pushToMaster {
+		compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
+		if err != nil {
+			return fmt.Errorf("postResult: %v", err)
+		}
+		compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
+
+		if validatorId == "compat-report" {
+			log.Printf("Processing compatibility report for %s", compatReportsStr)
+			return postCompatibilityReport(compatValidators)
+		}
+
+		// Skip PR status reporting if validator is part of compatibility report.
+		if compatValidatorsMap[validatorId][version] {
+			log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
+			return nil
+		}
+	}
+
+	// Get information needed for posting badge or GitHub gist.
 	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
@@ -635,12 +664,7 @@ func postResult(validatorId, version string) error {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
 
-	// If it's a push on master, just upload badge for normal validators as the only action.
-	if prBranchName == "gcb-ci" {
-		// FIXME(wenbli): testing of master branch push behaviour, please revert before submission.
-		if branchName != "gcb-ci" {
-			return fmt.Errorf("postResult: There is no action to take for a non-master branch push, please re-examine your push triggers")
-		}
+	if pushToMaster {
 		if validator.ReportOnly {
 			return nil
 		}
@@ -652,23 +676,6 @@ func postResult(validatorId, version string) error {
 
 	var url, gistID string
 	var g *commonci.GithubRequestHandler
-
-	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
-	if err != nil {
-		return fmt.Errorf("postResult: %v", err)
-	}
-	compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
-
-	if validatorId == "compat-report" {
-		log.Printf("Processing compatibility report for %s", compatReportsStr)
-		return postCompatibilityReport(compatValidators)
-	}
-
-	// Skip PR status reporting if validator is part of compatibility report.
-	if compatValidatorsMap[validatorId][version] {
-		log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
-		return nil
-	}
 
 	// Create gist representing test results. The "validatorDesc" is the
 	// title of the gist, and "content" is the script execution output.

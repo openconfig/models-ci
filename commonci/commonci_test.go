@@ -157,8 +157,8 @@ func TestGetValidatorAndVersionsFromString(t *testing.T) {
 		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang", Version: "1.7.2"}},
 		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"1.7.2": true}},
 	}, {
-		desc:  "more than one version",
-		inStr: "pyang@1.7.2,pyang,oc-pyang,pyang@head",
+		desc:  "more than one version with an extraneous comma",
+		inStr: "pyang@1.7.2,,pyang,oc-pyang,pyang@head",
 		wantVVList: []ValidatorAndVersion{
 			{ValidatorId: "pyang", Version: "1.7.2"},
 			{ValidatorId: "pyang", Version: ""},
@@ -176,8 +176,8 @@ func TestGetValidatorAndVersionsFromString(t *testing.T) {
 			},
 		},
 	}, {
-		desc:  "more than one version with ending comma",
-		inStr: "pyang@1.7.2,pyang,oc-pyang,pyang@head,",
+		desc:  "more than one version with ending comma and with a duplicate",
+		inStr: "pyang@1.7.2,pyang,oc-pyang,pyang@1.7.2,pyang@head,",
 		wantVVList: []ValidatorAndVersion{
 			{ValidatorId: "pyang", Version: "1.7.2"},
 			{ValidatorId: "pyang", Version: ""},
@@ -241,14 +241,19 @@ func TestValidatorAndVersionsDiff(t *testing.T) {
 		inBStr:  "pyang@1.7.2",
 		wantStr: "",
 	}, {
-		desc:    "more than one version",
-		inAStr:  "pyang@1.7.2,pyang,oc-pyang,pyang@head",
+		desc:    "more than one version and with an extraneous comma",
+		inAStr:  "pyang@1.7.2,pyang,oc-pyang,,pyang@head",
 		inBStr:  "pyang@head",
 		wantStr: "pyang@1.7.2,pyang,oc-pyang",
 	}, {
 		desc:    "more than one version deletes",
 		inAStr:  "pyang@1.7.2,pyang,oc-pyang,pyang@head",
 		inBStr:  "oc-pyang,pyang@1.7.2",
+		wantStr: "pyang,pyang@head",
+	}, {
+		desc:    "more than one version deletes with duplicates",
+		inAStr:  "pyang@1.7.2,pyang,oc-pyang,pyang@head,oc-pyang,goyang-ygot",
+		inBStr:  "pyang@1.7.2,goyang-ygot,oc-pyang,pyang@1.7.2",
 		wantStr: "pyang,pyang@head",
 	}, {
 		desc:    "more than one version deletes with deleting something not there",

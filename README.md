@@ -197,6 +197,16 @@ To run this CI tool on GCB for a GitHub project, the
 [GCB App](https://github.com/marketplace/google-cloud-build) needs to be enabled
 for the target OpenConfig models repo.
 
+## Posting Status Badges
+
+This is done through a code path in `post_results` that generates an
+`upload-badge.sh` file if the CI was triggered on a master branch push. The
+badge is created using the
+[badge-maker](https://www.npmjs.com/package/badge-maker) package used by
+[shields.io](https://shields.io/), whose output svg file is then uploaded to
+cloud storage and made public. The script also sets the no-cache option to avoid
+GitHub from excessively caching the badge.
+
 ## Future Improvements
 
 A custom build container image would,

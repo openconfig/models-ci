@@ -33,6 +33,8 @@ var (
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
+	prBranchName       string // prBranchName is populated only when GCB triggers on a PR.
+	branchName         string // branchName is the name of the branch where the commit occurred.
 	prNumber           int
 	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
@@ -68,6 +70,8 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
+	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
+	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&skippedValidators, "skipped-validators", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) not to be ran at all, not even in the compatibility report")
 	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
@@ -299,6 +303,18 @@ func main() {
 		return
 	} else if localModelDirName != "" || localValidatorId != "" {
 		log.Fatalf("modelDirName and validator can only be specified for local cmd generation")
+	}
+
+	// Skip testing non-widely used validators, as we don't need to post badges for those tools.
+	// FIXME(wenbli): testing of master branch push behaviour, please revert before submission.
+	//if prBranchName == "" && branchName == "master" {
+	if prBranchName == "gcb-ci" && branchName == "gcb-ci" {
+		for validatorId, validator := range commonci.Validators {
+			if !validator.IsWidelyUsedTool {
+				// Here we assume simply that non widely-used checks don't have a version specified.
+				skippedValidators += "," + validatorId
+			}
+		}
 	}
 
 	repoSplit := strings.Split(repoSlug, "/")

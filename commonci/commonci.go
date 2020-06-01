@@ -85,6 +85,9 @@ type Validator struct {
 	// ReportOnly indicates that it's not itself a validator, it's just a
 	// CI item that does reporting on other validators.
 	ReportOnly bool
+	// IsWidelyUsedTool indicates that the tool is a widely used tool whose
+	// status should be reported on the front page of the repository.
+	IsWidelyUsedTool bool
 }
 
 // StatusName determines the status description for the version of the validator.
@@ -100,28 +103,33 @@ var (
 	// The key is a unique identifier that's safe to use as a directory name.
 	Validators = map[string]*Validator{
 		"pyang": &Validator{
-			Name:       "pyang",
-			IsPerModel: true,
+			Name:             "pyang",
+			IsPerModel:       true,
+			IsWidelyUsedTool: true,
 		},
 		"oc-pyang": &Validator{
 			Name:       "OpenConfig Linter",
 			IsPerModel: true,
 		},
 		"pyangbind": &Validator{
-			Name:       "pyangbind",
-			IsPerModel: true,
+			Name:             "pyangbind",
+			IsPerModel:       true,
+			IsWidelyUsedTool: true,
 		},
 		"goyang-ygot": &Validator{
-			Name:       "goyang/ygot",
-			IsPerModel: true,
+			Name:             "goyang/ygot",
+			IsPerModel:       true,
+			IsWidelyUsedTool: true,
 		},
 		"yanglint": &Validator{
-			Name:       "yanglint",
-			IsPerModel: true,
+			Name:             "yanglint",
+			IsPerModel:       true,
+			IsWidelyUsedTool: true,
 		},
 		"confd": &Validator{
-			Name:       "ConfD Basic",
-			IsPerModel: true,
+			Name:             "ConfD Basic",
+			IsPerModel:       true,
+			IsWidelyUsedTool: true,
 		},
 		"regexp": &Validator{
 			Name:       "regexp tests",
@@ -255,13 +263,16 @@ func GetValidatorAndVersionsFromString(validatorsAndVersionsStr string) ([]Valid
 		if len(vvSegments) == 2 {
 			vv.Version = vvSegments[1]
 		}
-		compatValidators = append(compatValidators, vv)
 		m, ok := compatValidatorsMap[vv.ValidatorId]
 		if !ok {
 			m = map[string]bool{}
 			compatValidatorsMap[vv.ValidatorId] = m
 		}
-		m[vv.Version] = true
+		// De-dup validator@version names.
+		if !m[vv.Version] {
+			compatValidators = append(compatValidators, vv)
+			m[vv.Version] = true
+		}
 	}
 	return compatValidators, compatValidatorsMap
 }
