@@ -309,10 +309,9 @@ func main() {
 
 	badgeOnly := false
 	// If it's a push on master, just upload badge for normal validators as the only action.
-	if prBranchName == "gcb-ci" {
-		// FIXME(wenbli): testing of master branch push behaviour, please revert before submission.
-		if branchName != "gcb-ci" {
-			log.Fatalf("postResult: There is no action to take for a non-master branch push, please re-examine your push triggers")
+	if prBranchName == "" {
+		if branchName != "master" {
+			log.Fatalf("cmd_gen: There is no action to take for a non-master branch push, please re-examine your push triggers")
 		}
 		badgeOnly = true
 	}

@@ -627,9 +627,8 @@ func postResult(validatorId, version string) error {
 
 	pushToMaster := false
 	// If it's a push on master, just upload badge for normal validators as the only action.
-	if prBranchName == "gcb-ci" {
-		// FIXME(wenbli): testing of master branch push behaviour, please revert before submission.
-		if branchName != "gcb-ci" {
+	if prBranchName == "" {
+		if branchName != "master" {
 			return fmt.Errorf("postResult: There is no action to take for a non-master branch push, please re-examine your push triggers")
 		}
 		pushToMaster = true
