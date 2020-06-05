@@ -33,7 +33,6 @@ var (
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
-	prBranchName       string // prBranchName is populated only when GCB triggers on a PR.
 	branchName         string // branchName is the name of the branch where the commit occurred.
 	prNumber           int
 	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
@@ -70,7 +69,6 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
-	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&skippedValidators, "skipped-validators", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) not to be ran at all, not even in the compatibility report")
@@ -309,7 +307,7 @@ func main() {
 
 	badgeOnly := false
 	// If it's a push on master, just upload badge for normal validators as the only action.
-	if prBranchName == "" {
+	if prNumber == 0 {
 		if branchName != "master" {
 			log.Fatalf("cmd_gen: There is no action to take for a non-master branch push, please re-examine your push triggers")
 		}
