@@ -46,14 +46,13 @@ const (
 
 var (
 	// flags
-	validatorId  string // validatorId is the unique name identifying the validator (see commonci for all of them)
-	modelRoot    string // modelRoot is the root directory of the models.
-	repoSlug     string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
-	prNumber     int
-	prBranchName string // prBranchName is populated only when GCB triggers on a PR.
-	branchName   string // branchName is the name of the branch where the commit occurred.
-	commitSHA    string
-	version      string // version is a specific version of the validator that's being run (empty means latest).
+	validatorId string // validatorId is the unique name identifying the validator (see commonci for all of them)
+	modelRoot   string // modelRoot is the root directory of the models.
+	repoSlug    string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
+	prNumber    int
+	branchName  string // branchName is the name of the branch where the commit occurred.
+	commitSHA   string
+	version     string // version is a specific version of the validator that's being run (empty means latest).
 
 	// derived flags
 	owner string
@@ -72,6 +71,7 @@ func mustTemplate(name, src string) *template.Template {
 	return template.Must(template.New(name).Parse(src))
 }
 
+// badgeCmdParams is the input to the badge template.
 type badgeCmdParams struct {
 	RepoPrefix          string
 	Status              string
@@ -86,7 +86,6 @@ func init() {
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
-	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
@@ -499,11 +498,11 @@ func WriteBadgeUploadCmdFile(validatorDesc, validatorId, version string, pass bo
 		return err
 	}
 
-	err := ioutil.WriteFile(filepath.Join(resultsDir, commonci.BadgeUploadCmdFile), []byte(builder.String()), 0444)
-	if err != nil {
+	if err := ioutil.WriteFile(filepath.Join(resultsDir, commonci.BadgeUploadCmdFile), []byte(builder.String()), 0444); err != nil {
 		log.Fatalf("error while writing validator pass file %q: %v", commonci.BadgeUploadCmdFile, err)
+		return err
 	}
-	return err
+	return nil
 }
 
 // getGistHeading gets the description and content of the result gist for the
@@ -627,7 +626,7 @@ func postResult(validatorId, version string) error {
 
 	pushToMaster := false
 	// If it's a push on master, just upload badge for normal validators as the only action.
-	if prBranchName == "" {
+	if prNumber == 0 {
 		if branchName != "master" {
 			return fmt.Errorf("postResult: There is no action to take for a non-master branch push, please re-examine your push triggers")
 		}
@@ -726,7 +725,7 @@ func main() {
 	if commitSHA == "" {
 		log.Fatalf("no commit SHA")
 	}
-	if prBranchName == "" && branchName != "master" {
+	if prNumber == 0 && branchName != "master" {
 		log.Fatalf("no PR branch name supplied or push trigger not on master branch")
 	}
 

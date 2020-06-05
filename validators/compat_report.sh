@@ -11,4 +11,4 @@ fi
 echo validators to be put in compability report:
 cat $USERCONFIG_DIR/compat-report-validators.txt
 
-$GOPATH/bin/post_results -validator=compat-report -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA -pr-number=$_PR_NUMBER -branch=$BRANCH_NAME
+$GOPATH/bin/post_results -validator=compat-report -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -commit-sha=$COMMIT_SHA -pr-number=$_PR_NUMBER -branch=$BRANCH_NAME
