@@ -36,8 +36,8 @@ import (
 const (
 	// The title of the results uses the relevant emoji to show whether it
 	// succeeded or failed.
-	mdPassSymbol = ":white_check_mark:"
-	mdFailSymbol = ":no_entry:"
+	mdPassSymbol = "&#x2705;"
+	mdFailSymbol = "&#x26D4;"
 	// IgnorePyangWarnings ignores all warnings from pyang or pyang-based tools.
 	IgnorePyangWarnings = true
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
@@ -644,6 +644,7 @@ func postResult(validatorId, version string) error {
 		}
 		pushToMaster = true
 	}
+	pushToMaster = true // FIXME(DEBUG, remove this)
 
 	if !pushToMaster {
 		compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
@@ -669,7 +670,7 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	testResultString, pass, err := getResult(validatorId, resultsDir, pushToMaster)
+	testResultString, pass, err := getResult(validatorId, resultsDir, false)
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
@@ -691,11 +692,11 @@ func postResult(validatorId, version string) error {
 			return err
 		}
 
-		// Put condensed output into a file to be uploaded and linked by the badges.
-		condensedOutputHTML := fmt.Sprintf("<p>%s</p><span style=\"white-space: pre-line\"><p>Execution output:\n%s</p></span>", testResultString, runOutput)
-		condensedOutputfile := filepath.Join(resultsDir, validatorUniqueStr+".html")
-		if err := ioutil.WriteFile(condensedOutputfile, []byte(condensedOutputHTML), 0666); err != nil {
-			log.Fatalf("error while writing condensed output file %q: %v", condensedOutputfile, err)
+		// Put output into a file to be uploaded and linked by the badges.
+		outputHTML := fmt.Sprintf("<p>%s</p><span style=\"white-space: pre-line\"><p>Execution output:\n%s</p></span>", testResultString, runOutput)
+		outputFile := filepath.Join(resultsDir, validatorUniqueStr+".html")
+		if err := ioutil.WriteFile(outputFile, []byte(outputHTML), 0666); err != nil {
+			log.Fatalf("error while writing output file %q: %v", outputFile, err)
 			return err
 		}
 		return nil

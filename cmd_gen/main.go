@@ -313,6 +313,7 @@ func main() {
 		}
 		badgeOnly = true
 	}
+	badgeOnly = true // FIXME(DEBUG, remove this)
 
 	// Skip testing non-widely used validators, as we don't need to post badges for those tools.
 	if badgeOnly {
