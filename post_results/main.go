@@ -644,7 +644,6 @@ func postResult(validatorId, version string) error {
 		}
 		pushToMaster = true
 	}
-	pushToMaster = true // FIXME(DEBUG, remove this)
 
 	if !pushToMaster {
 		compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
