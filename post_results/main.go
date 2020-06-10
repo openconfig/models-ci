@@ -694,7 +694,7 @@ func postResult(validatorId, version string) error {
 
 		// Put condensed output into a file to be uploaded and linked by the badges.
 		condensedOutputHTML := fmt.Sprintf("<p>%s</p><span style=\"white-space: pre-line\"><p>Execution output:\n%s</p></span>", testResultString, runOutput)
-		condensedOutputfile := filepath.Join(resultsDir, validatorUniqueStr)
+		condensedOutputfile := filepath.Join(resultsDir, validatorUniqueStr+".html")
 		if err := ioutil.WriteFile(condensedOutputfile, []byte(condensedOutputHTML), 0666); err != nil {
 			log.Fatalf("error while writing condensed output file %q: %v", condensedOutputfile, err)
 			return err
