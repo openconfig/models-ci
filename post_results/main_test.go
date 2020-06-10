@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -165,6 +166,8 @@ func TestGetResult(t *testing.T) {
 		inValidatorId        string
 		wantPass             bool
 		wantOut              string
+		wantCondensedOut     string
+		wantCondensedOutSame bool
 		wantErrSubstr        string
 	}{{
 		name:                 "basic pyang pass",
@@ -193,6 +196,8 @@ Passed.
 </details>
 </details>
 `,
+		wantCondensedOut: `All passed.
+`,
 	}, {
 		name:                 "pyang with an empty fail file",
 		inValidatorResultDir: "testdata/oc-pyang-with-fail-file",
@@ -200,6 +205,7 @@ Passed.
 		wantPass:             false,
 		wantOut: `Validator script failed -- infra bug?
 Test failed with no stderr output.`,
+		wantCondensedOutSame: true,
 	}, {
 		name:                 "basic non-pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
@@ -224,6 +230,8 @@ Passed.
 warning foo<br>
 </details>
 </details>
+`,
+		wantCondensedOut: `All passed.
 `,
 	}, {
 		name:                 "pyang with pass and fails",
@@ -254,6 +262,23 @@ Passed.
 </details>
 </details>
 `,
+		wantCondensedOut: `<details>
+  <summary>:no_entry: acl</summary>
+<details>
+  <summary>:no_entry: openconfig-acl</summary>
+<ul>
+  <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B</pre></li>
+</ul>
+</details>
+</details>
+<details>
+  <summary>:no_entry: optical-transport</summary>
+<details>
+  <summary>:no_entry: openconfig-optical-amplifier</summary>
+Failed.
+</details>
+</details>
+`,
 	}, {
 		name:                 "non-pyang with pass and fails",
 		inValidatorResultDir: "testdata/pyang-with-invalid-files",
@@ -279,30 +304,49 @@ warning foo<br>
 </details>
 </details>
 `,
+		wantCondensedOut: `<details>
+  <summary>:no_entry: acl</summary>
+<details>
+  <summary>:no_entry: openconfig-acl</summary>
+/workspace/release/yang/wifi/mac/openconfig-wifi-mac.yang:1244: error: enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B<br>
+</details>
+</details>
+<details>
+  <summary>:no_entry: optical-transport</summary>
+<details>
+  <summary>:no_entry: openconfig-optical-amplifier</summary>
+Failed.
+</details>
+</details>
+`,
 	}, {
 		name:                 "non-per-model pass -- no fail file",
 		inValidatorResultDir: "testdata/regexp-tests",
 		inValidatorId:        "regexp",
 		wantPass:             true,
 		wantOut:              `Test passed.`,
+		wantCondensedOutSame: true,
 	}, {
 		name:                 "non-per-model fail -- empty fail file",
 		inValidatorResultDir: "testdata/regexp-tests2",
 		inValidatorId:        "regexp",
 		wantPass:             false,
 		wantOut:              `Test failed with no stderr output.`,
+		wantCondensedOutSame: true,
 	}, {
 		name:                 "non-per-model fail",
 		inValidatorResultDir: "testdata/regexp-tests-fail",
 		inValidatorId:        "regexp",
 		wantPass:             false,
 		wantOut:              "I failed\n",
+		wantCondensedOutSame: true,
 	}, {
 		name:                 "pyang script fail",
 		inValidatorResultDir: "testdata/oc-pyang-script-fail",
 		inValidatorId:        "oc-pyang",
 		wantPass:             false,
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
+		wantCondensedOutSame: true,
 	}, {
 		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
 		inValidatorResultDir: "testdata/misc-checks-pass",
@@ -317,6 +361,7 @@ warning foo<br>
 8 files reached by build rules.
 </details>
 `,
+		wantCondensedOutSame: true,
 	}, {
 		name:                 "openconfig-version, revision version, and .spec.yml checks all fail",
 		inValidatorResultDir: "testdata/misc-checks-fail",
@@ -335,28 +380,35 @@ warning foo<br>
   <li>unchanged-unreached.yang: file not used by any .spec.yml build.</li>
 </details>
 `,
+		wantCondensedOutSame: true,
 	}}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotOut, gotPass, err := getResult(tt.inValidatorId, tt.inValidatorResultDir)
-			if err != nil {
-				if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
-					t.Fatalf("did not get expected error, %s", diff)
+		for _, condensed := range []bool{false, true} {
+			t.Run(fmt.Sprintf(tt.name+"@condensed=%v", condensed), func(t *testing.T) {
+				gotOut, gotPass, err := getResult(tt.inValidatorId, tt.inValidatorResultDir, condensed)
+				if err != nil {
+					if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
+						t.Fatalf("did not get expected error, %s", diff)
+					}
+					return
 				}
-				return
-			}
-			if gotPass != tt.wantPass {
-				t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
-			}
-			if diff := cmp.Diff(strings.Split(tt.wantOut, "\n"), strings.Split(gotOut, "\n")); diff != "" {
-				t.Errorf("(-want, +got):\n%s", diff)
-			}
-		})
+				if gotPass != tt.wantPass {
+					t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
+				}
+				wantOut := tt.wantOut
+				if condensed && !tt.wantCondensedOutSame {
+					wantOut = tt.wantCondensedOut
+				}
+				if diff := cmp.Diff(strings.Split(wantOut, "\n"), strings.Split(gotOut, "\n")); diff != "" {
+					t.Errorf("(-want, +got):\n%s", diff)
+				}
+			})
+		}
 	}
 }
 
-func TestGetGistInfo(t *testing.T) {
+func TestGetGistHeading(t *testing.T) {
 	tests := []struct {
 		name                 string
 		inValidatorResultDir string
@@ -409,6 +461,66 @@ func TestGetGistInfo(t *testing.T) {
 			}
 			if gotContent != tt.wantContent {
 				t.Errorf("gotContent %v, want %v", gotContent, tt.wantContent)
+			}
+		})
+	}
+}
+
+func TestWriteBadgeUploadCmdFile(t *testing.T) {
+	repoSlug = "openconfig/repo"
+	tests := []struct {
+		name                 string
+		inValidatorDesc      string
+		inValidatorUniqueStr string
+		inVersion            string
+		inPass               bool
+		inResultsDir         string
+		wantFileContent      string
+	}{{
+		name:                 "pass",
+		inValidatorDesc:      "pyang@1.2.3",
+		inValidatorUniqueStr: "pyang@latest",
+		inPass:               true,
+		inResultsDir:         "results-dir",
+		wantFileContent: `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/openconfig-repo:
+RESULTSDIR=results-dir
+upload-public-file() {
+	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
+	gsutil acl ch -u AllUsers:R "$REMOTE_PATH_PFX"$1
+	gsutil setmeta -h "Cache-Control:no-cache" "$REMOTE_PATH_PFX"$1
+}
+badge "pass" "pyang@1.2.3" :brightgreen > $RESULTSDIR/pyang@latest.svg
+upload-public-file pyang@latest.svg
+upload-public-file pyang@latest.html
+`,
+	}, {
+		name:                 "fail",
+		inValidatorDesc:      "pyang@2.3.4",
+		inValidatorUniqueStr: "pyang",
+		inPass:               false,
+		inResultsDir:         "results-directory",
+		wantFileContent: `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/openconfig-repo:
+RESULTSDIR=results-directory
+upload-public-file() {
+	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
+	gsutil acl ch -u AllUsers:R "$REMOTE_PATH_PFX"$1
+	gsutil setmeta -h "Cache-Control:no-cache" "$REMOTE_PATH_PFX"$1
+}
+badge "fail" "pyang@2.3.4" :red > $RESULTSDIR/pyang.svg
+upload-public-file pyang.svg
+upload-public-file pyang.html
+`,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := WriteBadgeUploadCmdFile(tt.inValidatorDesc, tt.inValidatorUniqueStr, tt.inPass, tt.inResultsDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if got != tt.wantFileContent {
+				t.Errorf("gotFileContent:\n%v\nwant:\n%v", got, tt.wantFileContent)
 			}
 		})
 	}
