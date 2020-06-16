@@ -33,6 +33,7 @@ var (
 	// Commandline flags: should be string if it may not exist
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
+	forkRepoSlug       string // forkRepoSlug is the "owner/repo" name of the fork repo.
 	commitSHA          string
 	branchName         string // branchName is the name of the branch where the commit occurred.
 	prNumberStr        string // prNumberStr is the PR number.
@@ -69,6 +70,7 @@ func init() {
 	// GCB-required flags
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
+	flag.StringVar(&forkRepoSlug, "fork-repo-slug", "openconfig/public", "forking repo")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&prNumberStr, "pr-number", "", "PR number")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
@@ -332,6 +334,8 @@ func main() {
 			}
 		}
 	}
+
+	log.Fatalf("fork-repo-slug: %q", forkRepoSlug)
 
 	repoSplit := strings.Split(repoSlug, "/")
 	owner = repoSplit[0]
