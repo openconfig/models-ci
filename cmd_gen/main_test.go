@@ -33,6 +33,7 @@ func (p *postLabelRecorder) PostLabel(labelName, labelColor, owner, repo string,
 }
 
 func TestGenOpenConfigLinterScript(t *testing.T) {
+	prNumber = 1
 	basicModelMap, err := commonci.ParseOCModels("testdata")
 	if err != nil {
 		t.Fatalf("TestGenOpenConfigLinterScript: Failed to parse models for testing: %v", err)

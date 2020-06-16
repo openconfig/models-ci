@@ -32,7 +32,7 @@ cat $RESULTSDIR/*.pr-file-parse-log > $RESULTSDIR/pr-file-parse-log 2>> $OUTFILE
 
 # changed-files.txt
 REPODIR=$RESULTSDIR/base_repo
-git clone -b $_HEAD_BRANCH "git@github.com:$_REPO_SLUG.git" $REPODIR
+git clone -b $BRANCH_NAME "git@github.com:$_REPO_SLUG.git" $REPODIR
 cd $REPODIR
 BASE_COMMIT=$(git merge-base $COMMIT_SHA origin/master)
 git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-files.txt 2>> $OUTFILE
@@ -44,4 +44,4 @@ if find $REPODIR -name '*.yang' | xargs $GOPATH/bin/ocversion -p $REPODIR > $RES
   find $FAILFILE -size 0 -delete
 fi
 
-$GOPATH/bin/post_results -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+$GOPATH/bin/post_results -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME

@@ -19,3 +19,17 @@ RUN pip3 install wheel && \
         pip3 install --no-cache-dir -r /workspace/oc-pyang-repo/requirements.txt && \
         pip3 install --no-cache-dir -r /workspace/pyangbind-repo/requirements.txt
 #        pip3 install pyangbind
+
+RUN apt install -y npm && npm install -g npm && npm install -g badge-maker
+
+# Downloading gcloud package
+RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
+
+# Installing the package
+RUN mkdir -p /usr/local/gcloud \
+  && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
+  && /usr/local/gcloud/google-cloud-sdk/install.sh
+
+# Adding the package path to local
+ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
+

@@ -22,4 +22,8 @@ if bash $RESULTSDIR/script.sh $CONFDC $CONFDPATH > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
-$GOPATH/bin/post_results -validator=confd -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-branch=$_HEAD_BRANCH -commit-sha=$COMMIT_SHA
+$GOPATH/bin/post_results -validator=confd -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
+BADGEFILE=$RESULTSDIR/upload-badge.sh
+if stat $BADGEFILE; then
+  bash $BADGEFILE
+fi

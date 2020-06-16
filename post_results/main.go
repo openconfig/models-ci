@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 
 	"log"
 
@@ -35,8 +36,8 @@ import (
 const (
 	// The title of the results uses the relevant emoji to show whether it
 	// succeeded or failed.
-	mdPassSymbol = ":white_check_mark:"
-	mdFailSymbol = ":no_entry:"
+	mdPassSymbol = "&#x2705;"
+	mdFailSymbol = "&#x26D4;"
 	// IgnorePyangWarnings ignores all warnings from pyang or pyang-based tools.
 	IgnorePyangWarnings = true
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
@@ -45,25 +46,53 @@ const (
 
 var (
 	// flags
-	validatorId  string // validatorId is the unique name identifying the validator (see commonci for all of them)
-	modelRoot    string // modelRoot is the root directory of the models.
-	repoSlug     string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
-	prNumber     int
-	prBranchName string
-	commitSHA    string
-	version      string // version is a specific version of the validator that's being run (empty means latest).
+	validatorId string // validatorId is the unique name identifying the validator (see commonci for all of them)
+	modelRoot   string // modelRoot is the root directory of the models.
+	repoSlug    string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
+	prNumber    int
+	branchName  string // branchName is the name of the branch where the commit occurred.
+	commitSHA   string
+	version     string // version is a specific version of the validator that's being run (empty means latest).
 
 	// derived flags
 	owner string
 	repo  string
+
+	// badgeCmdTemplate is the badge creation and upload command generated for pushes to the master branch.
+	badgeCmdTemplate = mustTemplate("badgeCmd", `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:
+RESULTSDIR={{ .ResultsDir }}
+upload-public-file() {
+	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
+	gsutil acl ch -u AllUsers:R "$REMOTE_PATH_PFX"$1
+	gsutil setmeta -h "Cache-Control:no-cache" "$REMOTE_PATH_PFX"$1
+}
+badge "{{ .Status }}" "{{ .ValidatorDesc }}" :{{ .Colour }} > $RESULTSDIR/{{ .ValidatorAndVersion }}.svg
+upload-public-file {{ .ValidatorAndVersion }}.svg
+upload-public-file {{ .ValidatorAndVersion }}.html
+`)
 )
+
+// mustTemplate generates a template.Template for a particular named source template
+func mustTemplate(name, src string) *template.Template {
+	return template.Must(template.New(name).Parse(src))
+}
+
+// badgeCmdParams is the input to the badge template.
+type badgeCmdParams struct {
+	RepoPrefix          string
+	Status              string
+	ValidatorAndVersion string
+	ValidatorDesc       string
+	Colour              string
+	ResultsDir          string
+}
 
 func init() {
 	flag.StringVar(&validatorId, "validator", "", "unique name of the validator")
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
-	flag.StringVar(&prBranchName, "pr-branch", "", "branch name of PR")
+	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
 }
@@ -335,7 +364,8 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 
 // parseModelResultsHTML transforms the output files of the validator script into HTML
 // to be displayed on GitHub.
-func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool, error) {
+// If condensed=true, then only errors are provided.
+func parseModelResultsHTML(validatorId, validatorResultDir string, condensed bool) (string, bool, error) {
 	var htmlOut, modelHTML strings.Builder
 	var prevModelDirName string
 
@@ -356,7 +386,9 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 
 			// Write results one modelDir at a time in order to report overall modelDir status.
 			if prevModelDirName != "" && modelDirName != prevModelDirName {
-				htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+				if !condensed || !modelDirPass {
+					htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+				}
 				modelHTML.Reset()
 				modelDirPass = true
 			}
@@ -398,7 +430,9 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 				return fmt.Errorf("error encountered while processing output for validator %q: %v", validatorId, err)
 			}
 
-			modelHTML.WriteString(sprintSummaryHTML(modelPass, modelName, outString))
+			if !condensed || !modelPass {
+				modelHTML.WriteString(sprintSummaryHTML(modelPass, modelName, outString))
+			}
 		}
 		return nil
 	}); err != nil {
@@ -406,7 +440,9 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 	}
 
 	// Edge case: handle last modelDir.
-	htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+	if !condensed || !modelDirPass {
+		htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+	}
 
 	return htmlOut.String(), allPass, nil
 }
@@ -414,7 +450,8 @@ func parseModelResultsHTML(validatorId, validatorResultDir string) (string, bool
 // getResult parses the results for the given validator and its results
 // directory, and returns the string to be put in a GitHub gist comment as well
 // as the status (i.e. pass or fail).
-func getResult(validatorId, resultsDir string) (string, bool, error) {
+// If condensed=true, then only errors are provided.
+func getResult(validatorId, resultsDir string, condensed bool) (string, bool, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
 		return "", false, fmt.Errorf("validator %q not found!", validatorId)
@@ -444,13 +481,41 @@ func getResult(validatorId, resultsDir string) (string, bool, error) {
 	case validator.IsPerModel && validatorId == "misc-checks":
 		outString, pass, err = processMiscChecksOutput(resultsDir)
 	case validator.IsPerModel:
-		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir)
+		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir, condensed)
+		if pass && condensed {
+			outString = "All passed.\n" + outString
+		}
 	default:
 		outString = "Test passed."
 		pass = true
 	}
 
 	return outString, pass, err
+}
+
+// WriteBadgeUploadCmdFile writes a bash script into resultsDir that posts a
+// status badge for the given validator and result into cloud storage.
+func WriteBadgeUploadCmdFile(validatorDesc, validatorUniqueStr string, pass bool, resultsDir string) (string, error) {
+	// Badge creation and upload command.
+	var builder strings.Builder
+	status := "fail"
+	colour := "red"
+	if pass {
+		status = "pass"
+		colour = "brightgreen"
+	}
+	if err := badgeCmdTemplate.Execute(&builder, &badgeCmdParams{
+		RepoPrefix:          strings.ReplaceAll(repoSlug, "/", "-"), // Make repo slug safe for use as file name.
+		Status:              status,
+		ValidatorAndVersion: validatorUniqueStr,
+		ValidatorDesc:       validatorDesc,
+		Colour:              colour,
+		ResultsDir:          resultsDir,
+	}); err != nil {
+		return "", err
+	}
+
+	return builder.String(), nil
 }
 
 // getGistHeading gets the description and content of the result gist for the
@@ -542,14 +607,13 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
 
 		// Post parsed test results as a gist comment.
-		testResultString, pass, err := getResult(vv.ValidatorId, resultsDir)
+		testResultString, pass, err := getResult(vv.ValidatorId, resultsDir, false)
 		if err != nil {
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
 
 		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
-		gistContent := testResultString
-		id, err := g.AddGistComment(gistID, gistTitle, gistContent)
+		id, err := g.AddGistComment(gistID, gistTitle, testResultString)
 		if err != nil {
 			fmt.Errorf("postResult: could not add gist comment: %v", err)
 		}
@@ -570,51 +634,90 @@ func postResult(validatorId, version string) error {
 	if !ok {
 		return fmt.Errorf("postResult: validator %q not found!", validatorId)
 	}
-
-	var url, gistID string
-	var err error
-	var g *commonci.GithubRequestHandler
-
-	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
-	if err != nil {
-		return fmt.Errorf("postResult: %v", err)
-	}
-	compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
-
-	if validatorId == "compat-report" {
-		log.Printf("Processing compatibility report for %s", compatReportsStr)
-		return postCompatibilityReport(compatValidators)
-	}
-
-	// Skip reporting if validator is part of compatibility report.
-	if compatValidatorsMap[validatorId][version] {
-		log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
-		return nil
-	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
-	// Create gist representing test results. The "validatorDesc" is the
-	// title of the gist, and "content" is the script execution output.
-	validatorDesc, content, err := getGistHeading(validatorId, version, resultsDir)
+	pushToMaster := false
+	// If it's a push on master, just upload badge for normal validators as the only action.
+	if prNumber == 0 {
+		if branchName != "master" {
+			return fmt.Errorf("postResult: There is no action to take for a non-master branch push, please re-examine your push triggers")
+		}
+		pushToMaster = true
+	}
+
+	if !pushToMaster {
+		compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
+		if err != nil {
+			return fmt.Errorf("postResult: %v", err)
+		}
+		compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
+
+		if validatorId == "compat-report" {
+			log.Printf("Processing compatibility report for %s", compatReportsStr)
+			return postCompatibilityReport(compatValidators)
+		}
+
+		// Skip PR status reporting if validator is part of compatibility report.
+		if compatValidatorsMap[validatorId][version] {
+			log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
+			return nil
+		}
+	}
+
+	// Get information needed for posting badge or GitHub gist.
+	validatorDesc, runOutput, err := getGistHeading(validatorId, version, resultsDir)
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
+	testResultString, pass, err := getResult(validatorId, resultsDir, false)
+	if err != nil {
+		return fmt.Errorf("postResult: couldn't parse results: %v", err)
+	}
+
+	if pushToMaster {
+		if validator.ReportOnly {
+			// Only upload results for running validators.
+			return nil
+		}
+		// Output badge creation & upload commands into a file to be executed.
+		validatorUniqueStr := commonci.AppendVersionToName(validatorId, version)
+		uploadCmdFileContent, err := WriteBadgeUploadCmdFile(validatorDesc, validatorUniqueStr, pass, resultsDir)
+		if err != nil {
+			return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", validatorId, version, resultsDir, err)
+		}
+		badgeUploadFile := filepath.Join(resultsDir, commonci.BadgeUploadCmdFile)
+		if err := ioutil.WriteFile(badgeUploadFile, []byte(uploadCmdFileContent), 0444); err != nil {
+			log.Fatalf("error while writing validator pass file %q: %v", badgeUploadFile, err)
+			return err
+		}
+
+		// Put output into a file to be uploaded and linked by the badges.
+		outputHTML := fmt.Sprintf("<p>%s</p><span style=\"white-space: pre-line\"><p>Execution output:\n%s</p></span>", testResultString, runOutput)
+		outputFile := filepath.Join(resultsDir, validatorUniqueStr+".html")
+		if err := ioutil.WriteFile(outputFile, []byte(outputHTML), 0666); err != nil {
+			log.Fatalf("error while writing output file %q: %v", outputFile, err)
+			return err
+		}
+		return nil
+	}
+
+	var url, gistID string
+	var g *commonci.GithubRequestHandler
+
+	// Create gist representing test results. The "validatorDesc" is the
+	// title of the gist, and "runOutput" is the script execution output.
 	if err := commonci.Retry(5, "CreateCIOutputGist", func() error {
 		g, err = commonci.NewGitHubRequestHandler()
 		if err != nil {
 			return err
 		}
-		url, gistID, err = g.CreateCIOutputGist(validatorDesc, content)
+		url, gistID, err = g.CreateCIOutputGist(validatorDesc, runOutput)
 		return err
 	}); err != nil {
 		return fmt.Errorf("postResult: couldn't create gist: %v", err)
 	}
 
 	// Post parsed test results as a gist comment.
-	testResultString, pass, err := getResult(validatorId, resultsDir)
-	if err != nil {
-		return fmt.Errorf("postResult: couldn't parse results: %v", err)
-	}
 	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString); err != nil {
 		fmt.Errorf("postResult: could not add gist comment: %v", err)
 	}
@@ -651,8 +754,8 @@ func main() {
 	if commitSHA == "" {
 		log.Fatalf("no commit SHA")
 	}
-	if prBranchName == "" {
-		log.Fatalf("no PR branch name supplied")
+	if prNumber == 0 && branchName != "master" {
+		log.Fatalf("no PR branch name supplied or push trigger not on master branch")
 	}
 
 	if err := postResult(validatorId, version); err != nil {

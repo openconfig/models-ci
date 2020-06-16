@@ -33,6 +33,7 @@ var (
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
+	branchName         string // branchName is the name of the branch where the commit occurred.
 	prNumber           int
 	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
@@ -68,6 +69,7 @@ func init() {
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
+	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&skippedValidators, "skipped-validators", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) not to be ran at all, not even in the compatibility report")
 	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
@@ -225,7 +227,9 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	for _, modelDirName := range modelDirNames {
 		if disabledModelPaths[modelDirName] {
 			log.Printf("skipping disabled model directory %s", modelDirName)
-			g.PostLabel("skipped: "+modelDirName, commonci.LabelColors["orange"], owner, repo, prNumber)
+			if prNumber != 0 {
+				g.PostLabel("skipped: "+modelDirName, commonci.LabelColors["orange"], owner, repo, prNumber)
+			}
 			continue
 		}
 		cmdStr, err := genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName, modelMap)
@@ -301,14 +305,30 @@ func main() {
 		log.Fatalf("modelDirName and validator can only be specified for local cmd generation")
 	}
 
+	badgeOnly := false
+	// If it's a push on master, just upload badge for normal validators as the only action.
+	if prNumber == 0 {
+		if branchName != "master" {
+			log.Fatalf("cmd_gen: There is no action to take for a non-master branch push, please re-examine your push triggers")
+		}
+		badgeOnly = true
+	}
+
+	// Skip testing non-widely used validators, as we don't need to post badges for those tools.
+	if badgeOnly {
+		for validatorId, validator := range commonci.Validators {
+			if !validator.IsWidelyUsedTool {
+				// Here we assume simply that non widely-used checks don't have a version specified.
+				skippedValidators += "," + validatorId
+			}
+		}
+	}
+
 	repoSplit := strings.Split(repoSlug, "/")
 	owner = repoSplit[0]
 	repo = repoSplit[1]
 	if commitSHA == "" {
 		log.Fatalf("no commit SHA")
-	}
-	if prNumber == 0 {
-		log.Fatalf("no PR number")
 	}
 
 	h, err := commonci.NewGitHubRequestHandler()
@@ -324,9 +344,11 @@ func main() {
 	}
 
 	compatReports = commonci.ValidatorAndVersionsDiff(compatReports, skippedValidators)
-	// Notify later CI steps of the validators that should be reported as a compatibility report.
-	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
-		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
+	if !badgeOnly {
+		// Notify later CI steps of the validators that should be reported as a compatibility report.
+		if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
+			log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
+		}
 	}
 
 	_, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReports)
@@ -367,7 +389,7 @@ func main() {
 			}
 
 			// Post initial PR status.
-			if !compatValidatorsMap[validatorId][version] {
+			if !badgeOnly && !compatValidatorsMap[validatorId][version] {
 				if errs := postInitialStatus(h, validatorId, version); errs != nil {
 					log.Fatal(errs)
 				}
