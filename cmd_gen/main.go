@@ -33,7 +33,7 @@ var (
 	// Commandline flags: should be string if it may not exist
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
-	forkRepoSlug       string // forkRepoSlug is the "owner/repo" name of the fork repo.
+	forkRepoURL        string // forkRepoURL is the URL of of the fork repo (e.g. https://github.com/openconfig/public).
 	commitSHA          string
 	branchName         string // branchName is the name of the branch where the commit occurred.
 	prNumberStr        string // prNumberStr is the PR number.
@@ -42,9 +42,11 @@ var (
 	skippedValidators  string // e.g. "yanglint,pyang@head"
 
 	// Derived flags (for ease of use)
-	owner    string
-	repo     string
-	prNumber int
+	owner     string
+	repo      string
+	prNumber  int
+	forkOwner string
+	forkRepo  string
 
 	// local run flags
 	local             bool   // local run toggle
@@ -69,8 +71,8 @@ var (
 func init() {
 	// GCB-required flags
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
-	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
-	flag.StringVar(&forkRepoSlug, "fork-repo-slug", "openconfig/public", "forking repo")
+	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
+	flag.StringVar(&forkRepoURL, "fork-repo-url", "", "forking repo URL")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&prNumberStr, "pr-number", "", "PR number")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
@@ -258,8 +260,8 @@ func postInitialStatus(g *commonci.GithubRequestHandler, validatorId string, ver
 	// Update the status to pending so that the user can see that we have received
 	// this request and are ready to run the CI.
 	update := &commonci.GithubPRUpdate{
-		Owner:       owner,
-		Repo:        repo,
+		Owner:       forkOwner,
+		Repo:        forkRepo,
 		Ref:         commitSHA,
 		Description: validatorName + " Running",
 		NewStatus:   "pending",
@@ -335,13 +337,19 @@ func main() {
 		}
 	}
 
-	log.Fatalf("fork-repo-slug: %q", forkRepoSlug)
-
 	repoSplit := strings.Split(repoSlug, "/")
 	owner = repoSplit[0]
 	repo = repoSplit[1]
 	if commitSHA == "" {
 		log.Fatalf("no commit SHA")
+	}
+
+	forkOwner = owner
+	forkRepo = repo
+	if forkRepoURL != "" {
+		URLSplit := strings.Split(forkRepoURL, "/")
+		forkOwner = URLSplit[len(URLSplit)-2]
+		forkRepo = URLSplit[len(URLSplit)-1]
 	}
 
 	h, err := commonci.NewGitHubRequestHandler()
