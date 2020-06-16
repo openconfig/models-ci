@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -45,18 +46,19 @@ const (
 )
 
 var (
-	// flags
+	// flags: should be string if it may not exist.
 	validatorId string // validatorId is the unique name identifying the validator (see commonci for all of them)
 	modelRoot   string // modelRoot is the root directory of the models.
 	repoSlug    string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
-	prNumber    int
+	prNumberStr string // prNumberStr is the PR number.
 	branchName  string // branchName is the name of the branch where the commit occurred.
 	commitSHA   string
 	version     string // version is a specific version of the validator that's being run (empty means latest).
 
 	// derived flags
-	owner string
-	repo  string
+	owner    string
+	repo     string
+	prNumber int
 
 	// badgeCmdTemplate is the badge creation and upload command generated for pushes to the master branch.
 	badgeCmdTemplate = mustTemplate("badgeCmd", `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:
@@ -91,7 +93,7 @@ func init() {
 	flag.StringVar(&validatorId, "validator", "", "unique name of the validator")
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
-	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
+	flag.StringVar(&prNumberStr, "pr-number", "", "PR number")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
@@ -754,6 +756,13 @@ func main() {
 	if commitSHA == "" {
 		log.Fatalf("no commit SHA")
 	}
+	if prNumberStr != "" {
+		var err error
+		if prNumber, err = strconv.Atoi(prNumberStr); err != nil {
+			log.Fatalf("error encountered while parsing PR number: %s", err)
+		}
+	}
+
 	if prNumber == 0 && branchName != "master" {
 		log.Fatalf("no PR branch name supplied or push trigger not on master branch")
 	}

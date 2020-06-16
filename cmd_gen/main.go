@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -29,19 +30,20 @@ import (
 )
 
 var (
-	// Commandline flags
+	// Commandline flags: should be string if it may not exist
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
 	commitSHA          string
 	branchName         string // branchName is the name of the branch where the commit occurred.
-	prNumber           int
+	prNumberStr        string // prNumberStr is the PR number.
 	compatReports      string // e.g. "goyang-ygot,pyangbind,pyang@1.7.8"
 	extraPyangVersions string // e.g. "1.2.3,3.4.5"
 	skippedValidators  string // e.g. "yanglint,pyang@head"
 
 	// Derived flags (for ease of use)
-	owner string
-	repo  string
+	owner    string
+	repo     string
+	prNumber int
 
 	// local run flags
 	local             bool   // local run toggle
@@ -68,7 +70,7 @@ func init() {
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
-	flag.IntVar(&prNumber, "pr-number", 0, "PR number")
+	flag.StringVar(&prNumberStr, "pr-number", "", "PR number")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&skippedValidators, "skipped-validators", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) not to be ran at all, not even in the compatibility report")
@@ -303,6 +305,13 @@ func main() {
 		return
 	} else if localModelDirName != "" || localValidatorId != "" {
 		log.Fatalf("modelDirName and validator can only be specified for local cmd generation")
+	}
+
+	if prNumberStr != "" {
+		var err error
+		if prNumber, err = strconv.Atoi(prNumberStr); err != nil {
+			log.Fatalf("error encountered while parsing PR number: %s", err)
+		}
 	}
 
 	badgeOnly := false
