@@ -260,11 +260,12 @@ func postInitialStatus(g *commonci.GithubRequestHandler, validatorId string, ver
 	// Update the status to pending so that the user can see that we have received
 	// this request and are ready to run the CI.
 	update := &commonci.GithubPRUpdate{
-		Owner:       forkOwner,
-		Repo:        forkRepo,
+		Owner:       owner,
+		Repo:        repo,
 		Ref:         commitSHA,
 		Description: validatorName + " Running",
 		NewStatus:   "pending",
+		URL:         forkRepoURL,
 		Context:     validatorName,
 	}
 
