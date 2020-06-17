@@ -4,6 +4,7 @@ ROOT_DIR=/workspace
 RESULTSDIR=$ROOT_DIR/results/misc-checks
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
+FORKSLUGFILE=$ROOT_DIR/user-config/fork-slug.txt
 
 if ! stat $RESULTSDIR; then
   exit 0
@@ -24,7 +25,7 @@ find $_MODEL_ROOT -name '*.yang' > $RESULTSDIR/all-non-empty-files.txt 2>> $OUTF
 # This requires the check logic within post_results to be changed.
 # I'm delaying this because it remains to be seen whether goyang can be
 # refactored so we don't need do this inter-process communication via files.
-if bash $RESULTSDIR/script.sh > $OUTFILE 2>> $FAILFILE; then
+if bash $RESULTSDIR/script.sh >> $OUTFILE 2>> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
@@ -32,13 +33,26 @@ cat $RESULTSDIR/*.pr-file-parse-log > $RESULTSDIR/pr-file-parse-log 2>> $OUTFILE
 
 # changed-files.txt
 REPODIR=$RESULTSDIR/base_repo
-git clone -b $BRANCH_NAME "git@github.com:$_REPO_SLUG.git" $REPODIR
-cd $REPODIR
-BASE_COMMIT=$(git merge-base $COMMIT_SHA origin/master)
+if stat $FORKSLUGFILE; then
+  # fork PR
+  git clone "git@github.com:$_REPO_SLUG.git" $REPODIR
+  cd $REPODIR
+  REMOTENAME=gcb-ci-fork-remote-repo-qwertyqwerty
+  git remote add $REMOTENAME $_HEAD_REPO_URL
+  git fetch $REMOTENAME
+  echo "PR is from a forked repo. Deduced remote head branch to be $_HEAD_REPO_URL:$BRANCH_NAME" | tee >> $OUTFILE
+  git checkout $REMOTENAME/$BRANCH_NAME
+  BASE_COMMIT=master
+else
+  # regular (non-fork) PR
+  git clone -b $BRANCH_NAME "git@github.com:$_REPO_SLUG.git" $REPODIR
+  cd $REPODIR
+  BASE_COMMIT=$(git merge-base $COMMIT_SHA origin/master)
+fi
 git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-files.txt 2>> $OUTFILE
 
 # master-file-parse-log
-git checkout $BASE_COMMIT &> $OUTFILE
+git checkout $BASE_COMMIT &>> $OUTFILE
 if find $REPODIR -name '*.yang' | xargs $GOPATH/bin/ocversion -p $REPODIR > $RESULTSDIR/master-file-parse-log 2>> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
