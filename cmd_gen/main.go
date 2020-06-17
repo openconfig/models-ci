@@ -353,11 +353,12 @@ func main() {
 		headOwner = URLSplit[len(URLSplit)-2]
 		headRepo = URLSplit[len(URLSplit)-1]
 		if headOwner != owner || headRepo != repo {
+			remoteBranch := headOwner + "/" + headRepo
 			// If this is a fork, let later CI steps know the fork repo slug.
-			if err := ioutil.WriteFile(commonci.ForkSlugFile, []byte(headOwner+"/"+headRepo), 0444); err != nil {
+			if err := ioutil.WriteFile(commonci.ForkSlugFile, []byte(remoteBranch), 0444); err != nil {
 				log.Fatalf("error while writing fork slug file %q: %v", commonci.ForkSlugFile, err)
 			}
-			log.Printf("DEBUG: wrote %q to file %q", headOwner+"/"+headRepo, commonci.ForkSlugFile)
+			log.Printf("fork detected for remote repo %q", remoteBranch)
 		}
 	}
 
