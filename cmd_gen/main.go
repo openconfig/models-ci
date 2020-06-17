@@ -338,6 +338,13 @@ func main() {
 		}
 	}
 
+	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
+		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
+	}
+	if err := os.MkdirAll(commonci.UserConfigDir, 0644); err != nil {
+		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
+	}
+
 	repoSplit := strings.Split(repoSlug, "/")
 	owner = repoSplit[0]
 	repo = repoSplit[1]
@@ -362,18 +369,6 @@ func main() {
 		}
 	}
 
-	h, err := commonci.NewGitHubRequestHandler()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
-		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
-	}
-	if err := os.MkdirAll(commonci.UserConfigDir, 0644); err != nil {
-		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
-	}
-
 	compatReports = commonci.ValidatorAndVersionsDiff(compatReports, skippedValidators)
 	if !badgeOnly {
 		// Notify later CI steps of the validators that should be reported as a compatibility report.
@@ -386,6 +381,10 @@ func main() {
 	_, skippedValidatorsMap := commonci.GetValidatorAndVersionsFromString(skippedValidators)
 
 	// Generate validation scripts, files, and post initial status on GitHub.
+	h, err := commonci.NewGitHubRequestHandler()
+	if err != nil {
+		log.Fatal(err)
+	}
 	for validatorId, validator := range commonci.Validators {
 		if validator.ReportOnly {
 			continue
