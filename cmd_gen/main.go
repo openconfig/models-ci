@@ -33,7 +33,7 @@ var (
 	// Commandline flags: should be string if it may not exist
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
-	forkRepoURL        string // forkRepoURL is the URL of of the fork repo (e.g. https://github.com/openconfig/public).
+	prHeadRepoURL      string // prHeadRepoURL is the URL of the HEAD repo for PRs (e.g. https://github.com/openconfig/public).
 	commitSHA          string
 	branchName         string // branchName is the name of the branch where the commit occurred.
 	prNumberStr        string // prNumberStr is the PR number.
@@ -45,8 +45,8 @@ var (
 	owner     string
 	repo      string
 	prNumber  int
-	forkOwner string
-	forkRepo  string
+	headOwner string
+	headRepo  string
 
 	// local run flags
 	local             bool   // local run toggle
@@ -72,7 +72,7 @@ func init() {
 	// GCB-required flags
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
 	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
-	flag.StringVar(&forkRepoURL, "fork-repo-url", "", "forking repo URL")
+	flag.StringVar(&prHeadRepoURL, "pr-head-repo-url", "", "PR head repo URL")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&prNumberStr, "pr-number", "", "PR number")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
@@ -345,12 +345,19 @@ func main() {
 		log.Fatalf("no commit SHA")
 	}
 
-	forkOwner = owner
-	forkRepo = repo
-	if forkRepoURL != "" {
-		URLSplit := strings.Split(forkRepoURL, "/")
-		forkOwner = URLSplit[len(URLSplit)-2]
-		forkRepo = URLSplit[len(URLSplit)-1]
+	headOwner = owner
+	headRepo = repo
+	if prHeadRepoURL != "" {
+		// Expected format: e.g. https://github.com/openconfig/public
+		URLSplit := strings.Split(prHeadRepoURL, "/")
+		headOwner = URLSplit[len(URLSplit)-2]
+		headRepo = URLSplit[len(URLSplit)-1]
+		if headOwner != owner || headRepo != repo {
+			// If this is a fork, let later CI steps know the fork repo slug.
+			if err := ioutil.WriteFile(commonci.ForkSlugFile, []byte(headOwner+"/"+headRepo), 0444); err != nil {
+				log.Fatalf("error while writing fork slug file %q: %v", commonci.ForkSlugFile, err)
+			}
+		}
 	}
 
 	h, err := commonci.NewGitHubRequestHandler()

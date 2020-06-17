@@ -39,6 +39,9 @@ const (
 	// CompatReportValidatorsFile notifies later CI steps of the validators
 	// that should be reported as a compatibility report.
 	CompatReportValidatorsFile = UserConfigDir + "/compat-report-validators.txt"
+	// ForkSlugFile is created by cmd_gen to store the fork slug, if
+	// present, for later CI steps.
+	ForkSlugFile = UserConfigDir + "fork-slug.txt"
 	// ScriptFileName by convention is the script with the validator commands.
 	ScriptFileName = "script.sh"
 	// LatestVersionFileName by convention contains the version description
