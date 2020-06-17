@@ -357,6 +357,7 @@ func main() {
 			if err := ioutil.WriteFile(commonci.ForkSlugFile, []byte(headOwner+"/"+headRepo), 0444); err != nil {
 				log.Fatalf("error while writing fork slug file %q: %v", commonci.ForkSlugFile, err)
 			}
+			log.Printf("DEBUG: wrote %q to file %q", headOwner+"/"+headRepo, commonci.ForkSlugFile)
 		}
 	}
 
