@@ -700,7 +700,6 @@ func postResult(validatorId, version string) error {
 			log.Fatalf("error while writing output file %q: %v", outputFile, err)
 			return err
 		}
-		return nil
 	}
 
 	var url, gistID string
