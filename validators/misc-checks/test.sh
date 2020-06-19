@@ -24,7 +24,7 @@ find $_MODEL_ROOT -name '*.yang' > $RESULTSDIR/all-non-empty-files.txt 2>> $OUTF
 # This requires the check logic within post_results to be changed.
 # I'm delaying this because it remains to be seen whether goyang can be
 # refactored so we don't need do this inter-process communication via files.
-if bash $RESULTSDIR/script.sh > $OUTFILE 2>> $FAILFILE; then
+if bash $RESULTSDIR/script.sh >> $OUTFILE 2>> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
@@ -32,13 +32,17 @@ cat $RESULTSDIR/*.pr-file-parse-log > $RESULTSDIR/pr-file-parse-log 2>> $OUTFILE
 
 # changed-files.txt
 REPODIR=$RESULTSDIR/base_repo
-git clone -b $BRANCH_NAME "git@github.com:$_REPO_SLUG.git" $REPODIR
+git clone "git@github.com:$_REPO_SLUG.git" $REPODIR
 cd $REPODIR
-BASE_COMMIT=$(git merge-base $COMMIT_SHA origin/master)
+PRBRANCH=gcb-ci-remote-repo-long-name-to-avoid-conflict
+# fetching the PR directly from GitHub handles both normal PRs as well as forks.
+git fetch origin pull/$_PR_NUMBER/head:$PRBRANCH
+git checkout $PRBRANCH
+BASE_COMMIT=$(git merge-base $PRBRANCH origin/master)
 git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-files.txt 2>> $OUTFILE
 
 # master-file-parse-log
-git checkout $BASE_COMMIT &> $OUTFILE
+git checkout $BASE_COMMIT &>> $OUTFILE
 if find $REPODIR -name '*.yang' | xargs $GOPATH/bin/ocversion -p $REPODIR > $RESULTSDIR/master-file-parse-log 2>> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete

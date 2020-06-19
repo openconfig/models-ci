@@ -33,6 +33,7 @@ var (
 	// Commandline flags: should be string if it may not exist
 	modelRoot          string // modelRoot is the root directory of the models.
 	repoSlug           string // repoSlug is the "owner/repo" name of the models repo (e.g. openconfig/public).
+	prHeadRepoURL      string // prHeadRepoURL is the URL of the HEAD repo for PRs (e.g. https://github.com/openconfig/public).
 	commitSHA          string
 	branchName         string // branchName is the name of the branch where the commit occurred.
 	prNumberStr        string // prNumberStr is the PR number.
@@ -41,9 +42,11 @@ var (
 	skippedValidators  string // e.g. "yanglint,pyang@head"
 
 	// Derived flags (for ease of use)
-	owner    string
-	repo     string
-	prNumber int
+	owner     string
+	repo      string
+	prNumber  int
+	headOwner string
+	headRepo  string
 
 	// local run flags
 	local             bool   // local run toggle
@@ -68,7 +71,8 @@ var (
 func init() {
 	// GCB-required flags
 	flag.StringVar(&modelRoot, "modelRoot", "", "root directory to OpenConfig models")
-	flag.StringVar(&repoSlug, "repo-slug", "openconfig/public", "repo where CI is run")
+	flag.StringVar(&repoSlug, "repo-slug", "", "repo where CI is run")
+	flag.StringVar(&prHeadRepoURL, "pr-head-repo-url", "", "PR head repo URL")
 	flag.StringVar(&commitSHA, "commit-sha", "", "commit SHA of the PR")
 	flag.StringVar(&prNumberStr, "pr-number", "", "PR number")
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
@@ -266,6 +270,7 @@ func postInitialStatus(g *commonci.GithubRequestHandler, validatorId string, ver
 
 	if err := g.UpdatePRStatus(update); err != nil {
 		log.Printf("error: couldn't update PR: %s", err)
+		log.Printf("GithubPRUpdate: %+v", update)
 		return err
 	}
 	return nil
@@ -333,6 +338,13 @@ func main() {
 		}
 	}
 
+	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
+		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
+	}
+	if err := os.MkdirAll(commonci.UserConfigDir, 0644); err != nil {
+		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
+	}
+
 	repoSplit := strings.Split(repoSlug, "/")
 	owner = repoSplit[0]
 	repo = repoSplit[1]
@@ -340,16 +352,21 @@ func main() {
 		log.Fatalf("no commit SHA")
 	}
 
-	h, err := commonci.NewGitHubRequestHandler()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := os.MkdirAll(commonci.ResultsDir, 0644); err != nil {
-		log.Fatalf("error while creating directory %q: %v", commonci.ResultsDir, err)
-	}
-	if err := os.MkdirAll(commonci.UserConfigDir, 0644); err != nil {
-		log.Fatalf("error while creating directory %q: %v", commonci.UserConfigDir, err)
+	headOwner = owner
+	headRepo = repo
+	if prHeadRepoURL != "" {
+		// Expected format: e.g. https://github.com/openconfig/public
+		URLSplit := strings.Split(prHeadRepoURL, "/")
+		headOwner = URLSplit[len(URLSplit)-2]
+		headRepo = URLSplit[len(URLSplit)-1]
+		if headOwner != owner || headRepo != repo {
+			remoteBranch := headOwner + "/" + headRepo
+			// If this is a fork, let later CI steps know the fork repo slug.
+			if err := ioutil.WriteFile(commonci.ForkSlugFile, []byte(remoteBranch), 0444); err != nil {
+				log.Fatalf("error while writing fork slug file %q: %v", commonci.ForkSlugFile, err)
+			}
+			log.Printf("fork detected for remote repo %q", remoteBranch)
+		}
 	}
 
 	compatReports = commonci.ValidatorAndVersionsDiff(compatReports, skippedValidators)
@@ -364,6 +381,10 @@ func main() {
 	_, skippedValidatorsMap := commonci.GetValidatorAndVersionsFromString(skippedValidators)
 
 	// Generate validation scripts, files, and post initial status on GitHub.
+	h, err := commonci.NewGitHubRequestHandler()
+	if err != nil {
+		log.Fatal(err)
+	}
 	for validatorId, validator := range commonci.Validators {
 		if validator.ReportOnly {
 			continue
