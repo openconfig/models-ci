@@ -40,7 +40,7 @@ if stat $FORKSLUGFILE; then
   REMOTENAME=gcb-ci-fork-remote-repo-long-name-to-avoid-conflict
   git remote add $REMOTENAME $_HEAD_REPO_URL
   git fetch $REMOTENAME
-  echo "PR is from a forked repo. Deduced remote head branch to be $_HEAD_REPO_URL:$BRANCH_NAME" | tee >> $OUTFILE
+  echo "PR is from a forked repo. Deduced remote head branch to be $_HEAD_REPO_URL:$BRANCH_NAME" | tee -a $OUTFILE
   git checkout $REMOTENAME/$BRANCH_NAME
   BASE_COMMIT=$(git merge-base $REMOTENAME/$BRANCH_NAME origin/master)
 else
