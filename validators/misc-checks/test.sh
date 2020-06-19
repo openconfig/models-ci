@@ -4,7 +4,6 @@ ROOT_DIR=/workspace
 RESULTSDIR=$ROOT_DIR/results/misc-checks
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
-FORKSLUGFILE=$ROOT_DIR/user-config/fork-slug.txt
 
 if ! stat $RESULTSDIR; then
   exit 0
@@ -33,22 +32,13 @@ cat $RESULTSDIR/*.pr-file-parse-log > $RESULTSDIR/pr-file-parse-log 2>> $OUTFILE
 
 # changed-files.txt
 REPODIR=$RESULTSDIR/base_repo
-if stat $FORKSLUGFILE; then
-  # fork PR
-  git clone "git@github.com:$_REPO_SLUG.git" $REPODIR
-  cd $REPODIR
-  REMOTENAME=gcb-ci-fork-remote-repo-long-name-to-avoid-conflict
-  git remote add $REMOTENAME $_HEAD_REPO_URL
-  git fetch $REMOTENAME
-  echo "PR is from a forked repo. Deduced remote head branch to be $_HEAD_REPO_URL:$BRANCH_NAME" | tee -a $OUTFILE
-  git checkout $REMOTENAME/$BRANCH_NAME
-  BASE_COMMIT=$(git merge-base $REMOTENAME/$BRANCH_NAME origin/master)
-else
-  # regular (non-fork) PR
-  git clone -b $BRANCH_NAME "git@github.com:$_REPO_SLUG.git" $REPODIR
-  cd $REPODIR
-  BASE_COMMIT=$(git merge-base $COMMIT_SHA origin/master)
-fi
+git clone "git@github.com:$_REPO_SLUG.git" $REPODIR
+cd $REPODIR
+PRBRANCH=gcb-ci-remote-repo-long-name-to-avoid-conflict
+# fetching the PR directly from GitHub handles both normal PRs as well as forks.
+git fetch origin pull/$_PR_NUMBER/head:$PRBRANCH
+git checkout $PRBRANCH
+BASE_COMMIT=$(git merge-base $PRBRANCH origin/master)
 git diff --name-only $BASE_COMMIT | grep -E '.*\.yang$' > $RESULTSDIR/changed-files.txt 2>> $OUTFILE
 
 # master-file-parse-log
