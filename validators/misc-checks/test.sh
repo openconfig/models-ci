@@ -37,12 +37,12 @@ if stat $FORKSLUGFILE; then
   # fork PR
   git clone "git@github.com:$_REPO_SLUG.git" $REPODIR
   cd $REPODIR
-  REMOTENAME=gcb-ci-fork-remote-repo-qwertyqwerty
+  REMOTENAME=gcb-ci-fork-remote-repo-long-name-to-avoid-conflict
   git remote add $REMOTENAME $_HEAD_REPO_URL
   git fetch $REMOTENAME
   echo "PR is from a forked repo. Deduced remote head branch to be $_HEAD_REPO_URL:$BRANCH_NAME" | tee >> $OUTFILE
   git checkout $REMOTENAME/$BRANCH_NAME
-  BASE_COMMIT=master
+  BASE_COMMIT=$(git merge-base $REMOTENAME/$BRANCH_NAME origin/master)
 else
   # regular (non-fork) PR
   git clone -b $BRANCH_NAME "git@github.com:$_REPO_SLUG.git" $REPODIR
