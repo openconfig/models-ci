@@ -647,13 +647,13 @@ func postResult(validatorId, version string) error {
 		pushToMaster = true
 	}
 
-	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
-	if err != nil {
-		return fmt.Errorf("postResult: %v", err)
-	}
-	compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
-
 	if !pushToMaster {
+		compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
+		if err != nil {
+			return fmt.Errorf("postResult: %v", err)
+		}
+		compatValidators, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReportsStr)
+
 		if validatorId == "compat-report" {
 			log.Printf("Processing compatibility report for %s", compatReportsStr)
 			return postCompatibilityReport(compatValidators)
@@ -699,12 +699,6 @@ func postResult(validatorId, version string) error {
 		if err := ioutil.WriteFile(outputFile, []byte(outputHTML), 0666); err != nil {
 			log.Fatalf("error while writing output file %q: %v", outputFile, err)
 			return err
-		}
-
-		// Skip PR status reporting if validator is part of compatibility report.
-		if compatValidatorsMap[validatorId][version] {
-			log.Printf("Validator %s part of compatibility report, skipping reporting standalone PR status.", commonci.AppendVersionToName(validatorId, version))
-			return nil
 		}
 	}
 
