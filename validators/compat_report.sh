@@ -3,6 +3,11 @@
 ROOT_DIR=/workspace
 USERCONFIG_DIR=$ROOT_DIR/user-config
 
+if [ -z $_PR_NUMBER ]; then
+  echo "skipping: don't post compatibility report for push to master"
+  exit 0
+fi
+
 if ! [ -s $USERCONFIG_DIR/compat-report-validators.txt ]; then
   echo "skipping: no validators to report in compatibility report"
   exit 0
