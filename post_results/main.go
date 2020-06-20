@@ -761,6 +761,7 @@ func main() {
 	if commitSHA == "" {
 		log.Fatalf("no commit SHA")
 	}
+	prNumber = 0
 	if prNumberStr != "" {
 		var err error
 		if prNumber, err = strconv.Atoi(prNumberStr); err != nil {

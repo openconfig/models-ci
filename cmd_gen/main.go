@@ -312,6 +312,7 @@ func main() {
 		log.Fatalf("modelDirName and validator can only be specified for local cmd generation")
 	}
 
+	prNumber = 0
 	if prNumberStr != "" {
 		var err error
 		if prNumber, err = strconv.Atoi(prNumberStr); err != nil {
