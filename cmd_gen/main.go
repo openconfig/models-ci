@@ -422,7 +422,7 @@ func main() {
 			}
 
 			// Post initial PR status.
-			if !pushToMaster && !compatValidatorsMap[validatorId][version] {
+			if !compatValidatorsMap[validatorId][version] {
 				if errs := postInitialStatus(h, validatorId, version); errs != nil {
 					log.Fatal(errs)
 				}
