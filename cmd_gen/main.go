@@ -371,9 +371,11 @@ func main() {
 	}
 
 	compatReports = commonci.ValidatorAndVersionsDiff(compatReports, skippedValidators)
-	// Notify later CI steps of the validators that should be reported as a compatibility report.
-	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
-		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
+	if !pushToMaster {
+		// Notify later CI steps of the validators that should be reported as a compatibility report.
+		if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
+			log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
+		}
 	}
 
 	_, compatValidatorsMap := commonci.GetValidatorAndVersionsFromString(compatReports)
@@ -413,7 +415,11 @@ func main() {
 		// Generate validation commands for the validator.
 		for _, version := range versionsToRun {
 			if skippedValidatorsMap[validatorId][version] {
-				log.Printf("Not activating skipped validator %s", commonci.AppendVersionToName(validatorId, version))
+				log.Printf("Not activating skipped validator: %s", commonci.AppendVersionToName(validatorId, version))
+				continue
+			}
+			if pushToMaster && compatValidatorsMap[validatorId][version] {
+				log.Printf("Not activating compatibility report validator for push to master: %s", commonci.AppendVersionToName(validatorId, version))
 				continue
 			}
 			if pushToMaster && version == "head" {
