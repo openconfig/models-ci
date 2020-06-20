@@ -319,17 +319,17 @@ func main() {
 		}
 	}
 
-	badgeOnly := false
+	pushToMaster := false
 	// If it's a push on master, just upload badge for normal validators as the only action.
 	if prNumber == 0 {
 		if branchName != "master" {
 			log.Fatalf("cmd_gen: There is no action to take for a non-master branch push, please re-examine your push triggers")
 		}
-		badgeOnly = true
+		pushToMaster = true
 	}
 
 	// Skip testing non-widely used validators, as we don't need to post badges for those tools.
-	if badgeOnly {
+	if pushToMaster {
 		for validatorId, validator := range commonci.Validators {
 			if !validator.IsWidelyUsedTool {
 				// Here we assume simply that non widely-used checks don't have a version specified.
@@ -370,7 +370,7 @@ func main() {
 	}
 
 	compatReports = commonci.ValidatorAndVersionsDiff(compatReports, skippedValidators)
-	if !badgeOnly {
+	if !pushToMaster {
 		// Notify later CI steps of the validators that should be reported as a compatibility report.
 		if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
 			log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
@@ -415,6 +415,10 @@ func main() {
 		for _, version := range versionsToRun {
 			if skippedValidatorsMap[validatorId][version] {
 				log.Printf("Not activating skipped validator %s", commonci.AppendVersionToName(validatorId, version))
+				continue
+			}
+			if pushToMaster && version == "head" {
+				log.Printf("Skipping badge posting for @head revision for %s", commonci.AppendVersionToName(validatorId, version))
 				continue
 			}
 
