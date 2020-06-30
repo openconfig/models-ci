@@ -195,18 +195,18 @@ func TestRegexps(t *testing.T) {
 		for _, tc := range tt.testData {
 			var gotMatch bool
 			if len(leaf.Type.Type) == 0 {
-				_, gotMatch = checkPattern(tc.inData, leaf.Type.Pattern)
+				_, gotMatch = checkPattern(tc.inData, leaf.Type.POSIXPattern)
 			} else {
 				// Handle unions
 				results := make([]bool, 0)
 				for _, membertype := range leaf.Type.Type {
 					// Only do the test when there is a pattern specified against the
 					// type as it may not be a string.
-					if membertype.Kind != yang.Ystring || len(membertype.Pattern) == 0 {
+					if membertype.Kind != yang.Ystring || len(membertype.POSIXPattern) == 0 {
 						continue
 					}
 					matchedAllForType := true
-					_, matchedAllForType = checkPattern(tc.inData, membertype.Pattern)
+					_, matchedAllForType = checkPattern(tc.inData, membertype.POSIXPattern)
 					results = append(results, matchedAllForType)
 				}
 
