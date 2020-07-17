@@ -32,7 +32,7 @@ func (p *postLabelRecorder) PostLabel(labelName, labelColor, owner, repo string,
 	return nil
 }
 
-func TestGenOpenConfigLinterScript(t *testing.T) {
+func TestGenOpenConfigValidatorScript(t *testing.T) {
 	prNumber = 1
 	basicModelMap, err := commonci.ParseOCModels("testdata")
 	if err != nil {
