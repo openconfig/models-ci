@@ -111,8 +111,9 @@ var (
 			IsWidelyUsedTool: true,
 		},
 		"oc-pyang": &Validator{
-			Name:       "OpenConfig Linter",
-			IsPerModel: true,
+			Name:             "OpenConfig Linter",
+			IsPerModel:       true,
+			IsWidelyUsedTool: true,
 		},
 		"pyangbind": &Validator{
 			Name:             "pyangbind",
