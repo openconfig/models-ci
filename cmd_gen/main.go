@@ -328,6 +328,7 @@ func main() {
 		}
 		pushToMaster = true
 	}
+	pushToMaster = true
 
 	// Skip testing non-widely used validators, as we don't need to post badges for those tools.
 	if pushToMaster {
