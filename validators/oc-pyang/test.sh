@@ -54,6 +54,10 @@ if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR
   find $FAILFILE -size 0 -delete
 fi
 $GOPATH/bin/post_results -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
+BADGEFILE=$RESULTSDIR/upload-badge.sh
+if stat $BADGEFILE; then
+  bash $BADGEFILE
+fi
 
 ########################## CLEANUP #############################
 teardown

@@ -535,7 +535,7 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 	// If version is latest, then get the concrete version output by the tool if it exists.
 	if version == "" {
 		if outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName)); err != nil {
-			log.Printf("did not read latest version for %s: %v", validatorId, err)
+			log.Printf("INFO: did not read latest version for %s: %v", validatorId, err)
 		} else {
 			// Get the first line of the version output as the tool's display title.
 			nameAndVersionParts := strings.Fields(strings.TrimSpace(strings.SplitN(string(outBytes), "\n", 2)[0]))
