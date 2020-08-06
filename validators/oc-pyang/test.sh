@@ -19,8 +19,7 @@ setup() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
 
-  # FIXME(wenbli): remove branch statement.
-  git clone -b posix-pattern-existence-check https://github.com/openconfig/oc-pyang $OCPYANG_REPO
+  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
   pip3 install enum34
   pip3 install jinja2
