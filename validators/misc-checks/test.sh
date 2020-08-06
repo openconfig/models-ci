@@ -49,3 +49,7 @@ if find $REPODIR -name '*.yang' | xargs $GOPATH/bin/ocversion -p $REPODIR > $RES
 fi
 
 $GOPATH/bin/post_results -validator=misc-checks -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
+BADGEFILE=$RESULTSDIR/upload-badge.sh
+if stat $BADGEFILE; then
+  bash $BADGEFILE
+fi
