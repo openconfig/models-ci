@@ -638,7 +638,7 @@ func postResult(validatorId, version string) error {
 	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 
-	pushToMaster := false
+	pushToMaster := true
 	// If it's a push on master, just upload badge for normal validators as the only action.
 	if prNumber == 0 {
 		if branchName != "master" {
