@@ -646,6 +646,9 @@ func postResult(validatorId, version string) error {
 		}
 		pushToMaster = true
 	}
+	if pushToMaster {
+		log.Printf("Push to master detected")
+	}
 
 	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
 	if err != nil {
@@ -691,6 +694,8 @@ func postResult(validatorId, version string) error {
 		if err := ioutil.WriteFile(badgeUploadFile, []byte(uploadCmdFileContent), 0444); err != nil {
 			log.Fatalf("error while writing validator pass file %q: %v", badgeUploadFile, err)
 			return err
+		} else {
+			log.Printf("Badge upload file written at %q", badgeUploadFile)
 		}
 
 		// Put output into a file to be uploaded and linked by the badges.
