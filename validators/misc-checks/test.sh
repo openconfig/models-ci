@@ -9,7 +9,7 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
-go get github.com/openconfig/models-ci/validators/misc-checks/...
+go install github.com/openconfig/models-ci/validators/misc-checks/...
 
 # all-non-empty-files.txt
 find $_MODEL_ROOT -name '*.yang' > $RESULTSDIR/all-non-empty-files.txt 2>> $OUTFILE
