@@ -646,9 +646,7 @@ func postResult(validatorId, version string) error {
 		}
 		pushToMaster = true
 	}
-	if pushToMaster {
-		log.Printf("Push to master detected")
-	}
+	log.Printf("Push to master: %v", pushToMaster)
 
 	compatReportsStr, err := readFile(commonci.CompatReportValidatorsFile)
 	if err != nil {
