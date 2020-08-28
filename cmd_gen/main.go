@@ -277,6 +277,7 @@ func postInitialStatus(g *commonci.GithubRequestHandler, validatorId string, ver
 }
 
 func main() {
+	log.Printf("HELLO, local changes")
 	// Parse derived flags.
 	flag.Parse()
 
