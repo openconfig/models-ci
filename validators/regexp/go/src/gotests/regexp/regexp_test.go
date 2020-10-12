@@ -169,6 +169,19 @@ func TestRegexps(t *testing.T) {
 			RegexpTest{`route-origin:4294967296:9009`, false},
 			RegexpTest{`route-origin:5413:65535`, true},
 		},
+	}, {
+		name:    "domain-name",
+		modules: []string{"testdata/test.yang"},
+		leaf:    YANGLeaf{"regexp-test", "domain-name"},
+		testData: []RegexpTest{
+			RegexpTest{"ambroseesorbma", true},
+			RegexpTest{"ambrose esorbma", false},
+			RegexpTest{"claire.", true},
+			RegexpTest{"~~~-+=.", false},
+			RegexpTest{"ambrose esorbma", false},
+			RegexpTest{"012345678901234567890123456789012345678901234567890123456789012.", true},
+			RegexpTest{"0123456789012345678901234567890123456789012345678901234567890123", false},
+		},
 	}}
 
 	for _, tt := range tests {

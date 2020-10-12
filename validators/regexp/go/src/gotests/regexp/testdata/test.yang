@@ -14,4 +14,5 @@ module regexp-test {
   leaf ipv4-prefix { type ocinet:ipv4-prefix; }
   leaf ipv6-prefix { type ocinet:ipv6-prefix; }
   leaf ip-prefix { type ocinet:ip-prefix; }
+  leaf domain-name { type ocinet:domain-name; }
 }
