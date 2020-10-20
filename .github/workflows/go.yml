@@ -17,8 +17,7 @@ jobs:
     steps:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
-      #with:
-      #  go-version: ^1.15
+      # Use default go version so that we don't have to update it every time a new one comes out.
       id: go
 
     - name: Check out code into the Go module directory
