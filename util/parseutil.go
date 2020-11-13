@@ -11,6 +11,7 @@ var (
 	// It currently recognizes the following two patterns:
 	// - path:line#:status:message
 	// - path:line#(subpath:line#):status:message
+	//     NOTE: The subpath info in brackets is currently lumped into one group.
 	stdErrorRegex = regexp.MustCompile(`^([^:]+):\s*(\d+)\s*(\([^\)]+\))?\s*:([^:]+):(.+)$`)
 )
 
