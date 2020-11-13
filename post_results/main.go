@@ -28,6 +28,7 @@ import (
 	"log"
 
 	"github.com/openconfig/models-ci/commonci"
+	"github.com/openconfig/models-ci/util"
 )
 
 // post_results posts the CI results for a given tool using the output from
@@ -293,62 +294,30 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 
 // processStandardOutput takes raw pyang/confd output and transforms it to an
 // HTML format for display on a GitHub gist comment.
-// Both types of validators output a string following the format:
-// <file path>:<line no>:<error/warning>:<message>
-// pyang also has a second format:
-// <file path>:<line#>(<sub file path>:<line#>):<error/warning>:<message>
 // Errors are displayed in front of warnings.
 func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error) {
+	standardOutput := util.ParseStandardOutput(rawOut)
+
 	var errorLines, nonErrorLines strings.Builder
-	for _, line := range strings.Split(rawOut, "\n") {
-		if line = strings.TrimSpace(line); line == "" {
-			continue
-		}
-
-		sections := strings.SplitN(line, ":", 4)
-		// warning/error lines from pyang/confd have a "path:line#:status:message" format.
-		if len(sections) < 4 {
-			nonErrorLines.WriteString(sprintLineHTML(line))
-			continue
-		}
-		filePath := strings.TrimSpace(sections[0])
-		lineNumber := strings.TrimSpace(sections[1])
-		status := strings.ToLower(strings.TrimSpace(sections[2]))
-		message := strings.TrimSpace(sections[3])
-
+	for _, errLine := range append(standardOutput.ErrorLines, standardOutput.WarningLines...) {
 		// Convert file path to relative path.
 		var err error
-		if filePath, err = filepath.Rel(modelRoot, filePath); err != nil {
-			return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from message %q: %v\n", filePath, modelRoot, line, err)
+		if errLine.Path, err = filepath.Rel(modelRoot, errLine.Path); err != nil {
+			return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from error message: %v\n", errLine.Path, modelRoot, err)
 		}
 
-		// When there is subpath information, remove it (as it's not useful to users) and re-compute information.
-		// path:line#(subpath:line#):status:message
-		subpathIndex := strings.Index(sections[1], "(")
-		if subpathIndex != -1 {
-			messageSections := strings.SplitN(sections[3], ":", 2)
-			if len(messageSections) == 1 {
-				// When there is subpath information, we expect there to be an extra colon due to the
-				// subpath line number; so, this is unrecognized format.
-				nonErrorLines.WriteString(sprintLineHTML(line))
-				continue
-			}
-			lineNumber = strings.TrimSpace(sections[1][:subpathIndex])
-			status = strings.ToLower(strings.TrimSpace(messageSections[0]))
-			message = strings.TrimSpace(messageSections[1])
-		}
-
-		processedLine := fmt.Sprintf("%s (%s): %s: <pre>%s</pre>", filePath, lineNumber, status, message)
+		processedLine := fmt.Sprintf("%s (%d): %s: <pre>%s</pre>", errLine.Path, errLine.LineNo, errLine.Status, errLine.Message)
 		switch {
-		case strings.Contains(status, "error"):
+		case strings.Contains(errLine.Status, "error"):
 			errorLines.WriteString(sprintLineHTML(processedLine))
-		case strings.Contains(status, "warning"):
+		case strings.Contains(errLine.Status, "warning"):
 			if !noWarnings {
 				nonErrorLines.WriteString(sprintLineHTML(processedLine))
 			}
-		default: // Unrecognized line, so write unprocessed output.
-			nonErrorLines.WriteString(sprintLineHTML(line))
 		}
+	}
+	for _, line := range standardOutput.OtherLines {
+		nonErrorLines.WriteString(sprintLineHTML(line))
 	}
 
 	var out strings.Builder
