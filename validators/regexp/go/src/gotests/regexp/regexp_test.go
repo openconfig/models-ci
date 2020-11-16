@@ -1,7 +1,6 @@
 package regexp_test
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -178,9 +177,32 @@ func TestRegexps(t *testing.T) {
 			RegexpTest{"ambrose esorbma", false},
 			RegexpTest{"claire.", true},
 			RegexpTest{"~~~-+=.", false},
-			RegexpTest{"ambrose esorbma", false},
 			RegexpTest{"012345678901234567890123456789012345678901234567890123456789012.", true},
 			RegexpTest{"0123456789012345678901234567890123456789012345678901234567890123", false},
+		},
+	}, {
+		name:    "port-num-range",
+		modules: []string{"testdata/test.yang"},
+		leaf:    YANGLeaf{"regexp-test", "port-num-range"},
+		testData: []RegexpTest{
+			RegexpTest{"0..0", true},
+			RegexpTest{"00000..00000", true},
+			RegexpTest{"00..00", true},
+			RegexpTest{"01..01", true},
+			RegexpTest{"0..65535", true},
+			RegexpTest{"01111..09999", true},
+			RegexpTest{"9999..59999", true},
+			RegexpTest{"60536..60999", true},
+			RegexpTest{"60999..61999", true},
+			RegexpTest{"62999..63999", true},
+			RegexpTest{"64999..65535", true},
+			RegexpTest{"65535..66646", false},
+			RegexpTest{"65535..65536", false},
+			RegexpTest{"65535..65545", false},
+			RegexpTest{"65535..65635", false},
+			RegexpTest{"66535..65535", false},
+			RegexpTest{"66999..67890", false},
+			RegexpTest{"70000..70000", false},
 		},
 	}}
 
@@ -239,10 +261,10 @@ func TestRegexps(t *testing.T) {
 	}
 }
 
-// checkPattern builds and compils
+// checkPattern builds and tests the given POSIX pattern.
 func checkPattern(testData string, patterns []string) (compileErr error, matched bool) {
 	for _, pattern := range patterns {
-		if r, err := regexp.CompilePOSIX(fmt.Sprintf("^%s$", pattern)); err != nil {
+		if r, err := regexp.CompilePOSIX(pattern); err != nil {
 			return
 		} else {
 			matched = r.MatchString(testData)

@@ -5,6 +5,7 @@ module regexp-test {
   import openconfig-types { prefix "oct"; }
   import openconfig-bgp-types { prefix "ocbgpt"; }
   import openconfig-inet-types { prefix "ocinet"; }
+  import openconfig-packet-match-types { prefix "oc-pkt-match-types"; }
 
   leaf ipv4-address { type ocinet:ipv4-address; }
   leaf ip-address { type ocinet:ip-address; }
@@ -15,4 +16,5 @@ module regexp-test {
   leaf ipv6-prefix { type ocinet:ipv6-prefix; }
   leaf ip-prefix { type ocinet:ip-prefix; }
   leaf domain-name { type ocinet:domain-name; }
+  leaf port-num-range { type oc-pkt-match-types:port-num-range; }
 }
