@@ -261,7 +261,7 @@ func TestRegexps(t *testing.T) {
 	}
 }
 
-// checkPattern builds and compils
+// checkPattern builds and tests the given POSIX pattern.
 func checkPattern(testData string, patterns []string) (compileErr error, matched bool) {
 	for _, pattern := range patterns {
 		if r, err := regexp.CompilePOSIX(pattern); err != nil {
