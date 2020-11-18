@@ -1,3 +1,4 @@
+// Package util contain utility functions for doing YANG model validation.
 package util
 
 import (
