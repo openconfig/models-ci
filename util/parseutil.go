@@ -13,6 +13,8 @@ var (
 	// - path:line#:status:message
 	// - path:line#(subpath:line#):status:message
 	//     NOTE: The subpath info in brackets is currently lumped into one group.
+	// TODO(wenovus): Should use --msg-template to ingest pyang output as
+	// textproto instead of using regex.
 	stdErrorRegex = regexp.MustCompile(`^([^:]+):\s*(\d+)\s*(\([^\)]+\))?\s*:([^:]+):(.+)$`)
 )
 
