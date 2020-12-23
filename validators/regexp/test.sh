@@ -30,7 +30,7 @@ if OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pyte
   find $XSDFAILFILE -size 0 -delete
 else
   echo "## RFC7950 pattern statement" >> $FAILFILE
-  cat $FAILFILE $XSDFAILFILE > $FAILFILE
+  cat $XSDFAILFILE >> $FAILFILE
   echo "" >> $FAILFILE
 fi
 
@@ -40,7 +40,7 @@ if $GOPATH/bin/gotests -model-root=$_MODEL_ROOT $GOPATH/src/github.com/openconfi
   find $FAILFILE -size 0 -delete
 else
   echo "## posix-pattern statement" >> $FAILFILE
-  cat $FAILFILE $POSIXFAILFILE > $FAILFILE
+  cat $POSIXFAILFILE >> $FAILFILE
   echo "" >> $FAILFILE
 fi
 
