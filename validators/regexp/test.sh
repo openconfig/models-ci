@@ -47,7 +47,8 @@ fi
 echo "" >> $FAILFILE
 
 if [ $FAIL -eq 0 ]; then
-  # Delete fail file if the script passed.
+  # Remove the fail file if the script passed.
+  cat $FAILFILE >> $OUTFILE
   rm $FAILFILE
 fi
 
