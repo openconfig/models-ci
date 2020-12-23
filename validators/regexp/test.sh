@@ -1,16 +1,30 @@
 #!/bin/bash
 
+########################## SETUP #############################
 ROOT_DIR=/workspace
 RESULTSDIR=$ROOT_DIR/results/regexp
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
+VENVDIR=$ROOT_DIR/regexpvenv
 
 if ! stat $RESULTSDIR; then
   exit 0
 fi
 
+setup() {
+  virtualenv $VENVDIR
+  source $VENVDIR/bin/activate
+  pip3 install pyang
+}
+
+teardown() {
+  rm -rf $VENVDIR
+}
+
+setup
+
+########################## regexp #############################
 XSDFAILFILE=$RESULTSDIR/xsdfail
-pip3 install pyang
 if $OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $XSDFAILFILE -size 0 -delete
@@ -35,3 +49,6 @@ BADGEFILE=$RESULTSDIR/upload-badge.sh
 if stat $BADGEFILE; then
   bash $BADGEFILE
 fi
+
+########################## CLEANUP #############################
+teardown
