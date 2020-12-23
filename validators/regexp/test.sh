@@ -25,7 +25,7 @@ setup
 
 ########################## regexp #############################
 XSDFAILFILE=$RESULTSDIR/xsdfail
-if $OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
+if OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $XSDFAILFILE -size 0 -delete
 else
