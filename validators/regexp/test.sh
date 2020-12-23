@@ -24,24 +24,27 @@ teardown() {
 setup
 
 ########################## regexp #############################
-XSDFAILFILE=$RESULTSDIR/xsdfail
-if OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
-  # Delete fail file if it's empty and the script passed.
-  find $XSDFAILFILE -size 0 -delete
-else
-  echo "## RFC7950 pattern statement" >> $FAILFILE
-  cat $XSDFAILFILE >> $FAILFILE
-  echo "" >> $FAILFILE
-fi
+FAIL=0
 
+echo "## RFC7950 pattern statement" >> $FAILFILE
+XSDFAILFILE=$RESULTSDIR/xsdfail
+if ! OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
+  FAIL=1
+  cat $XSDFAILFILE >> $FAILFILE
+fi
+echo "" >> $FAILFILE
+
+echo "## posix-pattern statement" >> $FAILFILE
 POSIXFAILFILE=$RESULTSDIR/xsdfail
-if $GOPATH/bin/gotests -model-root=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/testdata/regexp-test.yang >> $OUTFILE 2> $POSIXFAILFILE; then
-  # Delete fail file if it's empty and the script passed.
-  find $FAILFILE -size 0 -delete
-else
-  echo "## posix-pattern statement" >> $FAILFILE
+if ! $GOPATH/bin/gotests -model-root=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/testdata/regexp-test.yang >> $OUTFILE 2> $POSIXFAILFILE; then
+  FAIL=1
   cat $POSIXFAILFILE >> $FAILFILE
-  echo "" >> $FAILFILE
+fi
+echo "" >> $FAILFILE
+
+if [ $FAIL -eq 0 ]; then
+  # Delete fail file if the script passed.
+  rm $FAILFILE
 fi
 
 $GOPATH/bin/post_results -validator=regexp -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
