@@ -12,7 +12,7 @@ if ! stat $RESULTSDIR; then
 fi
 
 setup() {
-  virtualenv $VENVDIR
+  virtualenv -p py3 $VENVDIR
   source $VENVDIR/bin/activate
   pip3 install pyang
 }
@@ -26,23 +26,27 @@ setup
 ########################## regexp #############################
 FAIL=0
 
-echo "## RFC7950 pattern statement" >> $FAILFILE
+echo "## RFC7950 `pattern` statement" >> $FAILFILE
 XSDFAILFILE=$RESULTSDIR/xsdfail
 if OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
   echo "Passed." >> $FAILFILE
 else
   FAIL=1
-  cat $XSDFAILFILE >> $FAILFILE
+  cat $XSDFAILFILE | while read l; do
+     echo "* $l" >> $FAILFILE;
+   done
 fi
 echo "" >> $FAILFILE
 
-echo "## posix-pattern statement" >> $FAILFILE
+echo "## `posix-pattern` statement" >> $FAILFILE
 POSIXFAILFILE=$RESULTSDIR/xsdfail
 if $GOPATH/bin/gotests -model-root=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/testdata/regexp-test.yang >> $OUTFILE 2> $POSIXFAILFILE; then
   echo "Passed." >> $FAILFILE
 else
   FAIL=1
-  cat $POSIXFAILFILE >> $FAILFILE
+  cat $POSIXFAILFILE | while read l; do
+     echo "* $l" >> $FAILFILE;
+   done
 fi
 echo "" >> $FAILFILE
 
