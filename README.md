@@ -120,6 +120,21 @@ GCB builds. You can find the `validatorId` for each validator in the `commonci`
 package. The latest version is either the latest tagged version, or absent, the
 head.
 
+#### Required GCB Variables for Validator Scripts
+
+The following variables must be supplied to each validator script
+(i.e.`test.sh`) either as an environment variable in the validator script's
+`cloudbuild.yaml` step, or as a
+[GCB substitution variable](https://cloud.google.com/cloud-build/docs/configuring-builds/substitute-variable-values).
+
+Variable Name  | Value
+-------------- | --------------------------------------------------------------
+$\_MODEL\_ROOT | Root GCB directory of all YANG models (e.g. `/workspace/yang`)
+$\_REPO\_SLUG  | e.g. `openconfig/public`
+$\_PR\_NUMBER  | GitHub PR number
+$COMMIT\_SHA   | Full commit SHA for PR
+$BRANCH\_NAME  | Name of branch for PR
+
 #### Special Files Within Each Validator's Results Directory and Their Meanings
 
 `script.sh`: per-model validator execution script name.

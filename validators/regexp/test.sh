@@ -33,7 +33,7 @@ if OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pyte
 else
   FAIL=1
   cat $XSDFAILFILE | while read l; do
-     echo "* $l" >> $FAILFILE;
+     echo "$l" >> $FAILFILE;
    done
 fi
 echo "" >> $FAILFILE
@@ -45,7 +45,7 @@ if $GOPATH/bin/gotests -model-root=$_MODEL_ROOT $GOPATH/src/github.com/openconfi
 else
   FAIL=1
   cat $POSIXFAILFILE | while read l; do
-     echo "* $l" >> $FAILFILE;
+     echo "$l" >> $FAILFILE;
    done
 fi
 echo "" >> $FAILFILE
