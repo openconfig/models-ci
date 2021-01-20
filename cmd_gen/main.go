@@ -26,6 +26,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Masterminds/semver"
 	"github.com/openconfig/models-ci/commonci"
 )
 
@@ -78,7 +79,7 @@ func init() {
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&skippedValidators, "skipped-validators", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) not to be ran at all, not even in the compatibility report")
-	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
+	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run, but only 2.2+ is supported.")
 
 	// Local run flags
 	flag.BoolVar(&local, "local", false, "use with validator, modelDirName, resultsDir to get a particular model's command")
@@ -398,6 +399,19 @@ func main() {
 		// designated extra versions file in order to be relayed to the
 		// corresponding test.sh (next stage of the CI pipeline).
 		if len(extraVersions) > 0 {
+			versionConstraints, err := semver.NewConstraint(fmt.Sprintf(">= %s", validator.SupportedVersion))
+			if err != nil {
+				log.Fatalf("internal error: failed to parse SupportedVersion: %q", validator.SupportedVersion)
+			}
+			for _, version := range extraVersions {
+				v, err := semver.NewVersion(version)
+				if err != nil {
+					log.Fatalf("failed to parse pyang version string: %v", err)
+				}
+				if !versionConstraints.Check(v) {
+					log.Fatalf("invalid validator version: %s < %s", version, validator.SupportedVersion)
+				}
+			}
 			extraVersionFile := filepath.Join(commonci.UserConfigDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
 			if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
 				log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)

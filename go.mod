@@ -3,6 +3,7 @@ module github.com/openconfig/models-ci
 go 1.14
 
 require (
+	github.com/Masterminds/semver v1.5.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/google/go-cmp v0.4.1
 	github.com/google/go-github v17.0.0+incompatible
