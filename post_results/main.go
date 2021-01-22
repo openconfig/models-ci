@@ -339,7 +339,7 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 func processPyangOutput(rawOut string, pass, noWarnings bool) (string, error) {
 	var errorLines, nonErrorLines strings.Builder
 	if pyangOutput, err := util.ParsePyangTextprotoOutput(rawOut); err != nil {
-		log.Printf("INFO: could not parse pyang output as textproto: %v", err)
+		log.Printf("INFO: could not parse pyang output as textproto (raw output below): %v\n%s", err, rawOut)
 		nonErrorLines.WriteString(fmt.Sprintf("  <pre>%s</pre>\n", strings.TrimSpace(rawOut)))
 	} else {
 		for _, msgLine := range pyangOutput.Messages {
