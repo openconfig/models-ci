@@ -1,1 +1,1 @@
-/workspace/release/yang/wifi/mac/openconfig-wifi-mac.yang:1244: error: enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B
+messages:{path:"/workspace/release/yang/acl/openconfig-acl.yang" line:845 code:"GROUPING_NOT_FOUND" type:"error" level:1 message:'grouping "acl-state" not found in module "openconfig-acl"'}

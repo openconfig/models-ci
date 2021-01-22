@@ -191,7 +191,7 @@ Passed.
   <summary>&#x2705; openconfig-transport-line-protection</summary>
 Passed.
 <ul>
-  <li>warning foo</li>
+  <pre>warning foo</pre>
 </ul>
 </details>
 </details>
@@ -243,6 +243,52 @@ warning foo<br>
 <details>
   <summary>&#x26D4; openconfig-acl</summary>
 <ul>
+  <li>acl/openconfig-acl.yang (845): error: <pre>grouping "acl-state" not found in module "openconfig-acl"</pre></li>
+</ul>
+</details>
+</details>
+<details>
+  <summary>&#x26D4; optical-transport</summary>
+<details>
+  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+Failed.
+</details>
+<details>
+  <summary>&#x2705; openconfig-transport-line-protection</summary>
+Passed.
+<ul>
+  <pre>warning foo</pre>
+</ul>
+</details>
+</details>
+`,
+		wantCondensedOut: `<details>
+  <summary>&#x26D4; acl</summary>
+<details>
+  <summary>&#x26D4; openconfig-acl</summary>
+<ul>
+  <li>acl/openconfig-acl.yang (845): error: <pre>grouping "acl-state" not found in module "openconfig-acl"</pre></li>
+</ul>
+</details>
+</details>
+<details>
+  <summary>&#x26D4; optical-transport</summary>
+<details>
+  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+Failed.
+</details>
+</details>
+`,
+	}, {
+		name:                 "confd with pass and fails",
+		inValidatorResultDir: "testdata/confd-with-invalid-files",
+		inValidatorId:        "confd",
+		wantPass:             false,
+		wantOut: `<details>
+  <summary>&#x26D4; acl</summary>
+<details>
+  <summary>&#x26D4; openconfig-acl</summary>
+<ul>
   <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B</pre></li>
 </ul>
 </details>
@@ -281,7 +327,7 @@ Failed.
 `,
 	}, {
 		name:                 "non-pyang with pass and fails",
-		inValidatorResultDir: "testdata/pyang-with-invalid-files",
+		inValidatorResultDir: "testdata/confd-with-invalid-files",
 		inValidatorId:        "yanglint",
 		wantPass:             false,
 		wantOut: `<details>

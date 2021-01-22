@@ -333,6 +333,47 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 	return out.String(), nil
 }
 
+// processPyangOutput takes raw pyang/confd output and transforms it to an
+// HTML format for display on a GitHub gist comment.
+// Errors are displayed in front of warnings.
+func processPyangOutput(rawOut string, pass, noWarnings bool) (string, error) {
+	var errorLines, nonErrorLines strings.Builder
+	if pyangOutput, err := util.ParsePyangTextprotoOutput(rawOut); err != nil {
+		log.Printf("INFO: could not parse pyang output as textproto: %v", err)
+		nonErrorLines.WriteString(fmt.Sprintf("  <pre>%s</pre>\n", strings.TrimSpace(rawOut)))
+	} else {
+		for _, msgLine := range pyangOutput.Messages {
+			// Convert file path to relative path.
+			var err error
+			if msgLine.Path, err = filepath.Rel(modelRoot, msgLine.Path); err != nil {
+				return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from error message: %v\n", msgLine.Path, modelRoot, err)
+			}
+
+			processedLine := fmt.Sprintf("%s (%d): %s: <pre>%s</pre>", msgLine.Path, msgLine.Line, msgLine.Type, msgLine.Message)
+			switch {
+			case strings.Contains(msgLine.Type, "error"):
+				errorLines.WriteString(sprintLineHTML(processedLine))
+			case strings.Contains(msgLine.Type, "warning"):
+				if !noWarnings {
+					nonErrorLines.WriteString(sprintLineHTML(processedLine))
+				}
+			}
+		}
+	}
+
+	var out strings.Builder
+	if pass {
+		out.WriteString("Passed.\n")
+	}
+	if errorLines.Len() > 0 || nonErrorLines.Len() > 0 {
+		out.WriteString("<ul>\n")
+		out.WriteString(errorLines.String())
+		out.WriteString(nonErrorLines.String())
+		out.WriteString("</ul>\n")
+	}
+	return out.String(), nil
+}
+
 // parseModelResultsHTML transforms the output files of the validator script into HTML
 // to be displayed on GitHub.
 // If condensed=true, then only errors are provided.
@@ -385,7 +426,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 			// Transform output string into HTML.
 			switch {
 			case strings.Contains(validatorId, "pyang"):
-				outString, err = processStandardOutput(outString, modelPass, IgnorePyangWarnings)
+				outString, err = processPyangOutput(outString, modelPass, IgnorePyangWarnings)
 			case validatorId == "confd":
 				outString, err = processStandardOutput(outString, modelPass, IgnoreConfdWarnings)
 			default:

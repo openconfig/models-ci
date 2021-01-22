@@ -5,6 +5,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"google.golang.org/protobuf/encoding/prototext"
+
+	pb "github.com/openconfig/models-ci/proto/results"
 )
 
 var (
@@ -79,4 +83,12 @@ func ParseStandardOutput(rawOut string) StandardOutput {
 		}
 	}
 	return out
+}
+
+// ParsePyangTextprotoOutput parses textproto-formatted pyang output into a
+// proto message.
+func ParsePyangTextprotoOutput(textprotoOut string) (*pb.PyangOutput, error) {
+	output := &pb.PyangOutput{}
+	err := prototext.Unmarshal([]byte(textprotoOut), output)
+	return output, err
 }
