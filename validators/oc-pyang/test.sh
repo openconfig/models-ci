@@ -51,12 +51,10 @@ if [ $? -ne 0 ]; then
   exit 0
 fi
 
-if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR > $OUTFILE 2> $FAILFILE; then
+if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template "$PYANG_MSG_TEMPLATE" --plugindir $OCPYANG_PLUGIN_DIR > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
-echo "--- SCRIPT.SH"
-cat $RESULTSDIR/script.sh
 $GOPATH/bin/post_results -validator=oc-pyang -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
 BADGEFILE=$RESULTSDIR/upload-badge.sh
 if stat $BADGEFILE; then
