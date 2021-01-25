@@ -30,6 +30,12 @@ import (
 	"github.com/openconfig/models-ci/commonci"
 )
 
+const (
+	// pyang_msg_template_string sets up an output template for pyang using
+	// its commandline option --msg-template.
+	pyang_msg_template_string = `PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"`
+)
+
 var (
 	// Commandline flags: should be string if it may not exist
 	modelRoot          string // modelRoot is the root directory of the models.
@@ -106,17 +112,17 @@ type cmdParams struct {
 }
 
 var (
-	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
@@ -223,7 +229,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 	var builder strings.Builder
 
-	builder.WriteString(fmt.Sprintf("#!/bin/bash\nmkdir -p %s\n", resultsDir))
+	builder.WriteString(fmt.Sprintf("#!/bin/bash\n%s\nmkdir -p %s\n", pyang_msg_template_string, resultsDir))
 
 	modelDirNames := make([]string, 0, len(modelMap.ModelInfoMap))
 	for modelDirName := range modelMap.ModelInfoMap {
