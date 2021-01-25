@@ -8,7 +8,6 @@ VENVDIR=$TESTDIR/oc-pyangvenv
 RESULTSDIR=$ROOT_DIR/results/oc-pyang
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
-MODELS_CI_DIR=$GOPATH/src/github.com/openconfig/models-ci
 
 if ! stat $RESULTSDIR; then
   exit 0
@@ -17,8 +16,6 @@ fi
 OCPYANG_REPO=$TESTDIR/oc-pyang-repo
 OCPYANG_DIR=$GOPATH/src/github.com/openconfig/models-ci/validators/oc-pyang
 setup() {
-  source $MODELS_CI_DIR/util/util.sh
-
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
 
@@ -51,7 +48,7 @@ if [ $? -ne 0 ]; then
   exit 0
 fi
 
-if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template "$PYANG_MSG_TEMPLATE" --plugindir $OCPYANG_PLUGIN_DIR > $OUTFILE 2> $FAILFILE; then
+if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
