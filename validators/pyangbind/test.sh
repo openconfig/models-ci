@@ -39,7 +39,7 @@ find $RESULTSDIR/latest-version.txt -size 0 -delete
 
 export PYANGBIND_PLUGIN_DIR=`/usr/bin/env python3 -c \
   'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
-if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template=$PYANG_MSG_TEMPLATE --plugindir $PYANGBIND_PLUGIN_DIR > $OUTFILE 2> $FAILFILE; then
+if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template $PYANG_MSG_TEMPLATE --plugindir $PYANGBIND_PLUGIN_DIR > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi

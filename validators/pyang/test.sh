@@ -24,7 +24,7 @@ run-pyang-version() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   pip3 install pyang==$1
-  if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template=$PYANG_MSG_TEMPLATE > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
+  if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template $PYANG_MSG_TEMPLATE > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
@@ -51,7 +51,7 @@ run-pyang-head() {
   source ./env.sh
   pip3 install --no-cache-dir -r $REPODIR/requirements.txt
   pip3 install ply
-  if bash $RESULTSDIR/script.sh pyang --msg-template=$PYANG_MSG_TEMPLATE > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
+  if bash $RESULTSDIR/script.sh pyang --msg-template $PYANG_MSG_TEMPLATE > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
   fi
@@ -71,7 +71,7 @@ virtualenv $VENVDIR
 source $VENVDIR/bin/activate
 pip3 install pyang
 pyang --version > $RESULTSDIR/latest-version.txt
-if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template=$PYANG_MSG_TEMPLATE > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
+if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --msg-template $PYANG_MSG_TEMPLATE > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
   # Delete fail file if it's empty and the script passed.
   find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
 fi
