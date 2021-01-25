@@ -112,17 +112,17 @@ type cmdParams struct {
 }
 
 var (
-	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)

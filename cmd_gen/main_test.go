@@ -54,13 +54,13 @@ func TestGenOpenConfigValidatorScript(t *testing.T) {
 		wantCmd: `#!/bin/bash
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 mkdir -p /workspace/results/pyang
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/pyang/acl==openconfig-acl==pass /workspace/results/pyang/acl==openconfig-acl==fail
 fi &
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
 fi &
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi &
 wait
@@ -74,10 +74,10 @@ wait
 		wantCmd: `#!/bin/bash
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 mkdir -p /workspace/results/pyang
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
 fi &
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
 fi &
 wait
@@ -89,13 +89,13 @@ wait
 		wantCmd: `#!/bin/bash
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 mkdir -p /workspace/results/oc-pyang
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
   mv /workspace/results/oc-pyang/acl==openconfig-acl==pass /workspace/results/oc-pyang/acl==openconfig-acl==fail
 fi &
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==fail
 fi &
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==fail
 fi &
 wait
@@ -107,13 +107,13 @@ wait
 		wantCmd: `#!/bin/bash
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 mkdir -p /workspace/results/pyangbind
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf -f pybind -o acl.openconfig-acl.binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf -f pybind -o acl.openconfig-acl.binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
   mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
 fi &
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-optical-amplifier.binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-optical-amplifier.binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==fail
 fi &
-if ! $@ --msg-template $PYANG_MSG_TEMPLATE -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-transport-line-protection.binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
+if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-transport-line-protection.binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
   mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
 fi &
 wait
