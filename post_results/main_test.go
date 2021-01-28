@@ -178,6 +178,10 @@ func TestGetResult(t *testing.T) {
   <summary>&#x2705; acl</summary>
 <details>
   <summary>&#x2705; openconfig-acl</summary>
+<details>
+  <summary>&#x1F4B2; bash command</summary>
+<pre>foo command
+</pre></details>
 Passed.
 </details>
 </details>
@@ -215,6 +219,10 @@ Test failed with no stderr output.`,
   <summary>&#x2705; acl</summary>
 <details>
   <summary>&#x2705; openconfig-acl</summary>
+<details>
+  <summary>&#x1F4B2; bash command</summary>
+<pre>foo command
+</pre></details>
 Passed.
 </details>
 </details>
