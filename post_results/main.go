@@ -36,10 +36,6 @@ import (
 // is determined by common_ci.
 
 const (
-	// The title of the results uses the relevant emoji to show whether it
-	// succeeded or failed.
-	mdPassSymbol = "&#x2705;"
-	mdFailSymbol = "&#x26D4;"
 	// IgnorePyangWarnings ignores all warnings from pyang or pyang-based tools.
 	IgnorePyangWarnings = true
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
@@ -100,21 +96,14 @@ func init() {
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
 }
 
-func lintSymbol(pass bool) string {
-	if !pass {
-		return mdFailSymbol
-	}
-	return mdPassSymbol
-}
-
 // sprintLineHTML prints a single list item to be put under a top-level summary item.
 func sprintLineHTML(format string, a ...interface{}) string {
 	return fmt.Sprintf("  <li>"+format+"</li>\n", a...)
 }
 
 // sprintSummaryHTML prints a top-level summary item containing free-form or list items.
-func sprintSummaryHTML(pass bool, title, format string, a ...interface{}) string {
-	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n"+format+"</details>\n", append([]interface{}{lintSymbol(pass), title}, a...)...)
+func sprintSummaryHTML(status, title, format string, a ...interface{}) string {
+	return fmt.Sprintf("<details>\n  <summary>%s&nbsp; %s</summary>\n"+format+"</details>\n", append([]interface{}{commonci.Emoji(status), title}, a...)...)
 }
 
 // readFile reads the entire file into a string and returns it along with an error if any.
@@ -280,9 +269,9 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	var pass = true
 	appendViolationOut := func(desc string, violations []string, passString string) {
 		if len(violations) == 0 {
-			out.WriteString(sprintSummaryHTML(true, desc, passString))
+			out.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(true), desc, passString))
 		} else {
-			out.WriteString(sprintSummaryHTML(false, desc, strings.Join(violations, "")))
+			out.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(false), desc, strings.Join(violations, "")))
 			pass = false
 		}
 	}
@@ -381,6 +370,11 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 	var htmlOut, modelHTML strings.Builder
 	var prevModelDirName string
 
+	// Used to cache bash command for output.
+	var bashCommand string
+	var bashCommandModelDirName string
+	var bashCommandModelName string
+
 	allPass := true
 	modelDirPass := true
 	// Process each result file in lexical order.
@@ -399,15 +393,31 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 			// Write results one modelDir at a time in order to report overall modelDir status.
 			if prevModelDirName != "" && modelDirName != prevModelDirName {
 				if !condensed || !modelDirPass {
-					htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+					htmlOut.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(modelDirPass), prevModelDirName, modelHTML.String()))
 				}
 				modelHTML.Reset()
 				modelDirPass = true
 			}
 			prevModelDirName = modelDirName
 
+			// Get output string.
+			outString, err := readFile(path)
+			if err != nil {
+				return fmt.Errorf("failed to read file at path %q: %v\n", path, err)
+			}
+
 			modelPass := true
 			switch status {
+			case "cmd":
+				// Don't do anything, store the command for later output.
+				// Since filepath.Walk walks files in lexical
+				// order, ${prefix}cmd should be walked first,
+				// such that ${prefix}pass or ${prefix}fail
+				// will have it ready to display to the user.
+				bashCommand = outString
+				bashCommandModelDirName = modelDirName
+				bashCommandModelName = modelName
+				return nil
 			case "pass":
 			case "fail":
 				allPass = false
@@ -415,12 +425,6 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 				modelPass = false
 			default:
 				return fmt.Errorf("expect status at path %q to be true or false, got %v", path, status)
-			}
-
-			// Get output string.
-			outString, err := readFile(path)
-			if err != nil {
-				return fmt.Errorf("failed to read file at path %q: %v\n", path, err)
 			}
 
 			// Transform output string into HTML.
@@ -443,7 +447,12 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 			}
 
 			if !condensed || !modelPass {
-				modelHTML.WriteString(sprintSummaryHTML(modelPass, modelName, outString))
+				// Display bash command that produced the validator result.
+				var bashCommandSummary string
+				if bashCommand != "" && bashCommandModelDirName == modelDirName && bashCommandModelName == modelName {
+					bashCommandSummary = sprintSummaryHTML("cmd", "bash command", "<pre>%s</pre>", bashCommand)
+				}
+				modelHTML.WriteString(sprintSummaryHTML(status, modelName, bashCommandSummary+outString))
 			}
 		}
 		return nil
@@ -453,7 +462,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 
 	// Edge case: handle last modelDir.
 	if !condensed || !modelDirPass {
-		htmlOut.WriteString(sprintSummaryHTML(modelDirPass, prevModelDirName, modelHTML.String()))
+		htmlOut.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(modelDirPass), prevModelDirName, modelHTML.String()))
 	}
 
 	return htmlOut.String(), allPass, nil
@@ -624,13 +633,13 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
 
-		gistTitle := fmt.Sprintf("%s %s", lintSymbol(pass), validatorDescs[i])
+		gistTitle := fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i])
 		id, err := g.AddGistComment(gistID, gistTitle, testResultString)
 		if err != nil {
 			fmt.Errorf("postResult: could not add gist comment: %v", err)
 		}
 
-		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", lintSymbol(pass), validatorDescs[i], gistURL, id))
+		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i], gistURL, id))
 	}
 	comment := commentBuilder.String()
 	if err := g.AddPRComment(&comment, owner, repo, prNumber); err != nil {
@@ -735,7 +744,7 @@ func postResult(validatorId, version string) error {
 	}
 
 	// Post parsed test results as a gist comment.
-	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", lintSymbol(pass), validatorDesc), testResultString); err != nil {
+	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDesc), testResultString); err != nil {
 		fmt.Errorf("postResult: could not add gist comment: %v", err)
 	}
 

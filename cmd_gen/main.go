@@ -30,12 +30,6 @@ import (
 	"github.com/openconfig/models-ci/commonci"
 )
 
-const (
-	// pyang_msg_template_string sets up an output template for pyang using
-	// its commandline option --msg-template.
-	pyang_msg_template_string = `PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"`
-)
-
 var (
 	// Commandline flags: should be string if it may not exist
 	modelRoot          string // modelRoot is the root directory of the models.
@@ -111,92 +105,201 @@ type cmdParams struct {
 	ResultsDir   string
 }
 
+const (
+	// pyang_msg_template_string sets up an output template for pyang using
+	// its commandline option --msg-template.
+	pyang_msg_template_string = `PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"`
+)
+
+// scriptSpec contain the bash script templates for each validator.
+type scriptSpec struct {
+	// headerTemplate is generated once at the beginning of the script.
+	headerTemplate *template.Template
+	// perModelTemplate is generated once per model specified by .spec.yml.
+	perModelTemplate *template.Template
+}
+
 var (
-	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
-  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi &
-`)
-
-	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
-  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi &
-`)
-
-	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
-  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi &
-`)
-
-	goyangYgotCmdTemplate = mustTemplate("goyang-ygot", `if ! /go/bin/generator \
--path={{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf \
--output_file=`+commonci.ResultsDir+`/goyang-ygot/{{ .ModelDirName }}.{{ .ModelName }}.oc.go \
--package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
--exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
--generate_leaf_getters -generate_delete -annotations \
-{{ range $i, $buildFile := .BuildFiles -}} {{ $buildFile }} {{ end -}} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
-  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi &
-`)
-
-	yanglintCmdTemplate = mustTemplate("yanglint", `if ! yanglint -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
-  mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
-fi
-`)
-
-	confdCmdTemplate = mustTemplate("confd", `status=0
+	// scriptTemplates contains templates for generating the validator
+	// scripts that checks the YANG models. They work in conjunction with a
+	// test.sh script for each validator, as well as the cloudbuild.yaml
+	// GCB script, which together create the running environment for the
+	// generated validator script.
+	scriptTemplates = map[string]*scriptSpec{
+		"pyang": &scriptSpec{
+			headerTemplate: mustTemplate("pyang-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+`+"{{`"+pyang_msg_template_string+"`}}"+`
+cmd="$@"
+options=(
+  -p {{ .ModelRoot }}
+  -p {{ .RepoRoot }}/third_party/ietf
+)
+script_options=(
+  --msg-template "$PYANG_MSG_TEMPLATE"
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+`),
+			perModelTemplate: mustTemplate("pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+`),
+		},
+		"oc-pyang": &scriptSpec{
+			headerTemplate: mustTemplate("oc-pyang-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+`+"{{`"+pyang_msg_template_string+"`}}"+`
+cmd="$@"
+options=(
+  -p {{ .ModelRoot }}
+  -p {{ .RepoRoot }}/third_party/ietf
+  --openconfig
+  --ignore-error=OC_RELATIVE_PATH
+)
+script_options=(
+  --msg-template "$PYANG_MSG_TEMPLATE"
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+`),
+			perModelTemplate: mustTemplate("oc-pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+`),
+		},
+		"pyangbind": &scriptSpec{
+			headerTemplate: mustTemplate("pyangbind-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+`+"{{`"+pyang_msg_template_string+"`}}"+`
+cmd="$@"
+options=(
+  -p {{ .ModelRoot }}
+  -p {{ .RepoRoot }}/third_party/ietf
+  -f pybind
+)
+script_options=(
+  --msg-template "$PYANG_MSG_TEMPLATE"
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  local options=( -o "$1"."$2".binding.py "${options[@]}" )
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+`),
+			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+`),
+		},
+		"goyang-ygot": &scriptSpec{
+			headerTemplate: mustTemplate("goyang-ygot-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+cmd="/go/bin/generator"
+options=(
+  -path={{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf
+  -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true
+  -shorten_enum_leaf_names -trim_enum_openconfig_prefix -typedef_enum_with_defmod -enum_suffix_for_simple_union_enums
+  -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters
+  -generate_leaf_getters -generate_delete -annotations
+  -list_builder_key_threshold=3
+)
+script_options=(
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  local options=( -output_file="$1"."$2".oc.go "${options[@]}" )
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+`),
+			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+`),
+		},
+		"yanglint": &scriptSpec{
+			headerTemplate: mustTemplate("yanglint-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+cmd="yanglint"
+options=(
+  -p {{ .ModelRoot }}
+  -p {{ .RepoRoot }}/third_party/ietf
+)
+script_options=(
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+`),
+			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+`),
+		},
+		"confd": &scriptSpec{
+			headerTemplate: mustTemplate("confd-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+`),
+			perModelTemplate: mustTemplate("confd", `status=0
 {{- range $i, $buildFile := .BuildFiles }}
 $1 -c --yangpath $2 {{ $buildFile }} &>> {{ $.ResultsDir }}/{{ $.ModelDirName }}=={{ $.ModelName }}==pass || status=1
 {{- end }}
 if [[ $status -eq "1" ]]; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi
-`)
-
-	miscChecksCmdTemplate = mustTemplate("misc-checks", `if ! /go/bin/ocversion -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
+`),
+		},
+		"misc-checks": &scriptSpec{
+			headerTemplate: mustTemplate("misc-checks-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+`),
+			perModelTemplate: mustTemplate("misc-checks", `if ! /go/bin/ocversion -p {{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} > {{ .ResultsDir }}/{{ .ModelDirName }}.{{ .ModelName }}.pr-file-parse-log; then
   >&2 echo "parse of {{ .ModelDirName }}.{{ .ModelName }} reported non-zero status."
 fi
-`)
-)
-
-// validatorTemplate creates the customized format string to invoke the
-// given validator on a model.
-func validatorTemplate(validatorId string) (*template.Template, error) {
-	switch validatorId {
-	case "pyang":
-		return pyangCmdTemplate, nil
-	case "oc-pyang":
-		return ocPyangCmdTemplate, nil
-	case "pyangbind":
-		return pyangbindCmdTemplate, nil
-	case "goyang-ygot":
-		return goyangYgotCmdTemplate, nil
-	case "yanglint":
-		return yanglintCmdTemplate, nil
-	case "confd":
-		return confdCmdTemplate, nil
-	case "misc-checks":
-		return miscChecksCmdTemplate, nil
+`),
+		},
 	}
-	return nil, fmt.Errorf("validatorTemplate: unrecognized validatorId for creating a per-model command %q", validatorId)
-}
+)
 
 // genValidatorCommandForModelDir generates the validator command for a single modelDir.
 func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string, modelMap commonci.OpenConfigModelMap) (string, error) {
 	var builder strings.Builder
-	cmdTemplate, err := validatorTemplate(validatorId)
-	if err != nil {
-		return "", err
+	cmdTemplate, ok := scriptTemplates[validatorId]
+	if !ok {
+		return "", fmt.Errorf("cmd_gen: unrecognized validatorId %q for creating a per-model test script", validatorId)
 	}
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", err
+		return "", fmt.Errorf("cmd_gen: unrecognized validatorId %q", validatorId)
 	}
 	for _, modelInfo := range modelMap.ModelInfoMap[modelDirName] {
 		// First check whether to skip CI.
 		if len(modelInfo.BuildFiles) == 0 || (!modelInfo.RunCi && !validator.IgnoreRunCi) {
 			continue
 		}
-		if err := cmdTemplate.Execute(&builder, &cmdParams{
+		if err := cmdTemplate.perModelTemplate.Execute(&builder, &cmdParams{
 			ModelRoot:    modelMap.ModelRoot,
 			RepoRoot:     commonci.RootDir,
 			BuildFiles:   modelInfo.BuildFiles,
@@ -229,7 +332,17 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 	var builder strings.Builder
 
-	builder.WriteString(fmt.Sprintf("#!/bin/bash\n%s\nmkdir -p %s\n", pyang_msg_template_string, resultsDir))
+	cmdTemplate, ok := scriptTemplates[validatorId]
+	if !ok {
+		return "", fmt.Errorf("cmd_gen: unrecognized validatorId %q for creating a per-model test script", validatorId)
+	}
+	if err := cmdTemplate.headerTemplate.Execute(&builder, &cmdParams{
+		ModelRoot:  modelMap.ModelRoot,
+		RepoRoot:   commonci.RootDir,
+		ResultsDir: resultsDir,
+	}); err != nil {
+		return "", err
+	}
 
 	modelDirNames := make([]string, 0, len(modelMap.ModelInfoMap))
 	for modelDirName := range modelMap.ModelInfoMap {

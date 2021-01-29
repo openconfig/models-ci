@@ -58,6 +58,31 @@ const (
 	BadgeUploadCmdFile = "upload-badge.sh"
 )
 
+// BoolStatusToString converts a pass/fail status from bool to string.
+func BoolStatusToString(status bool) string {
+	switch status {
+	case true:
+		return "pass"
+	case false:
+		return "fail"
+	}
+	return ""
+}
+
+// Emoji returns HTML for the emoji corresponding to a given status.
+// If the status is not recognized, it returns an empty string.
+func Emoji(status string) string {
+	switch status {
+	case "pass":
+		return "&#x2705;" // checkmark emoji
+	case "fail":
+		return "&#x26D4;" // blocked emoji
+	case "cmd":
+		return "&#x1F4B2;" // dollar-sign emoji
+	}
+	return ""
+}
+
 // AppendVersionToName appends the version to the given validator name
 func AppendVersionToName(validatorName, version string) string {
 	if version != "" {

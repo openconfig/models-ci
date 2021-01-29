@@ -52,17 +52,28 @@ func TestGenOpenConfigValidatorScript(t *testing.T) {
 		inModelMap:      basicModelMap,
 		inValidatorName: "pyang",
 		wantCmd: `#!/bin/bash
+workdir=/workspace/results/pyang
+mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/pyang
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyang/acl==openconfig-acl==pass; then
-  mv /workspace/results/pyang/acl==openconfig-acl==pass /workspace/results/pyang/acl==openconfig-acl==fail
-fi &
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
-  mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
-fi &
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
-  mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
-fi &
+cmd="$@"
+options=(
+  -p testdata
+  -p /workspace/third_party/ietf
+)
+script_options=(
+  --msg-template "$PYANG_MSG_TEMPLATE"
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -72,14 +83,27 @@ wait
 		inDisabledModelPaths: map[string]bool{"acl": true, "dne": true},
 		wantSkipLabels:       []string{"skipped: acl"},
 		wantCmd: `#!/bin/bash
+workdir=/workspace/results/pyang
+mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/pyang
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass; then
-  mv /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyang/optical-transport==openconfig-optical-amplifier==fail
-fi &
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass; then
-  mv /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyang/optical-transport==openconfig-transport-line-protection==fail
-fi &
+cmd="$@"
+options=(
+  -p testdata
+  -p /workspace/third_party/ietf
+)
+script_options=(
+  --msg-template "$PYANG_MSG_TEMPLATE"
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -87,17 +111,30 @@ wait
 		inModelMap:      basicModelMap,
 		inValidatorName: "oc-pyang",
 		wantCmd: `#!/bin/bash
+workdir=/workspace/results/oc-pyang
+mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/oc-pyang
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/oc-pyang/acl==openconfig-acl==pass; then
-  mv /workspace/results/oc-pyang/acl==openconfig-acl==pass /workspace/results/oc-pyang/acl==openconfig-acl==fail
-fi &
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass; then
-  mv /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==pass /workspace/results/oc-pyang/optical-transport==openconfig-optical-amplifier==fail
-fi &
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass; then
-  mv /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==pass /workspace/results/oc-pyang/optical-transport==openconfig-transport-line-protection==fail
-fi &
+cmd="$@"
+options=(
+  -p testdata
+  -p /workspace/third_party/ietf
+  --openconfig
+  --ignore-error=OC_RELATIVE_PATH
+)
+script_options=(
+  --msg-template "$PYANG_MSG_TEMPLATE"
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -105,17 +142,30 @@ wait
 		inModelMap:      basicModelMap,
 		inValidatorName: "pyangbind",
 		wantCmd: `#!/bin/bash
+workdir=/workspace/results/pyangbind
+mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/pyangbind
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf -f pybind -o acl.openconfig-acl.binding.py testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/pyangbind/acl==openconfig-acl==pass; then
-  mv /workspace/results/pyangbind/acl==openconfig-acl==pass /workspace/results/pyangbind/acl==openconfig-acl==fail
-fi &
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-optical-amplifier.binding.py testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass; then
-  mv /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==pass /workspace/results/pyangbind/optical-transport==openconfig-optical-amplifier==fail
-fi &
-if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p testdata -p /workspace/third_party/ietf -f pybind -o optical-transport.openconfig-transport-line-protection.binding.py testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass; then
-  mv /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==pass /workspace/results/pyangbind/optical-transport==openconfig-transport-line-protection==fail
-fi &
+cmd="$@"
+options=(
+  -p testdata
+  -p /workspace/third_party/ietf
+  -f pybind
+)
+script_options=(
+  --msg-template "$PYANG_MSG_TEMPLATE"
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  local options=( -o "$1"."$2".binding.py "${options[@]}" )
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -123,35 +173,31 @@ wait
 		inModelMap:      basicModelMap,
 		inValidatorName: "goyang-ygot",
 		wantCmd: `#!/bin/bash
-PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/goyang-ygot
-if ! /go/bin/generator \
--path=testdata,/workspace/third_party/ietf \
--output_file=/workspace/results/goyang-ygot/acl.openconfig-acl.oc.go \
--package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
--exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
--generate_leaf_getters -generate_delete -annotations \
-testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/goyang-ygot/acl==openconfig-acl==pass; then
-  mv /workspace/results/goyang-ygot/acl==openconfig-acl==pass /workspace/results/goyang-ygot/acl==openconfig-acl==fail
-fi &
-if ! /go/bin/generator \
--path=testdata,/workspace/third_party/ietf \
--output_file=/workspace/results/goyang-ygot/optical-transport.openconfig-optical-amplifier.oc.go \
--package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
--exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
--generate_leaf_getters -generate_delete -annotations \
-testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==pass; then
-  mv /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==pass /workspace/results/goyang-ygot/optical-transport==openconfig-optical-amplifier==fail
-fi &
-if ! /go/bin/generator \
--path=testdata,/workspace/third_party/ietf \
--output_file=/workspace/results/goyang-ygot/optical-transport.openconfig-transport-line-protection.oc.go \
--package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true \
--exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters \
--generate_leaf_getters -generate_delete -annotations \
-testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass; then
-  mv /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==pass /workspace/results/goyang-ygot/optical-transport==openconfig-transport-line-protection==fail
-fi &
+workdir=/workspace/results/goyang-ygot
+mkdir -p "$workdir"
+cmd="/go/bin/generator"
+options=(
+  -path=testdata,/workspace/third_party/ietf
+  -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true
+  -shorten_enum_leaf_names -trim_enum_openconfig_prefix -typedef_enum_with_defmod -enum_suffix_for_simple_union_enums
+  -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters
+  -generate_leaf_getters -generate_delete -annotations
+  -list_builder_key_threshold=3
+)
+script_options=(
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  local options=( -output_file="$1"."$2".oc.go "${options[@]}" )
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -159,17 +205,26 @@ wait
 		inModelMap:      basicModelMap,
 		inValidatorName: "yanglint",
 		wantCmd: `#!/bin/bash
-PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/yanglint
-if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &> /workspace/results/yanglint/acl==openconfig-acl==pass; then
-  mv /workspace/results/yanglint/acl==openconfig-acl==pass /workspace/results/yanglint/acl==openconfig-acl==fail
-fi
-if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-optical-amplifier.yang &> /workspace/results/yanglint/optical-transport==openconfig-optical-amplifier==pass; then
-  mv /workspace/results/yanglint/optical-transport==openconfig-optical-amplifier==pass /workspace/results/yanglint/optical-transport==openconfig-optical-amplifier==fail
-fi
-if ! yanglint -p testdata -p /workspace/third_party/ietf testdata/optical-transport/openconfig-transport-line-protection.yang &> /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass; then
-  mv /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==pass /workspace/results/yanglint/optical-transport==openconfig-transport-line-protection==fail
-fi
+workdir=/workspace/results/yanglint
+mkdir -p "$workdir"
+cmd="yanglint"
+options=(
+  -p testdata
+  -p /workspace/third_party/ietf
+)
+script_options=(
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -177,8 +232,8 @@ wait
 		inModelMap:      basicModelMap,
 		inValidatorName: "confd",
 		wantCmd: `#!/bin/bash
-PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/confd
+workdir=/workspace/results/confd
+mkdir -p "$workdir"
 status=0
 $1 -c --yangpath $2 testdata/acl/openconfig-acl.yang &>> /workspace/results/confd/acl==openconfig-acl==pass || status=1
 $1 -c --yangpath $2 testdata/acl/openconfig-acl-evil-twin.yang &>> /workspace/results/confd/acl==openconfig-acl==pass || status=1
@@ -202,8 +257,8 @@ wait
 		inModelMap:      basicModelMap,
 		inValidatorName: "misc-checks",
 		wantCmd: `#!/bin/bash
-PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
-mkdir -p /workspace/results/misc-checks
+workdir=/workspace/results/misc-checks
+mkdir -p "$workdir"
 if ! /go/bin/ocversion -p testdata,/workspace/third_party/ietf testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang > /workspace/results/misc-checks/acl.openconfig-acl.pr-file-parse-log; then
   >&2 echo "parse of acl.openconfig-acl reported non-zero status."
 fi

@@ -175,20 +175,24 @@ func TestGetResult(t *testing.T) {
 		inValidatorId:        "oc-pyang",
 		wantPass:             true,
 		wantOut: `<details>
-  <summary>&#x2705; acl</summary>
+  <summary>&#x2705;&nbsp; acl</summary>
 <details>
-  <summary>&#x2705; openconfig-acl</summary>
+  <summary>&#x2705;&nbsp; openconfig-acl</summary>
+<details>
+  <summary>&#x1F4B2;&nbsp; bash command</summary>
+<pre>foo command
+</pre></details>
 Passed.
 </details>
 </details>
 <details>
-  <summary>&#x2705; optical-transport</summary>
+  <summary>&#x2705;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x2705; openconfig-optical-amplifier</summary>
+  <summary>&#x2705;&nbsp; openconfig-optical-amplifier</summary>
 Passed.
 </details>
 <details>
-  <summary>&#x2705; openconfig-transport-line-protection</summary>
+  <summary>&#x2705;&nbsp; openconfig-transport-line-protection</summary>
 Passed.
 <ul>
   <pre>warning foo</pre>
@@ -212,20 +216,24 @@ Test failed with no stderr output.`,
 		inValidatorId:        "goyang-ygot",
 		wantPass:             true,
 		wantOut: `<details>
-  <summary>&#x2705; acl</summary>
+  <summary>&#x2705;&nbsp; acl</summary>
 <details>
-  <summary>&#x2705; openconfig-acl</summary>
+  <summary>&#x2705;&nbsp; openconfig-acl</summary>
+<details>
+  <summary>&#x1F4B2;&nbsp; bash command</summary>
+<pre>foo command
+</pre></details>
 Passed.
 </details>
 </details>
 <details>
-  <summary>&#x2705; optical-transport</summary>
+  <summary>&#x2705;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x2705; openconfig-optical-amplifier</summary>
+  <summary>&#x2705;&nbsp; openconfig-optical-amplifier</summary>
 Passed.
 </details>
 <details>
-  <summary>&#x2705; openconfig-transport-line-protection</summary>
+  <summary>&#x2705;&nbsp; openconfig-transport-line-protection</summary>
 Passed.
 warning foo<br>
 </details>
@@ -239,22 +247,22 @@ warning foo<br>
 		inValidatorId:        "pyang",
 		wantPass:             false,
 		wantOut: `<details>
-  <summary>&#x26D4; acl</summary>
+  <summary>&#x26D4;&nbsp; acl</summary>
 <details>
-  <summary>&#x26D4; openconfig-acl</summary>
+  <summary>&#x26D4;&nbsp; openconfig-acl</summary>
 <ul>
   <li>acl/openconfig-acl.yang (845): error: <pre>grouping "acl-state" not found in module "openconfig-acl"</pre></li>
 </ul>
 </details>
 </details>
 <details>
-  <summary>&#x26D4; optical-transport</summary>
+  <summary>&#x26D4;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+  <summary>&#x26D4;&nbsp; openconfig-optical-amplifier</summary>
 Failed.
 </details>
 <details>
-  <summary>&#x2705; openconfig-transport-line-protection</summary>
+  <summary>&#x2705;&nbsp; openconfig-transport-line-protection</summary>
 Passed.
 <ul>
   <pre>warning foo</pre>
@@ -263,18 +271,18 @@ Passed.
 </details>
 `,
 		wantCondensedOut: `<details>
-  <summary>&#x26D4; acl</summary>
+  <summary>&#x26D4;&nbsp; acl</summary>
 <details>
-  <summary>&#x26D4; openconfig-acl</summary>
+  <summary>&#x26D4;&nbsp; openconfig-acl</summary>
 <ul>
   <li>acl/openconfig-acl.yang (845): error: <pre>grouping "acl-state" not found in module "openconfig-acl"</pre></li>
 </ul>
 </details>
 </details>
 <details>
-  <summary>&#x26D4; optical-transport</summary>
+  <summary>&#x26D4;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+  <summary>&#x26D4;&nbsp; openconfig-optical-amplifier</summary>
 Failed.
 </details>
 </details>
@@ -285,22 +293,22 @@ Failed.
 		inValidatorId:        "confd",
 		wantPass:             false,
 		wantOut: `<details>
-  <summary>&#x26D4; acl</summary>
+  <summary>&#x26D4;&nbsp; acl</summary>
 <details>
-  <summary>&#x26D4; openconfig-acl</summary>
+  <summary>&#x26D4;&nbsp; openconfig-acl</summary>
 <ul>
   <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B</pre></li>
 </ul>
 </details>
 </details>
 <details>
-  <summary>&#x26D4; optical-transport</summary>
+  <summary>&#x26D4;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+  <summary>&#x26D4;&nbsp; openconfig-optical-amplifier</summary>
 Failed.
 </details>
 <details>
-  <summary>&#x2705; openconfig-transport-line-protection</summary>
+  <summary>&#x2705;&nbsp; openconfig-transport-line-protection</summary>
 Passed.
 <ul>
   <li>warning foo</li>
@@ -309,18 +317,18 @@ Passed.
 </details>
 `,
 		wantCondensedOut: `<details>
-  <summary>&#x26D4; acl</summary>
+  <summary>&#x26D4;&nbsp; acl</summary>
 <details>
-  <summary>&#x26D4; openconfig-acl</summary>
+  <summary>&#x26D4;&nbsp; openconfig-acl</summary>
 <ul>
   <li>wifi/mac/openconfig-wifi-mac.yang (1244): error: <pre>enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B</pre></li>
 </ul>
 </details>
 </details>
 <details>
-  <summary>&#x26D4; optical-transport</summary>
+  <summary>&#x26D4;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+  <summary>&#x26D4;&nbsp; openconfig-optical-amplifier</summary>
 Failed.
 </details>
 </details>
@@ -331,36 +339,36 @@ Failed.
 		inValidatorId:        "yanglint",
 		wantPass:             false,
 		wantOut: `<details>
-  <summary>&#x26D4; acl</summary>
+  <summary>&#x26D4;&nbsp; acl</summary>
 <details>
-  <summary>&#x26D4; openconfig-acl</summary>
+  <summary>&#x26D4;&nbsp; openconfig-acl</summary>
 /workspace/release/yang/wifi/mac/openconfig-wifi-mac.yang:1244: error: enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B<br>
 </details>
 </details>
 <details>
-  <summary>&#x26D4; optical-transport</summary>
+  <summary>&#x26D4;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+  <summary>&#x26D4;&nbsp; openconfig-optical-amplifier</summary>
 Failed.
 </details>
 <details>
-  <summary>&#x2705; openconfig-transport-line-protection</summary>
+  <summary>&#x2705;&nbsp; openconfig-transport-line-protection</summary>
 Passed.
 warning foo<br>
 </details>
 </details>
 `,
 		wantCondensedOut: `<details>
-  <summary>&#x26D4; acl</summary>
+  <summary>&#x26D4;&nbsp; acl</summary>
 <details>
-  <summary>&#x26D4; openconfig-acl</summary>
+  <summary>&#x26D4;&nbsp; openconfig-acl</summary>
 /workspace/release/yang/wifi/mac/openconfig-wifi-mac.yang:1244: error: enum value "B" should be of the form UPPERCASE_WITH_UNDERSCORES: B<br>
 </details>
 </details>
 <details>
-  <summary>&#x26D4; optical-transport</summary>
+  <summary>&#x26D4;&nbsp; optical-transport</summary>
 <details>
-  <summary>&#x26D4; openconfig-optical-amplifier</summary>
+  <summary>&#x26D4;&nbsp; openconfig-optical-amplifier</summary>
 Failed.
 </details>
 </details>
@@ -399,11 +407,11 @@ Failed.
 		inValidatorId:        "misc-checks",
 		wantPass:             true,
 		wantOut: `<details>
-  <summary>&#x2705; openconfig-version update check</summary>
+  <summary>&#x2705;&nbsp; openconfig-version update check</summary>
 4 file(s) correctly updated.
 </details>
 <details>
-  <summary>&#x2705; .spec.yml build reachability check</summary>
+  <summary>&#x2705;&nbsp; .spec.yml build reachability check</summary>
 8 files reached by build rules.
 </details>
 `,
@@ -414,12 +422,12 @@ Failed.
 		inValidatorId:        "misc-checks",
 		wantPass:             false,
 		wantOut: `<details>
-  <summary>&#x26D4; openconfig-version update check</summary>
+  <summary>&#x26D4;&nbsp; openconfig-version update check</summary>
   <li>changed-version-to-noversion.yang: openconfig-version was removed</li>
   <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
 </details>
 <details>
-  <summary>&#x26D4; .spec.yml build reachability check</summary>
+  <summary>&#x26D4;&nbsp; .spec.yml build reachability check</summary>
   <li>changed-noversion-to-unreached.yang: file not used by any .spec.yml build.</li>
   <li>changed-unreached-to-unreached.yang: file not used by any .spec.yml build.</li>
   <li>changed-version-to-unreached.yang: file not used by any .spec.yml build.</li>
