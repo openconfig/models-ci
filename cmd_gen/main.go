@@ -186,8 +186,9 @@ script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  local options=( -o "$1"."$2".binding.py "${options[@]}" )
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
@@ -195,7 +196,7 @@ function run-dir() {
 }
 `),
 
-			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}=={{ .ModelName }}==" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
 		"goyang-ygot": &scriptSpec{
@@ -214,10 +215,9 @@ options=(
 script_options=(
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
-  local options=( -output_file="$workdir"/"$2" "${options[@]}" )
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  local options=( -output_file="$1"."$2".oc.go "${options[@]}" )
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
@@ -225,7 +225,7 @@ function run-dir() {
 }
 `),
 
-			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}=={{ .ModelName }}==" {{ .ModelDirName }}.{{ .ModelName }}.oc.go {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
 		"yanglint": &scriptSpec{
@@ -248,7 +248,7 @@ function run-dir() {
   fi
 }
 `),
-			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}=={{ .ModelName }}==" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}=={{ .ModelName }}==" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
 		"confd": &scriptSpec{
