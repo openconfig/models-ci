@@ -241,7 +241,7 @@ func (g *GithubRequestHandler) AddPRComment(body *string, owner, repo string, pr
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 	if err := Retry(5, "posting issue comment to PR", func() error {
-		_, _, err := g.client.PullRequests.CreateComment(ctx, owner, repo, prNumber, &github.PullRequestComment{Body: body})
+		_, _, err := g.client.Issues.CreateComment(ctx, owner, repo, prNumber, &github.IssueComment{Body: body})
 		return err
 	}); err != nil {
 		return err
@@ -262,10 +262,10 @@ func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
-	var comments []*github.PullRequestComment
+	var comments []*github.IssueComment
 	if err := Retry(5, "get PR comments list", func() error {
 		var err error
-		comments, _, err = g.client.PullRequests.ListComments(ctx, owner, repo, prNumber, nil)
+		comments, _, err = g.client.Issues.ListComments(ctx, owner, repo, prNumber, nil)
 		return err
 	}); err != nil {
 		return err
@@ -274,7 +274,7 @@ func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string
 	for _, pc := range comments {
 		if strings.Contains(*pc.Body, signature) {
 			if err := Retry(5, "edit PR comment", func() error {
-				_, _, err := g.client.PullRequests.EditComment(ctx, owner, repo, *pc.ID, &github.PullRequestComment{Body: body})
+				_, _, err := g.client.Issues.EditComment(ctx, owner, repo, *pc.ID, &github.IssueComment{Body: body})
 				return err
 			}); err != nil {
 				return err
