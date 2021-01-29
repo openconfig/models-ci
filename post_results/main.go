@@ -103,7 +103,7 @@ func sprintLineHTML(format string, a ...interface{}) string {
 
 // sprintSummaryHTML prints a top-level summary item containing free-form or list items.
 func sprintSummaryHTML(status, title, format string, a ...interface{}) string {
-	return fmt.Sprintf("<details>\n  <summary>%s %s</summary>\n"+format+"</details>\n", append([]interface{}{commonci.Emoji(status), title}, a...)...)
+	return fmt.Sprintf("<details>\n  <summary>%s&nbsp; %s</summary>\n"+format+"</details>\n", append([]interface{}{commonci.Emoji(status), title}, a...)...)
 }
 
 // readFile reads the entire file into a string and returns it along with an error if any.
