@@ -278,8 +278,9 @@ func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string
 				_, _, err := g.client.Issues.EditComment(ctx, owner, repo, *pc.ID, &github.IssueComment{Body: body})
 				return err
 			}); err != nil {
-				return err
+				return g.AddPRComment(body, owner, repo, prNumber)
 			}
+			return nil
 		}
 	}
 	return g.AddPRComment(body, owner, repo, prNumber)
