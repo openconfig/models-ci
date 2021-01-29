@@ -268,7 +268,8 @@ func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string
 		comments, _, err = g.client.Issues.ListComments(ctx, owner, repo, prNumber, nil)
 		return err
 	}); err != nil {
-		return err
+		// If somehow this fails, we should be resilient and just post another comment.
+		return g.AddPRComment(body, owner, repo, prNumber)
 	}
 
 	for _, pc := range comments {
