@@ -132,15 +132,15 @@ script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
 `),
-			perModelTemplate: mustTemplate("pyang", `run-dir "{{ .ModelDirName }}=={{ .ModelName }}==" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
 		"oc-pyang": &scriptSpec{
@@ -159,16 +159,15 @@ script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
 `),
-
-			perModelTemplate: mustTemplate("oc-pyang", `run-dir "{{ .ModelDirName }}=={{ .ModelName }}==" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("oc-pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
 		"pyangbind": &scriptSpec{
@@ -195,7 +194,6 @@ function run-dir() {
   fi
 }
 `),
-
 			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
@@ -224,7 +222,6 @@ function run-dir() {
   fi
 }
 `),
-
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
@@ -240,15 +237,15 @@ options=(
 script_options=(
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
 `),
-			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}=={{ .ModelName }}==" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
 		"confd": &scriptSpec{

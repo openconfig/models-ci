@@ -625,18 +625,18 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
 
 		// Post parsed test results as a gist comment.
-		testResultString, status, err := getResult(vv.ValidatorId, resultsDir, false)
+		testResultString, pass, err := getResult(vv.ValidatorId, resultsDir, false)
 		if err != nil {
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
 
-		gistTitle := fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(status)), validatorDescs[i])
+		gistTitle := fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i])
 		id, err := g.AddGistComment(gistID, gistTitle, testResultString)
 		if err != nil {
 			fmt.Errorf("postResult: could not add gist comment: %v", err)
 		}
 
-		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", commonci.Emoji(commonci.BoolStatusToString(status)), validatorDescs[i], gistURL, id))
+		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i], gistURL, id))
 	}
 	comment := commentBuilder.String()
 	if err := g.AddPRComment(&comment, owner, repo, prNumber); err != nil {

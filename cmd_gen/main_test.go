@@ -64,16 +64,16 @@ script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
-run-dir "acl==openconfig-acl==" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
-run-dir "optical-transport==openconfig-optical-amplifier==" testdata/optical-transport/openconfig-optical-amplifier.yang &
-run-dir "optical-transport==openconfig-transport-line-protection==" testdata/optical-transport/openconfig-transport-line-protection.yang &
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -95,15 +95,15 @@ script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
-run-dir "optical-transport==openconfig-optical-amplifier==" testdata/optical-transport/openconfig-optical-amplifier.yang &
-run-dir "optical-transport==openconfig-transport-line-protection==" testdata/optical-transport/openconfig-transport-line-protection.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -125,16 +125,16 @@ script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
-run-dir "acl==openconfig-acl==" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
-run-dir "optical-transport==openconfig-optical-amplifier==" testdata/optical-transport/openconfig-optical-amplifier.yang &
-run-dir "optical-transport==openconfig-transport-line-protection==" testdata/optical-transport/openconfig-transport-line-protection.yang &
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
@@ -215,16 +215,16 @@ options=(
 script_options=(
 )
 function run-dir() {
-  declare prefix="$workdir"/"$1"
-  shift 1
+  declare prefix="$workdir"/"$1"=="$2"==
+  shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
-run-dir "acl==openconfig-acl==" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
-run-dir "optical-transport==openconfig-optical-amplifier==" testdata/optical-transport/openconfig-optical-amplifier.yang &
-run-dir "optical-transport==openconfig-transport-line-protection==" testdata/optical-transport/openconfig-transport-line-protection.yang &
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {
