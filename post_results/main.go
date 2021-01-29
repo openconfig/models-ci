@@ -642,7 +642,7 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i], gistURL, id))
 	}
 	comment := commentBuilder.String()
-	if err := g.AddPRComment(&comment, owner, repo, prNumber); err != nil {
+	if err := g.AddOrEditPRComment("Compatibility Report for commit", &comment, owner, repo, prNumber); err != nil {
 		return fmt.Errorf("postCompatibilityReport: couldn't post comment: %v", err)
 	}
 	return nil

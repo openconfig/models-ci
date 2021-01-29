@@ -241,12 +241,47 @@ func (g *GithubRequestHandler) AddPRComment(body *string, owner, repo string, pr
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 	if err := Retry(5, "posting issue comment to PR", func() error {
-		_, _, err := g.client.Issues.CreateComment(ctx, owner, repo, prNumber, &github.IssueComment{Body: body})
+		_, _, err := g.client.PullRequests.CreateComment(ctx, owner, repo, prNumber, &github.PullRequestComment{Body: body})
 		return err
 	}); err != nil {
 		return err
 	}
 	return nil
+}
+
+// AddOrEditPRComment posts or edits a comment to a PR.
+// If signature is empty, it's equivalent to AddPRComment.
+// Otherwise, all comments are searched first, and if any matches the
+// signature, then the comment is edited. If none matches, then a new comment
+// is posted.
+func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string, owner, repo string, prNumber int) error {
+	if signature == "" {
+		return g.AddPRComment(body, owner, repo, prNumber)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
+
+	var comments []*github.PullRequestComment
+	if err := Retry(5, "get PR comments list", func() error {
+		var err error
+		comments, _, err = g.client.PullRequests.ListComments(ctx, owner, repo, prNumber, nil)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	for _, pc := range comments {
+		if strings.Contains(*pc.Body, signature) {
+			if err := Retry(5, "edit PR comment", func() error {
+				_, _, err := g.client.PullRequests.EditComment(ctx, owner, repo, *pc.ID, &github.PullRequestComment{Body: body})
+				return err
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return g.AddPRComment(body, owner, repo, prNumber)
 }
 
 // NewGitHubRequestHandler sets up a new GithubRequestHandler struct which
