@@ -91,6 +91,9 @@ type Validator struct {
 	// IsWidelyUsedTool indicates that the tool is a widely used tool whose
 	// status should be reported on the front page of the repository.
 	IsWidelyUsedTool bool
+	// SupportedVersion is the lowest version supported to run in CI for
+	// the validator. If empty, then all versions are supported.
+	SupportedVersion string
 }
 
 // StatusName determines the status description for the version of the validator.
@@ -109,6 +112,7 @@ var (
 			Name:             "pyang",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
+			SupportedVersion: "2.2",
 		},
 		"oc-pyang": &Validator{
 			Name:             "OpenConfig Linter",

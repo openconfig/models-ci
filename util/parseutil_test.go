@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
+
+	pb "github.com/openconfig/models-ci/proto/results"
 )
 
 func TestParseStandardOutput(t *testing.T) {
@@ -72,6 +75,68 @@ foo
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := cmp.Diff(tt.want, ParseStandardOutput(tt.in)); diff != "" {
 				t.Errorf("(-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestParsePyangTextprotoOutput(t *testing.T) {
+	tests := []struct {
+		desc string
+		in   string
+		want *pb.PyangOutput
+	}{{
+		desc: "single error line",
+		in:   `messages:{path:"a.yang" line:30 code:"DUPLICATE_CHILD_NAME" type:"error" level:1 message:'there is already a child node to "cc" at a.yang:27 with the name "ccc" defined at a.yang:28'}`,
+		want: &pb.PyangOutput{
+			Messages: []*pb.PyangMessage{{
+				Path:    "a.yang",
+				Line:    30,
+				Code:    "DUPLICATE_CHILD_NAME",
+				Type:    "error",
+				Level:   1,
+				Message: `there is already a child node to "cc" at a.yang:27 with the name "ccc" defined at a.yang:28`,
+			}},
+		},
+	}, {
+		desc: "two error lines and a warning line",
+		in: `messages:{path:"tmp/a.yang" line:15 code:"UNEXPECTED_KEYWORD" type:"error" level:1 message:'unexpected keyword "description"'}
+messages:{path:"tmp/a.yang" line:26 code:"LONG_LINE" type:"warning" level:4 message:'line length 17 exceeds 5 characters'}
+messages:{path:"tmp/a.yang" line:30 code:"DUPLICATE_CHILD_NAME" type:"error" level:1 message:'there is already a child node to "cc" at tmp/a.yang:27 with the name "ccc" defined at tmp/a.yang:28'}`,
+		want: &pb.PyangOutput{
+			Messages: []*pb.PyangMessage{{
+				Path:    "tmp/a.yang",
+				Line:    15,
+				Code:    "UNEXPECTED_KEYWORD",
+				Type:    "error",
+				Level:   1,
+				Message: `unexpected keyword "description"`,
+			}, {
+				Path:    "tmp/a.yang",
+				Line:    26,
+				Code:    "LONG_LINE",
+				Type:    "warning",
+				Level:   4,
+				Message: `line length 17 exceeds 5 characters`,
+			}, {
+				Path:    "tmp/a.yang",
+				Line:    30,
+				Code:    "DUPLICATE_CHILD_NAME",
+				Type:    "error",
+				Level:   1,
+				Message: `there is already a child node to "cc" at tmp/a.yang:27 with the name "ccc" defined at tmp/a.yang:28`,
+			}},
+		},
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			got, err := ParsePyangTextprotoOutput(tt.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(got, tt.want, protocmp.Transform()); diff != "" {
+				t.Errorf("(-got, +want):\n%s", diff)
 			}
 		})
 	}

@@ -26,7 +26,14 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Masterminds/semver"
 	"github.com/openconfig/models-ci/commonci"
+)
+
+const (
+	// pyang_msg_template_string sets up an output template for pyang using
+	// its commandline option --msg-template.
+	pyang_msg_template_string = `PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"`
 )
 
 var (
@@ -78,7 +85,7 @@ func init() {
 	flag.StringVar(&branchName, "branch", "", "branch name of commit")
 	flag.StringVar(&compatReports, "compat-report", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) in compatibility report instead of a standalone PR status")
 	flag.StringVar(&skippedValidators, "skipped-validators", "", "comma-separated validators (e.g. goyang-ygot,pyang@1.7.8,pyang@head) not to be ran at all, not even in the compatibility report")
-	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run")
+	flag.StringVar(&extraPyangVersions, "extra-pyang-versions", "", "comma-separated extra pyang versions to run, but only 2.2+ is supported.")
 
 	// Local run flags
 	flag.BoolVar(&local, "local", false, "use with validator, modelDirName, resultsDir to get a particular model's command")
@@ -105,17 +112,17 @@ type cmdParams struct {
 }
 
 var (
-	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangCmdTemplate = mustTemplate("pyang", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	ocPyangCmdTemplate = mustTemplate("oc-pyang", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf --openconfig --ignore-error=OC_RELATIVE_PATH {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
 
-	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
+	pyangbindCmdTemplate = mustTemplate("pyangbind", `if ! $@ --msg-template "$PYANG_MSG_TEMPLATE" -p {{ .ModelRoot }} -p {{ .RepoRoot }}/third_party/ietf -f pybind -o {{ .ModelDirName }}.{{ .ModelName }}.binding.py {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &> {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass; then
   mv {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==pass {{ .ResultsDir }}/{{ .ModelDirName }}=={{ .ModelName }}==fail
 fi &
 `)
@@ -222,7 +229,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 	var builder strings.Builder
 
-	builder.WriteString(fmt.Sprintf("#!/bin/bash\nmkdir -p %s\n", resultsDir))
+	builder.WriteString(fmt.Sprintf("#!/bin/bash\n%s\nmkdir -p %s\n", pyang_msg_template_string, resultsDir))
 
 	modelDirNames := make([]string, 0, len(modelMap.ModelInfoMap))
 	for modelDirName := range modelMap.ModelInfoMap {
@@ -398,6 +405,19 @@ func main() {
 		// designated extra versions file in order to be relayed to the
 		// corresponding test.sh (next stage of the CI pipeline).
 		if len(extraVersions) > 0 {
+			versionConstraints, err := semver.NewConstraint(fmt.Sprintf(">= %s", validator.SupportedVersion))
+			if err != nil {
+				log.Fatalf("internal error: failed to parse SupportedVersion: %q", validator.SupportedVersion)
+			}
+			for _, version := range extraVersions {
+				v, err := semver.NewVersion(version)
+				if err != nil {
+					log.Fatalf("failed to parse pyang version string: %v", err)
+				}
+				if !versionConstraints.Check(v) {
+					log.Fatalf("invalid validator version: %s < %s", version, validator.SupportedVersion)
+				}
+			}
 			extraVersionFile := filepath.Join(commonci.UserConfigDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
 			if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
 				log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
