@@ -409,12 +409,14 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 			modelPass := true
 			switch status {
 			case "cmd":
+				// Don't do anything, store the command for later output.
+				// Since filepath.Walk walks files in lexical
+				// order, ${prefix}cmd should be walked first,
+				// such that ${prefix}pass or ${prefix}fail
+				// will have it ready to display to the user.
 				bashCommand = outString
 				bashCommandModelDirName = modelDirName
 				bashCommandModelName = modelName
-				// Don't do anything, store the command for later output.
-				// Single filepath.Walk walks files in lexical
-				// order, cmd should be walked first.
 				return nil
 			case "pass":
 			case "fail":
@@ -445,6 +447,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 			}
 
 			if !condensed || !modelPass {
+				// Display bash command that produced the validator result.
 				var bashCommandSummary string
 				if bashCommand != "" && bashCommandModelDirName == modelDirName && bashCommandModelName == modelName {
 					bashCommandSummary = sprintSummaryHTML("cmd", "bash command", "<pre>%s</pre>", bashCommand)

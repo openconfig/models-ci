@@ -111,12 +111,20 @@ const (
 	pyang_msg_template_string = `PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"`
 )
 
+// scriptSpec contain the bash script templates for each validator.
 type scriptSpec struct {
-	headerTemplate   *template.Template
+	// headerTemplate is generated once at the beginning of the script.
+	headerTemplate *template.Template
+	// perModelTemplate is generated once per model specified by .spec.yml.
 	perModelTemplate *template.Template
 }
 
 var (
+	// scriptTemplates contains templates for generating the validator
+	// scripts that checks the YANG models. They work in conjunction with a
+	// test.sh script for each validator, as well as the cloudbuild.yaml
+	// GCB script, which together create the running environment for the
+	// generated validator script.
 	scriptTemplates = map[string]*scriptSpec{
 		"pyang": &scriptSpec{
 			headerTemplate: mustTemplate("pyang-header", `#!/bin/bash
