@@ -194,8 +194,8 @@ function run-dir() {
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   status=0
-  $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass) || status=1
-  $(cd "$outdir" && go get && go build > ${prefix}pass) || status=1
+  $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
+  cd "$outdir" && go get && go build || status=1
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
