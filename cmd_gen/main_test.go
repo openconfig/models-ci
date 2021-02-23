@@ -188,7 +188,7 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  outdir="$workdir"/"$1"."$2"/
+  outdir=/go/src/"$1"."$2"/
   mkdir "$outdir"
   local options=( -output_file="$outdir"/oc.go "${options[@]}" )
   shift 2
