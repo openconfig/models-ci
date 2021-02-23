@@ -188,10 +188,15 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  local options=( -output_file="$1"."$2".oc.go "${options[@]}" )
+  outdir="$workdir"/"$1"."$2"/
+  mkdir "$outdir"
+  local options=( -output_file="$outdir"/oc.go "${options[@]}" )
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
-  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+  status=0
+  $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass) || status=1
+  $(go build &> ${prefix}pass) || status=1
+  if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }

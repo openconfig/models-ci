@@ -30,7 +30,7 @@ show_usage () {
 }
 
 check_args () {
-  # sanity check pre-requisites
+  # soundness check pre-requisites
 
   if [ -z ${GITHUB_ACCESS_TOKEN} ]
   then
