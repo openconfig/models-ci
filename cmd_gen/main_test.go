@@ -195,16 +195,16 @@ function run-dir() {
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   status=0
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
-  cd "$outdir" && go get && go build > ${prefix}pass || status=1
+  cd "$outdir" && go get && go build &> ${prefix}pass || status=1
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }
-go get github.com/openconfig/ygot
-$(cd $GOPATH/src/github.com/openconfig/ygot/exampleoc && go get ./...)
-run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang
-run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang
-run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang
+GO111MODULE=off go get github.com/openconfig/ygot
+$(GO111MODULE=off cd $GOPATH/src/github.com/openconfig/ygot/exampleoc && go get ./...)
+run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
+run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
+run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
 wait
 `,
 	}, {

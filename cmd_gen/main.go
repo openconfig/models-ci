@@ -229,15 +229,15 @@ function run-dir() {
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   status=0
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
-  cd "$outdir" && go get && go build > ${prefix}pass || status=1
+  cd "$outdir" && go get && go build &> ${prefix}pass || status=1
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }
-go get github.com/openconfig/ygot
-$(cd $GOPATH/src/github.com/openconfig/ygot/exampleoc && go get ./...)
+GO111MODULE=off go get github.com/openconfig/ygot
+$(GO111MODULE=off cd $GOPATH/src/github.com/openconfig/ygot/exampleoc && go get ./...)
 `),
-			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }}
+			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
 		},
 		"yanglint": &scriptSpec{
