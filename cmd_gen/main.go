@@ -234,7 +234,8 @@ function run-dir() {
     mv ${prefix}pass ${prefix}fail
   fi
 }
-$(go get -u github.com/openconfig/ygot)
+go get github.com/openconfig/ygot
+$(cd $GOPATH/src/github.com/openconfig/ygot/exampleoc && go get ./...)
 `),
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),

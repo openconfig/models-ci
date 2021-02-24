@@ -200,7 +200,8 @@ function run-dir() {
     mv ${prefix}pass ${prefix}fail
   fi
 }
-$(go get -u github.com/openconfig/ygot)
+go get github.com/openconfig/ygot
+$(cd $GOPATH/src/github.com/openconfig/ygot/exampleoc && go get ./...)
 run-dir "acl" "openconfig-acl" testdata/acl/openconfig-acl.yang testdata/acl/openconfig-acl-evil-twin.yang &
 run-dir "optical-transport" "openconfig-optical-amplifier" testdata/optical-transport/openconfig-optical-amplifier.yang &
 run-dir "optical-transport" "openconfig-transport-line-protection" testdata/optical-transport/openconfig-transport-line-protection.yang &
