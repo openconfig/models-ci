@@ -222,18 +222,19 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  outdir=/go/src/"$1"."$2"/
+  outdir=$GOPATH/src/"$1"."$2"/
   mkdir "$outdir"
   local options=( -output_file="$outdir"/oc.go "${options[@]}" )
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   status=0
-  $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass) || status=1
-  $(cd "$outdir" && go get && go build > ${prefix}pass) || status=1
+  $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
+  cd "$outdir" && go build > ${prefix}pass || status=1
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }
+$(go get -u github.com/openconfig/ygot)
 `),
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
 `),
