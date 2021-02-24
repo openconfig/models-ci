@@ -234,10 +234,8 @@ function run-dir() {
     mv ${prefix}pass ${prefix}fail
   fi
 }
-GO111MODULE=off go get github.com/openconfig/ygot
-$(GO111MODULE=off cd $GOPATH/src/github.com/openconfig/ygot/exampleoc && go get ./...)
 `),
-			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }}
 `),
 		},
 		"yanglint": &scriptSpec{
