@@ -26,11 +26,11 @@ setup
 ########################## regexp #############################
 FAIL=0
 
-TESTFILES=$(find "$_MODEL_ROOT/regexp-tests" -name "*.yang" -print0)
+TESTFILES=$(find "$ROOT_DIR/regexp-tests" -name "*.yang" -print0)
 
 echo '## RFC7950 `pattern` statement' >> $FAILFILE
 XSDFAILFILE=$RESULTSDIR/xsdfail
-if OCDIR=$_MODEL_ROOT echo "$TESTFILES" | xargs -0 $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
+if echo "$TESTFILES" | OCDIR=$_MODEL_ROOT xargs -0 $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
   echo "Passed." >> $FAILFILE
 else
   FAIL=1
