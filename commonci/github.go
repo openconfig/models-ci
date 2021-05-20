@@ -249,6 +249,43 @@ func (g *GithubRequestHandler) AddPRComment(body *string, owner, repo string, pr
 	return nil
 }
 
+// AddOrEditPRComment posts or edits a comment to a PR.
+// If signature is empty, it's equivalent to AddPRComment.
+// Otherwise, all comments are searched first, and if any matches the
+// signature, then the comment is edited. If none matches, then a new comment
+// is posted.
+func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string, owner, repo string, prNumber int) error {
+	if signature == "" {
+		return g.AddPRComment(body, owner, repo, prNumber)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
+
+	var comments []*github.IssueComment
+	if err := Retry(5, "get PR comments list", func() error {
+		var err error
+		comments, _, err = g.client.Issues.ListComments(ctx, owner, repo, prNumber, nil)
+		return err
+	}); err != nil {
+		// If somehow this fails, we should be resilient and just post another comment.
+		return g.AddPRComment(body, owner, repo, prNumber)
+	}
+
+	for _, pc := range comments {
+		if strings.Contains(*pc.Body, signature) {
+			if err := Retry(5, "edit PR comment", func() error {
+				_, _, err := g.client.Issues.EditComment(ctx, owner, repo, *pc.ID, &github.IssueComment{Body: body})
+				return err
+			}); err != nil {
+				return g.AddPRComment(body, owner, repo, prNumber)
+			}
+			return nil
+		}
+	}
+	return g.AddPRComment(body, owner, repo, prNumber)
+}
+
 // NewGitHubRequestHandler sets up a new GithubRequestHandler struct which
 // creates an oauth2 client with a GitHub access token (as specified by the
 // GITHUB_ACCESS_TOKEN environment variable), and a connection to the GitHub
