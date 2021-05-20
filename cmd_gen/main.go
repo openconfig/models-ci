@@ -222,15 +222,24 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  local options=( -output_file="$1"."$2".oc.go "${options[@]}" )
+  outdir=$GOPATH/src/"$1"."$2"/
+  mkdir "$outdir"
+  local options=( -output_file="$outdir"/oc.go "${options[@]}" )
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
-  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+  status=0
+  $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
+  cd "$outdir"
+  go get &> ${prefix}pass || status=1
+  if [[ $status -eq "0" ]]; then
+    go build &> ${prefix}pass || status=1
+  fi
+  if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }
 `),
-			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }}
 `),
 		},
 		"yanglint": &scriptSpec{
