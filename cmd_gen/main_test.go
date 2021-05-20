@@ -181,7 +181,7 @@ options=(
   -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true
   -shorten_enum_leaf_names -trim_enum_openconfig_prefix -typedef_enum_with_defmod -enum_suffix_for_simple_union_enums
   -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters
-  -generate_leaf_getters -generate_delete -annotations
+  -generate_leaf_getters -generate_delete -annotations -generate_simple_unions
   -list_builder_key_threshold=3
 )
 script_options=(
