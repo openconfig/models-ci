@@ -26,9 +26,11 @@ setup
 ########################## regexp #############################
 FAIL=0
 
+TESTFILES_FILE="$(mktemp)"
+find "$ROOT_DIR/regexp-tests" -name "*.yang" -print0 > "$TESTFILES_FILE"
 echo '## RFC7950 `pattern` statement' >> $FAILFILE
 XSDFAILFILE=$RESULTSDIR/xsdfail
-if OCDIR=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
+if cat "$TESTFILES_FILE" | OCDIR=$_MODEL_ROOT xargs -0 $GOPATH/src/github.com/openconfig/pattern-regex-tests/pytests/pattern_test.sh > $OUTFILE 2> $XSDFAILFILE; then
   echo "Passed." >> $FAILFILE
 else
   FAIL=1
@@ -40,7 +42,7 @@ echo "" >> $FAILFILE
 
 echo '## `posix-pattern` statement' >> $FAILFILE
 POSIXFAILFILE=$RESULTSDIR/xsdfail
-if $GOPATH/bin/gotests -model-root=$_MODEL_ROOT $GOPATH/src/github.com/openconfig/pattern-regex-tests/testdata/regexp-test.yang >> $OUTFILE 2> $POSIXFAILFILE; then
+if cat "$TESTFILES_FILE" | xargs -0 $GOPATH/bin/gotests -model-root=$_MODEL_ROOT >> $OUTFILE 2> $POSIXFAILFILE; then
   echo "Passed." >> $FAILFILE
 else
   FAIL=1
