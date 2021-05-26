@@ -299,7 +299,7 @@ func NewGitHubRequestHandler() (*GithubRequestHandler, error) {
 	}
 
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: accesstk},
+		&oauth2.Token{AccessToken: strings.TrimSpace(accesstk)},
 	)
 	tc := oauth2.NewClient(oauth2.NoContext, ts)
 
