@@ -1,2 +1,3 @@
+openconfig-mpls.yang: openconfig-version:"2.2.5" latest-revision-version:"2.2.5"
 openconfig-acl.yang: openconfig-version:"1.2.2" latest-revision-version:"1.2.2"
 changed-version-to-noversion.yang:

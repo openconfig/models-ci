@@ -408,7 +408,7 @@ Failed.
 		wantPass:             true,
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
-4 file(s) correctly updated.
+6 file(s) correctly updated.
 </details>
 <details>
   <summary>&#x2705;&nbsp; .spec.yml build reachability check</summary>
@@ -425,6 +425,7 @@ Failed.
   <summary>&#x26D4;&nbsp; openconfig-version update check</summary>
   <li>changed-version-to-noversion.yang: openconfig-version was removed</li>
   <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
+  <li>openconfig-mpls.yang: new semantic version not valid, old version: "2.3.4", new version: "2.2.5"</li>
 </details>
 <details>
   <summary>&#x26D4;&nbsp; .spec.yml build reachability check</summary>

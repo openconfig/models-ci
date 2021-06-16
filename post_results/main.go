@@ -27,6 +27,7 @@ import (
 
 	"log"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/openconfig/models-ci/commonci"
 	"github.com/openconfig/models-ci/util"
 )
@@ -252,15 +253,27 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		switch {
 		case properties["changed"] != "true":
 			// We assume the versioning is correct without change.
-		case hasVersion:
-			// TODO(wenovus): This logic can be improved to check whether the increment follows semver rules.
-			if ocVersion == masterOcVersion {
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
+		case hadVersion && hasVersion:
+			newV, err := semver.StrictNewVersion(ocVersion)
+			if err != nil {
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: invalid version string: %q", file, ocVersion))
 				break
 			}
-			ocVersionChangedCount += 1
-		case hadVersion:
+			oldV, err := semver.StrictNewVersion(masterOcVersion)
+			switch {
+			case err != nil:
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: unexpected error, master branch version string unparseable: %q", file, masterOcVersion))
+			case newV.Equal(oldV):
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
+			case !newV.GreaterThan(oldV):
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: new semantic version not valid, old version: %q, new version: %q", file, masterOcVersion, ocVersion))
+			default:
+				ocVersionChangedCount += 1
+			}
+		case hadVersion && !hasVersion:
 			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
+		default: // If didn't have version before, any new version is accepted.
+			ocVersionChangedCount += 1
 		}
 	}
 
