@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/openconfig/gnmi/errdiff"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "github.com/openconfig/models-ci/proto/results"
@@ -82,9 +83,10 @@ foo
 
 func TestParsePyangTextprotoOutput(t *testing.T) {
 	tests := []struct {
-		desc string
-		in   string
-		want *pb.PyangOutput
+		desc          string
+		in            string
+		want          *pb.PyangOutput
+		wantErrSubstr string
 	}{{
 		desc: "single error line",
 		in:   `messages:{path:"a.yang" line:30 code:"DUPLICATE_CHILD_NAME" type:"error" level:1 message:'there is already a child node to "cc" at a.yang:27 with the name "ccc" defined at a.yang:28'}`,
@@ -102,6 +104,10 @@ func TestParsePyangTextprotoOutput(t *testing.T) {
 		desc: "empty line",
 		in:   ``,
 		want: &pb.PyangOutput{},
+	}, {
+		desc:          "unrecognized line",
+		in:            `foo`,
+		wantErrSubstr: "unrecognized line",
 	}, {
 		desc: "error line and warning lines",
 		in: `messages:{path:"tmp/a.yang" line:15 code:"UNEXPECTED_KEYWORD" type:"error" level:1 message:'unexpected keyword "description"'}
@@ -145,8 +151,11 @@ messages:{path:"/workspace/yang/isis/openconfig-isis.yang" line:27 code:"LINT_BA
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			got, err := ParsePyangTextprotoOutput(tt.in)
+			if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
+				t.Fatalf("did not get expected error, %s", diff)
+			}
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 			if diff := cmp.Diff(got, tt.want, protocmp.Transform()); diff != "" {
 				t.Errorf("(-got, +want):\n%s", diff)
