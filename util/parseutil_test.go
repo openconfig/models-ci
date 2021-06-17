@@ -103,7 +103,7 @@ func TestParsePyangTextprotoOutput(t *testing.T) {
 		in:   ``,
 		want: &pb.PyangOutput{},
 	}, {
-		desc: "two error lines and a warning line",
+		desc: "error line and warning lines",
 		in: `messages:{path:"tmp/a.yang" line:15 code:"UNEXPECTED_KEYWORD" type:"error" level:1 message:'unexpected keyword "description"'}
 messages:{path:"tmp/a.yang" line:26 code:"LONG_LINE" type:"warning" level:4 message:'line length 17 exceeds 5 characters'}
 messages:{path:"tmp/a.yang" line:30 code:"DUPLICATE_CHILD_NAME" type:"error" level:1 message:'there is already a child node to "cc" at tmp/a.yang:27 with the name "ccc" defined at tmp/a.yang:28'}
@@ -131,11 +131,12 @@ messages:{path:"/workspace/yang/isis/openconfig-isis.yang" line:27 code:"LINT_BA
 				Level:   1,
 				Message: `there is already a child node to "cc" at tmp/a.yang:27 with the name "ccc" defined at tmp/a.yang:28`,
 			}, {
-				Path:    "/workspace/yang/isis/openconfig-isis.yang",
-				Line:    27,
-				Code:    "LINT_BAD_REVISION",
-				Type:    "error",
-				Level:   3,
+				Path:  "/workspace/yang/isis/openconfig-isis.yang",
+				Line:  27,
+				Code:  "LINT_BAD_REVISION",
+				Type:  "error",
+				Level: 3,
+				// This tests escaping single quotes that are in the error message.
 				Message: `RFC 6087: 4.6: the module's revision 2021-03-17 is older than submodule openconfig-isis-lsp's revision 2021-06-16`,
 			}},
 		},
