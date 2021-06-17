@@ -97,6 +97,9 @@ func ParseStandardOutput(rawOut string) StandardOutput {
 // defined by PYANG_MSG_TEMPLATE_STRING.
 func ParsePyangTextprotoOutput(textprotoOut string) (*pb.PyangOutput, error) {
 	output := &pb.PyangOutput{}
+
+	// Go through each line, and escape single quotes within the error
+	// message so that they can be parsed by prototext.Unmarshal.
 	var escapedOutput []byte
 	const messageStart = "message:'"
 	for _, line := range strings.Split(textprotoOut, "\n") {
@@ -119,6 +122,7 @@ func ParsePyangTextprotoOutput(textprotoOut string) (*pb.PyangOutput, error) {
 		}
 		escapedOutput = append(escapedOutput, lineBytes[j:]...)
 	}
+
 	err := prototext.Unmarshal(escapedOutput, output)
 	return output, err
 }
