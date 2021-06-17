@@ -157,6 +157,48 @@ func TestProcessStandardOutput(t *testing.T) {
 	}
 }
 
+func TestCheckSemverIncrease(t *testing.T) {
+	tests := []struct {
+		desc          string
+		inOldVersion  string
+		inNewVersion  string
+		wantErrSubstr string
+	}{{
+		desc:         "single increase",
+		inOldVersion: "1.0.0",
+		inNewVersion: "1.0.1",
+	}, {
+		desc:          "no change",
+		inOldVersion:  "1.0.1",
+		inNewVersion:  "1.0.1",
+		wantErrSubstr: "file updated but PR version not updated",
+	}, {
+		desc:          "decrease",
+		inOldVersion:  "1.0.1",
+		inNewVersion:  "1.0.0",
+		wantErrSubstr: "new semantic version not valid",
+	}, {
+		desc:          "invalid old version",
+		inOldVersion:  "1.0.*",
+		inNewVersion:  "1.0.0",
+		wantErrSubstr: "base branch version string unparseable",
+	}, {
+		desc:          "invalid new version",
+		inOldVersion:  "1.0.0",
+		inNewVersion:  "1.0.*",
+		wantErrSubstr: "invalid version string",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion)
+			if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
+				t.Fatalf("did not get expected error, %s", diff)
+			}
+		})
+	}
+}
+
 func TestGetResult(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 

@@ -204,6 +204,28 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 	return nil
 }
 
+// checkSemverIncrease checks that newVersion is greater than the oldVersion
+// according to semantic versioning rules.
+// Note that any increase is fine, including jumps, e.g. 1.0.0 -> 1.0.2.
+// If there isn't an increase, a descriptive error message is returned.
+func checkSemverIncrease(oldVersion, newVersion string) error {
+	newV, err := semver.StrictNewVersion(newVersion)
+	if err != nil {
+		return fmt.Errorf("invalid version string: %q", newVersion)
+	}
+	oldV, err := semver.StrictNewVersion(oldVersion)
+	switch {
+	case err != nil:
+		return fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
+	case newV.Equal(oldV):
+		return fmt.Errorf("file updated but PR version not updated: %q", oldVersion)
+	case !newV.GreaterThan(oldV):
+		return fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
+	default:
+		return nil
+	}
+}
+
 // processMiscChecksOutput takes the raw result output from the misc-checks
 // results directory and returns its formatted report and pass/fail status.
 func processMiscChecksOutput(resultsDir string) (string, bool, error) {
@@ -254,20 +276,9 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		case properties["changed"] != "true":
 			// We assume the versioning is correct without change.
 		case hadVersion && hasVersion:
-			newV, err := semver.StrictNewVersion(ocVersion)
-			if err != nil {
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: invalid version string: %q", file, ocVersion))
-				break
-			}
-			oldV, err := semver.StrictNewVersion(masterOcVersion)
-			switch {
-			case err != nil:
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: unexpected error, master branch version string unparseable: %q", file, masterOcVersion))
-			case newV.Equal(oldV):
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
-			case !newV.GreaterThan(oldV):
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: new semantic version not valid, old version: %q, new version: %q", file, masterOcVersion, ocVersion))
-			default:
+			if err := checkSemverIncrease(masterOcVersion, ocVersion); err != nil {
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
+			} else {
 				ocVersionChangedCount += 1
 			}
 		case hadVersion && !hasVersion:
