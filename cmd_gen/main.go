@@ -26,7 +26,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/openconfig/models-ci/commonci"
 )
 

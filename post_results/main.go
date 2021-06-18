@@ -27,6 +27,7 @@ import (
 
 	"log"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/openconfig/models-ci/commonci"
 	"github.com/openconfig/models-ci/util"
 )
@@ -203,6 +204,28 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 	return nil
 }
 
+// checkSemverIncrease checks that newVersion is greater than the oldVersion
+// according to semantic versioning rules.
+// Note that any increase is fine, including jumps, e.g. 1.0.0 -> 1.0.2.
+// If there isn't an increase, a descriptive error message is returned.
+func checkSemverIncrease(oldVersion, newVersion string) error {
+	newV, err := semver.StrictNewVersion(newVersion)
+	if err != nil {
+		return fmt.Errorf("invalid version string: %q", newVersion)
+	}
+	oldV, err := semver.StrictNewVersion(oldVersion)
+	switch {
+	case err != nil:
+		return fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
+	case newV.Equal(oldV):
+		return fmt.Errorf("file updated but PR version not updated: %q", oldVersion)
+	case !newV.GreaterThan(oldV):
+		return fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
+	default:
+		return nil
+	}
+}
+
 // processMiscChecksOutput takes the raw result output from the misc-checks
 // results directory and returns its formatted report and pass/fail status.
 func processMiscChecksOutput(resultsDir string) (string, bool, error) {
@@ -252,15 +275,16 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		switch {
 		case properties["changed"] != "true":
 			// We assume the versioning is correct without change.
-		case hasVersion:
-			// TODO(wenovus): This logic can be improved to check whether the increment follows semver rules.
-			if ocVersion == masterOcVersion {
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: file updated but PR version not updated: %q", file, ocVersion))
-				break
+		case hadVersion && hasVersion:
+			if err := checkSemverIncrease(masterOcVersion, ocVersion); err != nil {
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
+			} else {
+				ocVersionChangedCount += 1
 			}
-			ocVersionChangedCount += 1
-		case hadVersion:
+		case hadVersion && !hasVersion:
 			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
+		default: // If didn't have version before, any new version is accepted.
+			ocVersionChangedCount += 1
 		}
 	}
 
