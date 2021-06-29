@@ -2,6 +2,7 @@
 package util
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -9,6 +10,12 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/openconfig/models-ci/proto/results"
+)
+
+const (
+	// PYANG_MSG_TEMPLATE_STRING sets up an output template for pyang using
+	// its commandline option --msg-template.
+	PYANG_MSG_TEMPLATE_STRING = `PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"`
 )
 
 var (
@@ -86,9 +93,36 @@ func ParseStandardOutput(rawOut string) StandardOutput {
 }
 
 // ParsePyangTextprotoOutput parses textproto-formatted pyang output into a
-// proto message.
+// proto message. It assumes that the input string has format
+// defined by PYANG_MSG_TEMPLATE_STRING.
 func ParsePyangTextprotoOutput(textprotoOut string) (*pb.PyangOutput, error) {
 	output := &pb.PyangOutput{}
-	err := prototext.Unmarshal([]byte(textprotoOut), output)
+
+	// Go through each line, and escape single quotes within the error
+	// message so that they can be parsed by prototext.Unmarshal.
+	var escapedOutput []byte
+	const messageStart = "message:'"
+	for _, line := range strings.Split(textprotoOut, "\n") {
+		if len(line) == 0 {
+			continue
+		}
+		i := strings.Index(line, messageStart)
+		if i == -1 {
+			return nil, fmt.Errorf("pyang output contains unrecognized line: %q", line)
+		}
+		i += len(messageStart)
+		j := strings.LastIndex(line, "'")
+		lineBytes := []byte(line)
+		escapedOutput = append(escapedOutput, lineBytes[:i]...)
+		for _, c := range lineBytes[i:j] {
+			if c == '\'' {
+				escapedOutput = append(escapedOutput, '\\')
+			}
+			escapedOutput = append(escapedOutput, c)
+		}
+		escapedOutput = append(escapedOutput, lineBytes[j:]...)
+	}
+
+	err := prototext.Unmarshal(escapedOutput, output)
 	return output, err
 }

@@ -157,6 +157,48 @@ func TestProcessStandardOutput(t *testing.T) {
 	}
 }
 
+func TestCheckSemverIncrease(t *testing.T) {
+	tests := []struct {
+		desc          string
+		inOldVersion  string
+		inNewVersion  string
+		wantErrSubstr string
+	}{{
+		desc:         "single increase",
+		inOldVersion: "1.0.0",
+		inNewVersion: "1.0.1",
+	}, {
+		desc:          "no change",
+		inOldVersion:  "1.0.1",
+		inNewVersion:  "1.0.1",
+		wantErrSubstr: "file updated but PR version not updated",
+	}, {
+		desc:          "decrease",
+		inOldVersion:  "1.0.1",
+		inNewVersion:  "1.0.0",
+		wantErrSubstr: "new semantic version not valid",
+	}, {
+		desc:          "invalid old version",
+		inOldVersion:  "1.0.*",
+		inNewVersion:  "1.0.0",
+		wantErrSubstr: "base branch version string unparseable",
+	}, {
+		desc:          "invalid new version",
+		inOldVersion:  "1.0.0",
+		inNewVersion:  "1.0.*",
+		wantErrSubstr: "invalid version string",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion)
+			if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
+				t.Fatalf("did not get expected error, %s", diff)
+			}
+		})
+	}
+}
+
 func TestGetResult(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
@@ -408,7 +450,7 @@ Failed.
 		wantPass:             true,
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
-4 file(s) correctly updated.
+6 file(s) correctly updated.
 </details>
 <details>
   <summary>&#x2705;&nbsp; .spec.yml build reachability check</summary>
@@ -425,6 +467,7 @@ Failed.
   <summary>&#x26D4;&nbsp; openconfig-version update check</summary>
   <li>changed-version-to-noversion.yang: openconfig-version was removed</li>
   <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
+  <li>openconfig-mpls.yang: new semantic version not valid, old version: "2.3.4", new version: "2.2.5"</li>
 </details>
 <details>
   <summary>&#x26D4;&nbsp; .spec.yml build reachability check</summary>

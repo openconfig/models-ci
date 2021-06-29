@@ -26,8 +26,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/openconfig/models-ci/commonci"
+	"github.com/openconfig/models-ci/util"
 )
 
 var (
@@ -105,12 +106,6 @@ type cmdParams struct {
 	ResultsDir   string
 }
 
-const (
-	// pyang_msg_template_string sets up an output template for pyang using
-	// its commandline option --msg-template.
-	pyang_msg_template_string = `PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"`
-)
-
 // scriptSpec contain the bash script templates for each validator.
 type scriptSpec struct {
 	// headerTemplate is generated once at the beginning of the script.
@@ -130,7 +125,7 @@ var (
 			headerTemplate: mustTemplate("pyang-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
-`+"{{`"+pyang_msg_template_string+"`}}"+`
+`+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
   -p {{ .ModelRoot }}
@@ -155,7 +150,7 @@ function run-dir() {
 			headerTemplate: mustTemplate("oc-pyang-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
-`+"{{`"+pyang_msg_template_string+"`}}"+`
+`+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
   -p {{ .ModelRoot }}
@@ -182,7 +177,7 @@ function run-dir() {
 			headerTemplate: mustTemplate("pyangbind-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
-`+"{{`"+pyang_msg_template_string+"`}}"+`
+`+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
   -p {{ .ModelRoot }}

@@ -1,3 +1,4 @@
+openconfig-mpls.yang: openconfig-version:"2.3.4" latest-revision-version:"2.3.4"
 openconfig-acl.yang: openconfig-version:"1.2.2" latest-revision-version:"1.2.2"
 
 changed-noversion-to-unreached.yang:
