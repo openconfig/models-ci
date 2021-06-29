@@ -48,7 +48,6 @@ run-pyang-head() {
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
   source ./env.sh
   pip3 install --no-cache-dir -r $REPODIR/requirements.txt
-  pip3 install ply
   if bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
