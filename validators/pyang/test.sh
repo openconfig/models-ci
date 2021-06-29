@@ -46,8 +46,7 @@ run-pyang-head() {
   git clone https://github.com/mbj4668/pyang.git $REPODIR
   cd $REPODIR
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
-  source ./env.sh
-  pip3 install --no-cache-dir -r $REPODIR/requirements.txt
+  python3 setup.py install
   if bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
@@ -55,7 +54,6 @@ run-pyang-head() {
   $GOPATH/bin/post_results -validator=pyang -version="head" -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
 }
 
-run-pyang-head &
 for version in $(< $EXTRA_VERSIONS_FILE); do
   run-pyang-version "$version" &
 done
@@ -77,6 +75,9 @@ BADGEFILE=$RESULTSDIR/upload-badge.sh
 if stat $BADGEFILE; then
   bash $BADGEFILE
 fi
+
+wait
+run-pyang-head &
 
 ########################## CLEANUP #############################
 wait
