@@ -104,6 +104,7 @@ type cmdParams struct {
 	ModelDirName string
 	ModelName    string
 	ResultsDir   string
+	Parallel     bool
 }
 
 // scriptSpec contain the bash script templates for each validator.
@@ -143,7 +144,7 @@ function run-dir() {
   fi
 }
 `),
-			perModelTemplate: mustTemplate("pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
 		"oc-pyang": &scriptSpec{
@@ -170,7 +171,7 @@ function run-dir() {
   fi
 }
 `),
-			perModelTemplate: mustTemplate("oc-pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("oc-pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
 		"pyangbind": &scriptSpec{
@@ -197,7 +198,7 @@ function run-dir() {
   fi
 }
 `),
-			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
 		"goyang-ygot": &scriptSpec{
@@ -234,7 +235,7 @@ function run-dir() {
   fi
 }
 `),
-			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }}
+			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
 		"yanglint": &scriptSpec{
@@ -257,7 +258,7 @@ function run-dir() {
   fi
 }
 `),
-			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} &
+			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
 		"confd": &scriptSpec{
@@ -287,8 +288,18 @@ fi
 	}
 )
 
+// runInParallel determines whether a particular validator and version should be run in parallel.
+func runInParallel(validatorId, version string) bool {
+	switch {
+	case validatorId == "goyang-ygot", validatorId == "pyang" && version == "head":
+		return false
+	default:
+		return true
+	}
+}
+
 // genValidatorCommandForModelDir generates the validator command for a single modelDir.
-func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string, modelMap commonci.OpenConfigModelMap) (string, error) {
+func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string, modelMap commonci.OpenConfigModelMap, parallel bool) (string, error) {
 	var builder strings.Builder
 	cmdTemplate, ok := scriptTemplates[validatorId]
 	if !ok {
@@ -310,6 +321,7 @@ func genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName string
 			ModelDirName: modelDirName,
 			ModelName:    modelInfo.Name,
 			ResultsDir:   resultsDir,
+			Parallel:     parallel,
 		}); err != nil {
 			return "", err
 		}
@@ -354,6 +366,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 	}
 	sort.Strings(modelDirNames)
 
+	parallel := runInParallel(validatorId, version)
 	for _, modelDirName := range modelDirNames {
 		if disabledModelPaths[modelDirName] {
 			log.Printf("skipping disabled model directory %s", modelDirName)
@@ -362,7 +375,7 @@ func genOpenConfigValidatorScript(g labelPoster, validatorId, version string, mo
 			}
 			continue
 		}
-		cmdStr, err := genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName, modelMap)
+		cmdStr, err := genValidatorCommandForModelDir(validatorId, resultsDir, modelDirName, modelMap, parallel)
 		if err != nil {
 			return "", err
 		}
@@ -426,7 +439,7 @@ func main() {
 		if localValidatorId == "" {
 			log.Fatalf("no validator specified")
 		}
-		cmdStr, err := genValidatorCommandForModelDir(localValidatorId, localResultsDir, localModelDirName, modelMap)
+		cmdStr, err := genValidatorCommandForModelDir(localValidatorId, localResultsDir, localModelDirName, modelMap, true)
 		if err != nil {
 			log.Fatal(err)
 		}
