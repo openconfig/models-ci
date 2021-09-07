@@ -10,6 +10,7 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
+chmod u+x $YANGLINT
 mv $YANGLINT /usr/local/bin
 
 yanglint -v > $RESULTSDIR/latest-version.txt
