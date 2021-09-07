@@ -10,7 +10,9 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
-$YANGLINT -v > $RESULTSDIR/latest-version.txt
+mv $YANGLINT /usr/local/bin
+
+yanglint -v > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
