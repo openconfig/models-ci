@@ -1,6 +1,7 @@
 #!/bin/bash
 
 ROOT_DIR=/workspace
+DEB_FILE=$ROOT_DIR/libyang.deb
 RESULTSDIR=$ROOT_DIR/results/yanglint
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
@@ -9,14 +10,7 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
-git clone https://github.com/CESNET/libyang.git libyang
-cd libyang
-latest=$(git tag -l | sort -V | tail -1)
-git checkout $latest
-mkdir build; cd build
-cmake ..
-make
-make install
+apt install $DEB_FILE
 
 yanglint -v > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
