@@ -1,7 +1,8 @@
 #!/bin/bash
 
 ROOT_DIR=/workspace
-DEB_FILE=$ROOT_DIR/libyang.deb
+DEB_FILE1=$ROOT_DIR/libyang.deb
+DEB_FILE2=$ROOT_DIR/yanglint.deb
 RESULTSDIR=$ROOT_DIR/results/yanglint
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
@@ -10,7 +11,8 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
-apt install $DEB_FILE
+apt install $DEB_FILE1
+apt install $DEB_FILE2
 
 yanglint -v > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
