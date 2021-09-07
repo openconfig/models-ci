@@ -13,7 +13,7 @@ git clone https://github.com/CESNET/libyang.git libyang
 cd libyang
 latest=$(git tag -l | sort -V | tail -1)
 git checkout $latest
-make build; cd build
+mkdir build; cd build
 cmake ..
 make
 make install
