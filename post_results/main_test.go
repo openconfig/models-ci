@@ -579,7 +579,7 @@ func TestWriteBadgeUploadCmdFile(t *testing.T) {
 		inValidatorUniqueStr: "pyang@latest",
 		inPass:               true,
 		inResultsDir:         "results-dir",
-		wantFileContent: `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/openconfig-repo:
+		wantFileContent: `REMOTE_PATH_PFX=gs://openconfig/compatibility-badges/openconfig-repo:
 RESULTSDIR=results-dir
 upload-public-file() {
 	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
@@ -596,7 +596,7 @@ upload-public-file pyang@latest.html
 		inValidatorUniqueStr: "pyang",
 		inPass:               false,
 		inResultsDir:         "results-directory",
-		wantFileContent: `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/openconfig-repo:
+		wantFileContent: `REMOTE_PATH_PFX=gs://openconfig/compatibility-badges/openconfig-repo:
 RESULTSDIR=results-directory
 upload-public-file() {
 	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
