@@ -41,6 +41,8 @@ const (
 	IgnorePyangWarnings = true
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
 	IgnoreConfdWarnings = false
+	// bucketName is the Google storage bucket name.
+	bucketName = "openconfig"
 )
 
 var (
@@ -59,7 +61,7 @@ var (
 	prNumber int
 
 	// badgeCmdTemplate is the badge creation and upload command generated for pushes to the master branch.
-	badgeCmdTemplate = mustTemplate("badgeCmd", `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:
+	badgeCmdTemplate = mustTemplate("badgeCmd", fmt.Sprintf(`REMOTE_PATH_PFX=gs://%s/compatibility-badges/{{ .RepoPrefix }}:
 RESULTSDIR={{ .ResultsDir }}
 upload-public-file() {
 	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
@@ -69,7 +71,7 @@ upload-public-file() {
 badge "{{ .Status }}" "{{ .ValidatorDesc }}" :{{ .Colour }} > $RESULTSDIR/{{ .ValidatorAndVersion }}.svg
 upload-public-file {{ .ValidatorAndVersion }}.svg
 upload-public-file {{ .ValidatorAndVersion }}.html
-`)
+`, bucketName))
 )
 
 // mustTemplate generates a template.Template for a particular named source template
