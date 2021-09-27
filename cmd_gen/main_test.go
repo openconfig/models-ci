@@ -196,9 +196,9 @@ function run-dir() {
   status=0
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
   cd "$outdir"
-  go get &> ${prefix}pass || status=1
+  go get &>> ${prefix}pass || status=1
   if [[ $status -eq "0" ]]; then
-    go build &> ${prefix}pass || status=1
+    go build &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
