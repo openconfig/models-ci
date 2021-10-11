@@ -21,8 +21,7 @@ setup() {
 
   git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
-  pip3 install enum34
-  pip3 install jinja2
+  pip3 install --no-cache-dir -r $OCPYANG_REPO/requirements.txt
   pip3 install setuptools
   pip3 install pyang
 }
