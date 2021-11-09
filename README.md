@@ -32,6 +32,13 @@ up major revisions. It simply requires an update in `cloubuild.yaml` in user
 repos to make use of the new features. The main point is to avoid breaking
 existing `cloudbuild.yaml`.
 
+## Updating the Build Image
+
+Validators require the use of an image built using [Dockerfile](/Dockerfile).
+Periodically this image needs to be rebuilt to avoid issues such as
+[this](https://gist.github.com/OpenConfigBot/69d4b1707744221f0c53d49bcf5caaca),
+where repositories likely started using `go modules` for dependencies.
+
 ## Purpose
 
 There are several widely-used YANG tools that form an important part of what
