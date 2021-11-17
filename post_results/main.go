@@ -191,9 +191,7 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 				value = value[1 : len(value)-1] // Remove enclosing quotes.
 			}
 			switch name {
-			case "openconfig-version":
-				fallthrough
-			case "latest-revision-version":
+			case "openconfig-version", "belonging-module", "latest-revision-version":
 				if masterBranch {
 					name = "master-" + name
 				}
@@ -210,7 +208,7 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 // according to semantic versioning rules.
 // Note that any increase is fine, including jumps, e.g. 1.0.0 -> 1.0.2.
 // If there isn't an increase, a descriptive error message is returned.
-func checkSemverIncrease(oldVersion, newVersion string) error {
+func checkSemverIncrease(oldVersion, newVersion, versionStringName string) error {
 	newV, err := semver.StrictNewVersion(newVersion)
 	if err != nil {
 		return fmt.Errorf("invalid version string: %q", newVersion)
@@ -220,7 +218,7 @@ func checkSemverIncrease(oldVersion, newVersion string) error {
 	case err != nil:
 		return fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
 	case newV.Equal(oldV):
-		return fmt.Errorf("file updated but PR version not updated: %q", oldVersion)
+		return fmt.Errorf("file updated but %s string not updated: %q", versionStringName, oldVersion)
 	case !newV.GreaterThan(oldV):
 		return fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
 	default:
@@ -258,6 +256,7 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	if err != nil {
 		return "", false, err
 	}
+	moduleFileGroups := map[string][]fileAndVersion{}
 	for _, file := range allNonEmptyPRFiles {
 		properties, ok := fileProperties[file]
 
@@ -278,7 +277,7 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		case properties["changed"] != "true":
 			// We assume the versioning is correct without change.
 		case hadVersion && hasVersion:
-			if err := checkSemverIncrease(masterOcVersion, ocVersion); err != nil {
+			if err := checkSemverIncrease(masterOcVersion, ocVersion, "openconfig-version"); err != nil {
 				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
 			} else {
 				ocVersionChangedCount += 1
@@ -287,6 +286,13 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
 		default: // If didn't have version before, any new version is accepted.
 			ocVersionChangedCount += 1
+		}
+
+		if mod, ok := properties["belonging-module"]; hasVersion && ok {
+			// Error checking is already done by the version update check.
+			if v, err := semver.StrictNewVersion(ocVersion); err == nil {
+				moduleFileGroups[mod] = append(moduleFileGroups[mod], fileAndVersion{name: file, version: v})
+			}
 		}
 	}
 
@@ -303,8 +309,43 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	}
 	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d file(s) correctly updated.\n", ocVersionChangedCount))
 	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
+	appendViolationOut("submodule versions must match the belonging module's version", versionGroupViolationsHTML(moduleFileGroups), fmt.Sprintf("%d module/submodule file groups have matching versions", len(moduleFileGroups)))
 
 	return out.String(), pass, nil
+}
+
+type fileAndVersion struct {
+	name    string
+	version *semver.Version
+}
+
+// versionGroupViolationsHTML returns the version violations where a group of
+// module/submodule files don't have matching versions.
+func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []string {
+	var violations []string
+	for moduleName, fileGroup := range moduleFileGroups {
+		latestVersion := semver.MustParse("0.0.0")
+		for _, nameAndVersion := range fileGroup {
+			if nameAndVersion.version.GreaterThan(latestVersion) {
+				latestVersion = nameAndVersion.version
+			}
+		}
+		latestVersionString := latestVersion.Original()
+
+		var violation strings.Builder
+		for _, nameAndVersion := range fileGroup {
+			if version := nameAndVersion.version.Original(); version != latestVersionString {
+				if violation.Len() != 0 {
+					violation.WriteString(",")
+				}
+				violation.WriteString(fmt.Sprintf(" %s (%s)", nameAndVersion.name, version))
+			}
+		}
+		if violation.Len() != 0 {
+			violations = append(violations, sprintLineHTML("latest version found for module %s is %s, non-matching files:%s", moduleName, latestVersionString, violation.String()))
+		}
+	}
+	return violations
 }
 
 // processStandardOutput takes raw pyang/confd output and transforms it to an

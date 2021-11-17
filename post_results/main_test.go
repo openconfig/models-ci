@@ -171,7 +171,7 @@ func TestCheckSemverIncrease(t *testing.T) {
 		desc:          "no change",
 		inOldVersion:  "1.0.1",
 		inNewVersion:  "1.0.1",
-		wantErrSubstr: "file updated but PR version not updated",
+		wantErrSubstr: "file updated but test-version string not updated",
 	}, {
 		desc:          "decrease",
 		inOldVersion:  "1.0.1",
@@ -191,7 +191,7 @@ func TestCheckSemverIncrease(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion)
+			err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion, "test-version")
 			if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 				t.Fatalf("did not get expected error, %s", diff)
 			}
@@ -450,12 +450,15 @@ Failed.
 		wantPass:             true,
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
-6 file(s) correctly updated.
+7 file(s) correctly updated.
 </details>
 <details>
   <summary>&#x2705;&nbsp; .spec.yml build reachability check</summary>
-8 files reached by build rules.
+9 files reached by build rules.
 </details>
+<details>
+  <summary>&#x2705;&nbsp; submodule versions must match the belonging module's version</summary>
+5 module/submodule file groups have matching versions</details>
 `,
 		wantCondensedOutSame: true,
 	}, {
@@ -466,7 +469,7 @@ Failed.
 		wantOut: `<details>
   <summary>&#x26D4;&nbsp; openconfig-version update check</summary>
   <li>changed-version-to-noversion.yang: openconfig-version was removed</li>
-  <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
+  <li>openconfig-acl.yang: file updated but openconfig-version string not updated: "1.2.2"</li>
   <li>openconfig-mpls.yang: new semantic version not valid, old version: "2.3.4", new version: "2.2.5"</li>
 </details>
 <details>
@@ -475,6 +478,10 @@ Failed.
   <li>changed-unreached-to-unreached.yang: file not used by any .spec.yml build.</li>
   <li>changed-version-to-unreached.yang: file not used by any .spec.yml build.</li>
   <li>unchanged-unreached.yang: file not used by any .spec.yml build.</li>
+</details>
+<details>
+  <summary>&#x26D4;&nbsp; submodule versions must match the belonging module's version</summary>
+  <li>latest version found for module openconfig-mpls is 2.3.4, non-matching files: openconfig-mpls-submodule2.yang (2.3.2), openconfig-mpls.yang (2.2.5)</li>
 </details>
 `,
 		wantCondensedOutSame: true,

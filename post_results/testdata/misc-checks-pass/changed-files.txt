@@ -1,4 +1,5 @@
 release/models/acl/openconfig-acl.yang
+release/models/acl/openconfig-acl-submodule.yang
 release/models/acl/deeper/openconfig-packet-match.yang
 release/models/bgp/openconfig-deleted.yang
 release/models/bgp/openconfig-deleted-2.yang

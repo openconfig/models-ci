@@ -1,4 +1,6 @@
 release/models/mpls/openconfig-mpls.yang
+release/models/mpls/openconfig-mpls-submodule.yang
+release/models/mpls/openconfig-mpls-submodule2.yang
 release/models/acl/deeper/openconfig-acl.yang
 
 release/models/bgp/changed-unreached-to-unreached.yang
