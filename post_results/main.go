@@ -346,11 +346,11 @@ func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []
 				if violation.Len() != 0 {
 					violation.WriteString(",")
 				}
-				violation.WriteString(fmt.Sprintf(" %s (%s)", nameAndVersion.name, version))
+				violation.WriteString(fmt.Sprintf(" <b>%s</b> (%s)", nameAndVersion.name, version))
 			}
 		}
 		if violation.Len() != 0 {
-			violations = append(violations, sprintLineHTML("module set %s is at %s (%s), lagging/non-matching files:%s", moduleName, latestVersionString, latestVersionModule, violation.String()))
+			violations = append(violations, sprintLineHTML("module set %s is at <b>%s</b> (%s), non-matching files:%s", moduleName, latestVersionString, latestVersionModule, violation.String()))
 		}
 	}
 	return violations
