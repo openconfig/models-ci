@@ -323,10 +323,16 @@ type fileAndVersion struct {
 // module/submodule files don't have matching versions.
 func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []string {
 	var violations []string
-	for moduleName, fileGroup := range moduleFileGroups {
+
+	var modules []string
+	for m := range moduleFileGroups {
+		modules = append(modules, m)
+	}
+	sort.Strings(modules)
+	for _, moduleName := range modules {
 		latestVersion := semver.MustParse("0.0.0")
 		latestVersionModule := ""
-		for _, nameAndVersion := range fileGroup {
+		for _, nameAndVersion := range moduleFileGroups[moduleName] {
 			if nameAndVersion.version.GreaterThan(latestVersion) {
 				latestVersion = nameAndVersion.version
 				latestVersionModule = nameAndVersion.name
@@ -335,7 +341,7 @@ func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []
 		latestVersionString := latestVersion.Original()
 
 		var violation strings.Builder
-		for _, nameAndVersion := range fileGroup {
+		for _, nameAndVersion := range moduleFileGroups[moduleName] {
 			if version := nameAndVersion.version.Original(); version != latestVersionString {
 				if violation.Len() != 0 {
 					violation.WriteString(",")
