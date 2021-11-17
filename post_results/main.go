@@ -325,9 +325,11 @@ func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []
 	var violations []string
 	for moduleName, fileGroup := range moduleFileGroups {
 		latestVersion := semver.MustParse("0.0.0")
+		latestVersionModule := ""
 		for _, nameAndVersion := range fileGroup {
 			if nameAndVersion.version.GreaterThan(latestVersion) {
 				latestVersion = nameAndVersion.version
+				latestVersionModule = nameAndVersion.name
 			}
 		}
 		latestVersionString := latestVersion.Original()
@@ -342,7 +344,7 @@ func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []
 			}
 		}
 		if violation.Len() != 0 {
-			violations = append(violations, sprintLineHTML("latest version found for module %s is %s, non-matching files:%s", moduleName, latestVersionString, violation.String()))
+			violations = append(violations, sprintLineHTML("module set %s is at %s (%s), lagging/non-matching files:%s", moduleName, latestVersionString, latestVersionModule, violation.String()))
 		}
 	}
 	return violations

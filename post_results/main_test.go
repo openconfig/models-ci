@@ -481,7 +481,7 @@ Failed.
 </details>
 <details>
   <summary>&#x26D4;&nbsp; submodule versions must match the belonging module's version</summary>
-  <li>latest version found for module openconfig-mpls is 2.3.4, non-matching files: openconfig-mpls-submodule2.yang (2.3.2), openconfig-mpls.yang (2.2.5)</li>
+  <li>module set openconfig-mpls is at 2.3.4 (openconfig-mpls-submodule.yang), lagging/non-matching files: openconfig-mpls-submodule2.yang (2.3.2), openconfig-mpls.yang (2.2.5)</li>
 </details>
 `,
 		wantCondensedOutSame: true,
