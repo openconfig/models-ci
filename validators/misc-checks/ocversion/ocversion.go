@@ -30,6 +30,15 @@ func init() {
 	flag.StringVar(&pathStr, "p", "", "comma separated list of directories to add to search path")
 }
 
+// belongingModule returns the module name if m is a module and the belonging
+// module name if m is a submodule.
+func belongingModule(m *yang.Module) string {
+	if m.Kind() == "submodule" {
+		return m.BelongsTo.Name
+	}
+	return m.Name
+}
+
 // ocVersionsList list all files with their openconfig-version value. If not
 // present, it still lists the file.
 // Any errors are reported to stderr.
@@ -43,6 +52,7 @@ func ocVersionsList(entries []*yang.Entry) string {
 		}
 
 		builder.WriteString(fmt.Sprintf("%s.yang:", m.Name))
+		builder.WriteString(fmt.Sprintf(" belonging-module:%q", belongingModule(m)))
 
 		for _, e := range m.Extensions {
 			keywordParts := strings.Split(e.Keyword, ":")
@@ -55,7 +65,7 @@ func ocVersionsList(entries []*yang.Entry) string {
 				extMod := yang.FindModuleByPrefix(m, pfx)
 				if extMod == nil {
 					builder.WriteString(fmt.Sprintf("unable to find module using prefix %q from referencing module %q\n", pfx, m.Name))
-				} else if extMod.Name == "openconfig-extensions" {
+				} else if belongingModule(extMod) == "openconfig-extensions" {
 					builder.WriteString(fmt.Sprintf(" openconfig-version:%q", e.Argument))
 				}
 			}
