@@ -10,7 +10,7 @@ require (
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/openconfig/gnmi v0.0.0-20200508230933-d19cebf5e7be
-	github.com/openconfig/goyang v0.3.1
+	github.com/openconfig/goyang v1.0.0
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	google.golang.org/protobuf v1.21.0
 	gopkg.in/yaml.v3 v3.0.0-20200506231410-2ff61e1afc86
