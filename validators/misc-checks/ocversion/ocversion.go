@@ -77,6 +77,8 @@ func ocVersionsList(entries []*yang.Entry) string {
 }
 
 func buildModuleEntries(paths, files []string) ([]*yang.Entry, []error) {
+	ms := yang.NewModules()
+
 	var errs []error
 	for _, path := range paths {
 		expanded, err := yang.PathsWithModules(path)
@@ -84,10 +86,8 @@ func buildModuleEntries(paths, files []string) ([]*yang.Entry, []error) {
 			errs = append(errs, err)
 			continue
 		}
-		yang.AddPath(expanded...)
+		ms.AddPath(expanded...)
 	}
-
-	ms := yang.NewModules()
 
 	for _, name := range files {
 		if err := ms.Read(name); err != nil {
