@@ -226,7 +226,6 @@ function run-dir() {
   status=0
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
   cd "$outdir"
-  go get &> ${prefix}pass || status=1
   if [[ $status -eq "0" ]]; then
     go build &> ${prefix}pass || status=1
   fi
