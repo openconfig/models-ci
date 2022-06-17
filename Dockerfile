@@ -1,4 +1,4 @@
-FROM gcr.io/cloud-builders/go:debian
+FROM golang
 SHELL ["/bin/bash", "-c"]
 
 #RUN git clone https://github.com/mbj4668/pyang.git /workspace/results/pyang@head/pyang

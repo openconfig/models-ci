@@ -9,7 +9,7 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
-GO111MODULE=on go list -m github.com/openconfig/ygot@latest > $RESULTSDIR/latest-version.txt
+go list -m github.com/openconfig/ygot@latest > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
