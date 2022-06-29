@@ -13,6 +13,5 @@ go run ../main.go -repo_path=/home/robjs/openconfig/public \
 
 ./docs.sh
 gcloud run deploy --project=disco-idea-817 --region us-west1
-
-# rm -rf tmp
-# rm docs.sh
+rm -rf tmp
+rm docs.sh
