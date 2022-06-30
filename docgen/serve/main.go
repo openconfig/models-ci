@@ -1,3 +1,9 @@
+// Binary serve creates a simple http server that serves:
+//  - a dynamically generated index written based on an input sitemap.json file (embedded using embed.FS)
+//	- a static set of files that are contained in the following subdirectories.
+//		- js
+//		- css
+//		- static
 package main
 
 import (
@@ -44,6 +50,7 @@ func main() {
 	}
 }
 
+// mkIndex generates the index HTML page.
 func mkIndex(sitemap map[string]map[string]string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<html><head>")
