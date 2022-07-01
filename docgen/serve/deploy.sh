@@ -19,6 +19,7 @@ go run ../main.go -repo_path=tmp/public \
 python3 -m venv py
 source py/bin/activate
 pip install -r tmp/oc-pyang/requirements.txt
+pip install --upgrade pyang
 ./docs.sh
 
 # TODO(robjs): validate what GCP authentication details are needed here.
