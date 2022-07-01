@@ -2,3 +2,4 @@ docs.sh
 sitemap.json
 static/*
 tmp/*
+py/*

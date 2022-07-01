@@ -16,9 +16,13 @@ go run ../main.go -repo_path=tmp/public \
     -output_file=docs.sh \
     -output_map=sitemap.json
 
+python3 -m venv py
+source py/bin/activate
+pip install -r tmp/oc-pyang/requirements.txt
 ./docs.sh
 
 # TODO(robjs): validate what GCP authentication details are needed here.
 gcloud run deploy --project=disco-idea-817 --region us-west1
+rm -rf py
 rm -rf tmp
 rm docs.sh
