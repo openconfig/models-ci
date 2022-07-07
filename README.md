@@ -171,7 +171,7 @@ regexp            | Files moved into GOPATH from its folder during CI build
 pyang & pyangbind | pip
 oc-pyang          | git clone
 goyang/ygot       | go get
-yanglint          | Debian package periodically uploaded to cloud storage
+yanglint          | Debian packages (libyang2 and libyang2-tools) periodically uploaded to cloud storage. These are renamed libyang.deb and yanglint.deb respectively in the GCS bucket.
 
 ## Setting Up GCB
 
