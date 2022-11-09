@@ -158,6 +158,7 @@ options=(
   -p {{ .RepoRoot }}/third_party/ietf
   --openconfig
   --ignore-error=OC_RELATIVE_PATH
+  --plugindir $OCPYANG_PLUGIN_DIR
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
@@ -184,6 +185,7 @@ options=(
   -p {{ .ModelRoot }}
   -p {{ .RepoRoot }}/third_party/ietf
   -f pybind
+  --plugindir $PYANGBIND_PLUGIN_DIR
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
