@@ -1,1 +1,4 @@
 foo command
+/workspace/foo/bar
+$OCPYANG_PLUGIN_DIR
+$PYANGBIND_PLUGIN_DIR
