@@ -154,7 +154,6 @@ mkdir -p "$workdir"
 `+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
-  --plugindir $OCPYANG_PLUGIN_DIR
   --openconfig
   --ignore-error=OC_RELATIVE_PATH
   -p {{ .ModelRoot }}
@@ -165,8 +164,10 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
+  local options=( --plugindir "$OCPYANG_PLUGIN_DIR" "${options[@]}" )
+  local cmd_display_options=( --plugindir '$OCPYANG_PLUGIN_DIR' "${options[@]}" )
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo $cmd "${cmd_display_options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
@@ -182,7 +183,6 @@ mkdir -p "$workdir"
 `+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
-  --plugindir $PYANGBIND_PLUGIN_DIR
   -f pybind
   -p {{ .ModelRoot }}
   -p {{ .RepoRoot }}/third_party/ietf
@@ -192,9 +192,10 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  local options=( -o "$1"."$2".binding.py "${options[@]}" )
+  local options=( --plugindir "$PYANGBIND_PLUGIN_DIR" -o "$1"."$2".binding.py "${options[@]}" )
+  local cmd_display_options=( --plugindir '$PYANGBIND_PLUGIN_DIR' -o "$1"."$2".binding.py "${options[@]}" )
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo $cmd "${cmd_display_options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
