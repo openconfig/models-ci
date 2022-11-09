@@ -122,7 +122,7 @@ var (
 	// GCB script, which together create the running environment for the
 	// generated validator script.
 	scriptTemplates = map[string]*scriptSpec{
-		"pyang": &scriptSpec{
+		"pyang": {
 			headerTemplate: mustTemplate("pyang-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -147,18 +147,18 @@ function run-dir() {
 			perModelTemplate: mustTemplate("pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"oc-pyang": &scriptSpec{
+		"oc-pyang": {
 			headerTemplate: mustTemplate("oc-pyang-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
 `+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
-  -p {{ .ModelRoot }}
-  -p {{ .RepoRoot }}/third_party/ietf
+  --plugindir $OCPYANG_PLUGIN_DIR
   --openconfig
   --ignore-error=OC_RELATIVE_PATH
-  --plugindir $OCPYANG_PLUGIN_DIR
+  -p {{ .ModelRoot }}
+  -p {{ .RepoRoot }}/third_party/ietf
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
@@ -175,17 +175,17 @@ function run-dir() {
 			perModelTemplate: mustTemplate("oc-pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"pyangbind": &scriptSpec{
+		"pyangbind": {
 			headerTemplate: mustTemplate("pyangbind-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
 `+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
+  --plugindir $PYANGBIND_PLUGIN_DIR
+  -f pybind
   -p {{ .ModelRoot }}
   -p {{ .RepoRoot }}/third_party/ietf
-  -f pybind
-  --plugindir $PYANGBIND_PLUGIN_DIR
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
@@ -203,7 +203,7 @@ function run-dir() {
 			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"goyang-ygot": &scriptSpec{
+		"goyang-ygot": {
 			headerTemplate: mustTemplate("goyang-ygot-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -241,7 +241,7 @@ function run-dir() {
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"yanglint": &scriptSpec{
+		"yanglint": {
 			headerTemplate: mustTemplate("yanglint-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -264,7 +264,7 @@ function run-dir() {
 			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"confd": &scriptSpec{
+		"confd": {
 			headerTemplate: mustTemplate("confd-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -278,7 +278,7 @@ if [[ $status -eq "1" ]]; then
 fi
 `),
 		},
-		"misc-checks": &scriptSpec{
+		"misc-checks": {
 			headerTemplate: mustTemplate("misc-checks-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"

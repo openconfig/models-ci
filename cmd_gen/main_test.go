@@ -116,11 +116,11 @@ mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 cmd="$@"
 options=(
-  -p testdata
-  -p /workspace/third_party/ietf
+  --plugindir $OCPYANG_PLUGIN_DIR
   --openconfig
   --ignore-error=OC_RELATIVE_PATH
-  --plugindir $OCPYANG_PLUGIN_DIR
+  -p testdata
+  -p /workspace/third_party/ietf
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
@@ -148,10 +148,10 @@ mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 cmd="$@"
 options=(
+  --plugindir $PYANGBIND_PLUGIN_DIR
+  -f pybind
   -p testdata
   -p /workspace/third_party/ietf
-  -f pybind
-  --plugindir $PYANGBIND_PLUGIN_DIR
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
