@@ -441,7 +441,7 @@ func processPyangOutput(rawOut string, pass, noWarnings bool) (string, error) {
 // userfyBashCommand changes the bash command displayed to the user to be
 // something that's easier to use.
 func userfyBashCommand(cmd string) string {
-	return strings.NewReplacer("/workspace/", "$WORKSPACE/", "$OCPYANG_PLUGIN_DIR", "$GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins", "$PYANGBIND_PLUGIN_DIR", "$GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin").Replace(cmd)
+	return strings.NewReplacer("/workspace/", "$OC_WORKSPACE/", "$OCPYANG_PLUGIN_DIR", "$GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins", "$PYANGBIND_PLUGIN_DIR", "$GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin").Replace(cmd)
 }
 
 // parseModelResultsHTML transforms the output files of the validator script into HTML

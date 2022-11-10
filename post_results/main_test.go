@@ -222,7 +222,7 @@ func TestGetResult(t *testing.T) {
   <summary>&#x2705;&nbsp; openconfig-acl</summary>
 &#x1F4B2;&nbsp; bash command
 <pre>foo command
-$WORKSPACE/foo/bar
+$OC_WORKSPACE/foo/bar
 $GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins
 $GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin
 </pre>
@@ -265,7 +265,7 @@ Test failed with no stderr output.`,
   <summary>&#x2705;&nbsp; openconfig-acl</summary>
 &#x1F4B2;&nbsp; bash command
 <pre>foo command
-$WORKSPACE/foo/bar
+$OC_WORKSPACE/foo/bar
 $GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins
 $GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin
 </pre>
