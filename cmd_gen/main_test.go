@@ -66,7 +66,7 @@ script_options=(
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo pyang "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
@@ -97,7 +97,7 @@ script_options=(
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo pyang "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
@@ -116,18 +116,20 @@ mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 cmd="$@"
 options=(
-  -p testdata
-  -p /workspace/third_party/ietf
   --openconfig
   --ignore-error=OC_RELATIVE_PATH
+  -p testdata
+  -p /workspace/third_party/ietf
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
+  local cmd_display_options=( --plugindir '$OCPYANG_PLUGIN_DIR' "${options[@]}" )
+  local options=( --plugindir "$OCPYANG_PLUGIN_DIR" "${options[@]}" )
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo pyang "${cmd_display_options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
@@ -147,18 +149,19 @@ mkdir -p "$workdir"
 PYANG_MSG_TEMPLATE='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
 cmd="$@"
 options=(
+  -f pybind
   -p testdata
   -p /workspace/third_party/ietf
-  -f pybind
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  local options=( -o "$1"."$2".binding.py "${options[@]}" )
+  local cmd_display_options=( --plugindir '$PYANGBIND_PLUGIN_DIR' -o "$1"."$2".binding.py "${options[@]}" )
+  local options=( --plugindir "$PYANGBIND_PLUGIN_DIR" -o "$1"."$2".binding.py "${options[@]}" )
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo pyang "${cmd_display_options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi

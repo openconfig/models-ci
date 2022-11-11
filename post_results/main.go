@@ -438,6 +438,12 @@ func processPyangOutput(rawOut string, pass, noWarnings bool) (string, error) {
 	return out.String(), nil
 }
 
+// userfyBashCommand changes the bash command displayed to the user to be
+// something that's easier to use.
+func userfyBashCommand(cmd string) string {
+	return strings.NewReplacer("/workspace/", "$OC_WORKSPACE/", "$OCPYANG_PLUGIN_DIR", "$GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins", "$PYANGBIND_PLUGIN_DIR", "$GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin").Replace(cmd)
+}
+
 // parseModelResultsHTML transforms the output files of the validator script into HTML
 // to be displayed on GitHub.
 // If condensed=true, then only errors are provided.
@@ -489,7 +495,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 				// order, ${prefix}cmd should be walked first,
 				// such that ${prefix}pass or ${prefix}fail
 				// will have it ready to display to the user.
-				bashCommand = outString
+				bashCommand = userfyBashCommand(outString)
 				bashCommandModelDirName = modelDirName
 				bashCommandModelName = modelName
 				return nil
@@ -525,7 +531,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 				// Display bash command that produced the validator result.
 				var bashCommandSummary string
 				if bashCommand != "" && bashCommandModelDirName == modelDirName && bashCommandModelName == modelName {
-					bashCommandSummary = sprintSummaryHTML("cmd", "bash command", "<pre>%s</pre>", bashCommand)
+					bashCommandSummary = fmt.Sprintf("%s&nbsp; %s\n<pre>%s</pre>\n", commonci.Emoji("cmd"), "bash command", bashCommand)
 				}
 				modelHTML.WriteString(sprintSummaryHTML(status, modelName, bashCommandSummary+outString))
 			}
@@ -711,7 +717,7 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		gistTitle := fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i])
 		id, err := g.AddGistComment(gistID, gistTitle, testResultString)
 		if err != nil {
-			fmt.Errorf("postResult: could not add gist comment: %v", err)
+			return fmt.Errorf("postResult: could not add gist comment: %v", err)
 		}
 
 		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i], gistURL, id))
@@ -820,7 +826,7 @@ func postResult(validatorId, version string) error {
 
 	// Post parsed test results as a gist comment.
 	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDesc), testResultString); err != nil {
-		fmt.Errorf("postResult: could not add gist comment: %v", err)
+		return fmt.Errorf("postResult: could not add gist comment: %v", err)
 	}
 
 	prUpdate := &commonci.GithubPRUpdate{
