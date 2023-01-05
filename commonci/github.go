@@ -184,7 +184,7 @@ func (g *GithubRequestHandler) IsPRApproved(owner, repo string, prNumber int) (b
 }
 
 // PostLabel posts the given label to the PR. It is idempotent.
-// unit tests can be created based onon actual models-ci repo data that's sent back.
+// unit tests can be created based on actual models-ci repo data that's sent back.
 func (g *GithubRequestHandler) PostLabel(labelName, labelColor, owner, repo string, prNumber int) error {
 	if g.labels[labelName] {
 		// Label already exists.
@@ -249,13 +249,17 @@ func (g *GithubRequestHandler) AddPRComment(body *string, owner, repo string, pr
 	return nil
 }
 
-// AddOrEditPRComment posts or edits a comment to a PR.
+// AddEditOrDeletePRComment posts or edits a comment to a PR.
 // If signature is empty, it's equivalent to AddPRComment.
 // Otherwise, all comments are searched first, and if any matches the
 // signature, then the comment is edited. If none matches, then a new comment
 // is posted.
-func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string, owner, repo string, prNumber int) error {
+// If body is nil, then it indicates delete.
+func (g *GithubRequestHandler) AddEditOrDeletePRComment(signature string, body *string, owner, repo string, prNumber int) error {
 	if signature == "" {
+		if body == nil {
+			return fmt.Errorf("PR comment body unspecified")
+		}
 		return g.AddPRComment(body, owner, repo, prNumber)
 	}
 
@@ -269,19 +273,36 @@ func (g *GithubRequestHandler) AddOrEditPRComment(signature string, body *string
 		return err
 	}); err != nil {
 		// If somehow this fails, we should be resilient and just post another comment.
+		if body == nil {
+			return fmt.Errorf("list comments failed -- cannot find comment to delete")
+		}
 		return g.AddPRComment(body, owner, repo, prNumber)
 	}
 
 	for _, pc := range comments {
 		if strings.Contains(*pc.Body, signature) {
-			if err := Retry(5, "edit PR comment", func() error {
-				_, _, err := g.client.Issues.EditComment(ctx, owner, repo, *pc.ID, &github.IssueComment{Body: body})
-				return err
-			}); err != nil {
-				return g.AddPRComment(body, owner, repo, prNumber)
+			switch body {
+			case nil:
+				if err := Retry(5, "delete PR comment", func() error {
+					_, err := g.client.Issues.DeleteComment(ctx, owner, repo, *pc.ID)
+					return err
+				}); err != nil {
+					return fmt.Errorf("cannot delete comment: %v", err)
+				}
+			default:
+				if err := Retry(5, "edit PR comment", func() error {
+					_, _, err := g.client.Issues.EditComment(ctx, owner, repo, *pc.ID, &github.IssueComment{Body: body})
+					return err
+				}); err != nil {
+					return g.AddPRComment(body, owner, repo, prNumber)
+				}
 			}
 			return nil
 		}
+	}
+
+	if body == nil {
+		return fmt.Errorf("PR comment body unspecified")
 	}
 	return g.AddPRComment(body, owner, repo, prNumber)
 }

@@ -191,9 +191,17 @@ func TestCheckSemverIncrease(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion, "test-version")
+			oldver, newver, err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion, "test-version")
 			if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 				t.Fatalf("did not get expected error, %s", diff)
+			}
+			if err == nil {
+				if got, want := oldver.String(), tt.inOldVersion; got != want {
+					t.Fatalf("old version: got %s, want %s", got, want)
+				}
+				if got, want := newver.String(), tt.inNewVersion; got != want {
+					t.Fatalf("old version: got %s, want %s", got, want)
+				}
 			}
 		})
 	}
@@ -203,14 +211,15 @@ func TestGetResult(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
 	tests := []struct {
-		name                 string
-		inValidatorResultDir string
-		inValidatorId        string
-		wantPass             bool
-		wantOut              string
-		wantCondensedOut     string
-		wantCondensedOutSame bool
-		wantErrSubstr        string
+		name                    string
+		inValidatorResultDir    string
+		inValidatorId           string
+		wantPass                bool
+		wantOut                 string
+		wantCondensedOut        string
+		wantCondensedOutSame    bool
+		wantMajorVersionChanges string
+		wantErrSubstr           string
 	}{{
 		name:                 "basic pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
@@ -494,7 +503,7 @@ Failed.
 	for _, tt := range tests {
 		for _, condensed := range []bool{false, true} {
 			t.Run(fmt.Sprintf(tt.name+"@condensed=%v", condensed), func(t *testing.T) {
-				gotOut, gotPass, err := getResult(tt.inValidatorId, tt.inValidatorResultDir, condensed)
+				gotOut, gotPass, majorVersionChanges, err := getResult(tt.inValidatorId, tt.inValidatorResultDir, condensed)
 				if err != nil {
 					if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 						t.Fatalf("did not get expected error, %s", diff)
@@ -503,6 +512,9 @@ Failed.
 				}
 				if gotPass != tt.wantPass {
 					t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
+				}
+				if majorVersionChanges != tt.wantMajorVersionChanges {
+					t.Errorf("gotMajorChanges %v, wantMajorChanges %v", majorVersionChanges, tt.wantMajorVersionChanges)
 				}
 				wantOut := tt.wantOut
 				if condensed && !tt.wantCondensedOutSame {

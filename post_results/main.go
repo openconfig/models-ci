@@ -208,31 +208,31 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 // according to semantic versioning rules.
 // Note that any increase is fine, including jumps, e.g. 1.0.0 -> 1.0.2.
 // If there isn't an increase, a descriptive error message is returned.
-func checkSemverIncrease(oldVersion, newVersion, versionStringName string) error {
+func checkSemverIncrease(oldVersion, newVersion, versionStringName string) (*semver.Version, *semver.Version, error) {
 	newV, err := semver.StrictNewVersion(newVersion)
 	if err != nil {
-		return fmt.Errorf("invalid version string: %q", newVersion)
+		return nil, nil, fmt.Errorf("invalid version string: %q", newVersion)
 	}
 	oldV, err := semver.StrictNewVersion(oldVersion)
 	switch {
 	case err != nil:
-		return fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
+		return nil, nil, fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
 	case newV.Equal(oldV):
-		return fmt.Errorf("file updated but %s string not updated: %q", versionStringName, oldVersion)
+		return nil, nil, fmt.Errorf("file updated but %s string not updated: %q", versionStringName, oldVersion)
 	case !newV.GreaterThan(oldV):
-		return fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
+		return nil, nil, fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
 	default:
-		return nil
+		return oldV, newV, nil
 	}
 }
 
 // processMiscChecksOutput takes the raw result output from the misc-checks
 // results directory and returns its formatted report and pass/fail status.
-func processMiscChecksOutput(resultsDir string) (string, bool, error) {
+func processMiscChecksOutput(resultsDir string) (string, bool, string, error) {
 	fileProperties := map[string]map[string]string{}
 	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
 	if err != nil {
-		return "", false, err
+		return "", false, "", err
 	}
 	for _, file := range changedFiles {
 		if _, ok := fileProperties[file]; !ok {
@@ -241,10 +241,10 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		fileProperties[file]["changed"] = "true"
 	}
 	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "pr-file-parse-log"), false, fileProperties); err != nil {
-		return "", false, err
+		return "", false, "", err
 	}
 	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "master-file-parse-log"), true, fileProperties); err != nil {
-		return "", false, err
+		return "", false, "", err
 	}
 
 	var ocVersionViolations []string
@@ -254,9 +254,10 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	// Only look at the PR's files as they might be different from the master's files.
 	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(resultsDir, "all-non-empty-files.txt"))
 	if err != nil {
-		return "", false, err
+		return "", false, "", err
 	}
 	moduleFileGroups := map[string][]fileAndVersion{}
+	var majorVersionChanges strings.Builder
 	for _, file := range allNonEmptyPRFiles {
 		properties, ok := fileProperties[file]
 
@@ -277,10 +278,16 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 		case properties["changed"] != "true":
 			// We assume the versioning is correct without change.
 		case hadVersion && hasVersion:
-			if err := checkSemverIncrease(masterOcVersion, ocVersion, "openconfig-version"); err != nil {
+			oldver, newver, err := checkSemverIncrease(masterOcVersion, ocVersion, "openconfig-version")
+			if err != nil {
 				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
 			} else {
 				ocVersionChangedCount += 1
+			}
+			if oldver != nil && newver != nil {
+				if oldver.Major() != newver.Major() {
+					majorVersionChanges.WriteString(fmt.Sprintf("%s: `%s` -> `%s`\n", file, masterOcVersion, ocVersion))
+				}
 			}
 		case hadVersion && !hasVersion:
 			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
@@ -311,7 +318,7 @@ func processMiscChecksOutput(resultsDir string) (string, bool, error) {
 	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
 	appendViolationOut("submodule versions must match the belonging module's version", versionGroupViolationsHTML(moduleFileGroups), fmt.Sprintf("%d module/submodule file groups have matching versions", len(moduleFileGroups)))
 
-	return out.String(), pass, nil
+	return out.String(), pass, majorVersionChanges.String(), nil
 }
 
 type fileAndVersion struct {
@@ -551,18 +558,21 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 
 // getResult parses the results for the given validator and its results
 // directory, and returns the string to be put in a GitHub gist comment as well
-// as the status (i.e. pass or fail).
+// as the status (i.e. pass or fail), and whether the changes are
+// backward-compatible.
 // If condensed=true, then only errors are provided.
-func getResult(validatorId, resultsDir string, condensed bool) (string, bool, error) {
+func getResult(validatorId, resultsDir string, condensed bool) (string, bool, string, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", false, fmt.Errorf("validator %q not found!", validatorId)
+		return "", false, "", fmt.Errorf("validator %q not found!", validatorId)
 	}
 
 	// outString is parsed stdout.
 	var outString string
 	// pass is the overall validation result.
 	var pass bool
+	// majorVersionChanges is a GitHub-formatted string listing major YANG version changes.
+	var majorVersionChanges string
 
 	failFileBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
 	// existent fail file == failure.
@@ -581,7 +591,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, er
 		}
 		pass = false
 	case validator.IsPerModel && validatorId == "misc-checks":
-		outString, pass, err = processMiscChecksOutput(resultsDir)
+		outString, pass, majorVersionChanges, err = processMiscChecksOutput(resultsDir)
 	case validator.IsPerModel:
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir, condensed)
 		if pass && condensed {
@@ -592,7 +602,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, er
 		pass = true
 	}
 
-	return outString, pass, err
+	return outString, pass, majorVersionChanges, err
 }
 
 // WriteBadgeUploadCmdFile writes a bash script into resultsDir that posts a
@@ -709,7 +719,7 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
 
 		// Post parsed test results as a gist comment.
-		testResultString, pass, err := getResult(vv.ValidatorId, resultsDir, false)
+		testResultString, pass, _, err := getResult(vv.ValidatorId, resultsDir, false)
 		if err != nil {
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
@@ -723,7 +733,7 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i], gistURL, id))
 	}
 	comment := commentBuilder.String()
-	if err := g.AddOrEditPRComment("Compatibility Report for commit", &comment, owner, repo, prNumber); err != nil {
+	if err := g.AddEditOrDeletePRComment("Compatibility Report for commit", &comment, owner, repo, prNumber); err != nil {
 		return fmt.Errorf("postCompatibilityReport: couldn't post comment: %v", err)
 	}
 	return nil
@@ -771,7 +781,7 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	testResultString, pass, err := getResult(validatorId, resultsDir, false)
+	testResultString, pass, majorVersionChanges, err := getResult(validatorId, resultsDir, false)
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
@@ -822,6 +832,29 @@ func postResult(validatorId, version string) error {
 		return err
 	}); err != nil {
 		return fmt.Errorf("postResult: couldn't create gist: %v", err)
+	}
+
+	if !pushToMaster && validatorId == "misc-checks" {
+		majorVersionChangesComment := fmt.Sprintf("## Major YANG version changes in commit %s:\n%s", commitSHA, majorVersionChanges)
+		if err := g.AddEditOrDeletePRComment("Major YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post Major YANG version changes comment: %v", err)
+		}
+		switch majorVersionChanges {
+		case "":
+			if err := g.PostLabel("non-breaking", "#00FF00", owner, repo, prNumber); err != nil {
+				return fmt.Errorf("couldn't post label: %v", err)
+			}
+			if err := g.DeleteLabel("breaking", owner, repo, prNumber); err != nil {
+				return fmt.Errorf("couldn't delete label: %v", err)
+			}
+		default:
+			if err := g.PostLabel("breaking", "#FF0000", owner, repo, prNumber); err != nil {
+				return fmt.Errorf("couldn't post label: %v", err)
+			}
+			if err := g.DeleteLabel("non-breaking", owner, repo, prNumber); err != nil {
+				return fmt.Errorf("couldn't delete label: %v", err)
+			}
+		}
 	}
 
 	// Post parsed test results as a gist comment.
