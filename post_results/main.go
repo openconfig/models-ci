@@ -835,20 +835,20 @@ func postResult(validatorId, version string) error {
 	}
 
 	if !pushToMaster && validatorId == "misc-checks" {
-		majorVersionChangesComment := fmt.Sprintf("## Major YANG version changes in commit %s:\n%s", commitSHA, majorVersionChanges)
+		majorVersionChangesComment := fmt.Sprintf("Major YANG version changes in commit %s:\n%s", commitSHA, majorVersionChanges)
 		if err := g.AddEditOrDeletePRComment("Major YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
 			return fmt.Errorf("couldn't post Major YANG version changes comment: %v", err)
 		}
 		switch majorVersionChanges {
 		case "":
-			if err := g.PostLabel("non-breaking", "#00FF00", owner, repo, prNumber); err != nil {
+			if err := g.PostLabel("non-breaking", "00FF00", owner, repo, prNumber); err != nil {
 				return fmt.Errorf("couldn't post label: %v", err)
 			}
 			if err := g.DeleteLabel("breaking", owner, repo, prNumber); err != nil {
 				return fmt.Errorf("couldn't delete label: %v", err)
 			}
 		default:
-			if err := g.PostLabel("breaking", "#FF0000", owner, repo, prNumber); err != nil {
+			if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
 				return fmt.Errorf("couldn't post label: %v", err)
 			}
 			if err := g.DeleteLabel("non-breaking", owner, repo, prNumber); err != nil {
