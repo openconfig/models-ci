@@ -228,6 +228,9 @@ func checkSemverIncrease(oldVersion, newVersion, versionStringName string) (*sem
 
 // processMiscChecksOutput takes the raw result output from the misc-checks
 // results directory and returns its formatted report and pass/fail status.
+//
+// It also returns a newline-separated string of the list of all YANG files
+// that have their major versions updated.
 func processMiscChecksOutput(resultsDir string) (string, bool, string, error) {
 	fileProperties := map[string]map[string]string{}
 	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
@@ -558,8 +561,12 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 
 // getResult parses the results for the given validator and its results
 // directory, and returns the string to be put in a GitHub gist comment as well
-// as the status (i.e. pass or fail), and whether the changes are
-// backward-compatible.
+// as the status (i.e. pass or fail).
+//
+// It also returns a newline-separated string of the list of all YANG files
+// that have their major versions updated, which is empty if there are no major
+// version changes.
+//
 // If condensed=true, then only errors are provided.
 func getResult(validatorId, resultsDir string, condensed bool) (string, bool, string, error) {
 	validator, ok := commonci.Validators[validatorId]
@@ -739,6 +746,34 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 	return nil
 }
 
+// postBreakingChangeLabel posts label and information on whether the PR
+// contains breaking changes that necessitate a repository version bump.
+func postBreakingChangeLabel(g *commonci.GithubRequestHandler, majorVersionChanges string) error {
+	var majorVersionChangesComment string
+	switch majorVersionChanges {
+	case "":
+		majorVersionChangesComment = fmt.Sprintf("No major YANG version changes in commit %s", commitSHA)
+		if err := g.PostLabel("non-breaking", "00FF00", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post label: %v", err)
+		}
+		if err := g.DeleteLabel("breaking", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't delete label: %v", err)
+		}
+	default:
+		majorVersionChangesComment = fmt.Sprintf("Major YANG version changes in commit %s:\n%s", commitSHA, majorVersionChanges)
+		if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post label: %v", err)
+		}
+		if err := g.DeleteLabel("non-breaking", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't delete label: %v", err)
+		}
+	}
+	if err := g.AddEditOrDeletePRComment("ajor YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
+		return fmt.Errorf("couldn't post major YANG version changes comment: %v", err)
+	}
+	return nil
+}
+
 // postResult retrieves the test output for the given validator and version
 // from its results folder and posts a gist and PR status linking to the gist.
 func postResult(validatorId, version string) error {
@@ -835,27 +870,8 @@ func postResult(validatorId, version string) error {
 	}
 
 	if !pushToMaster && validatorId == "misc-checks" {
-		var majorVersionChangesComment string
-		switch majorVersionChanges {
-		case "":
-			majorVersionChangesComment = fmt.Sprintf("No major YANG version changes in commit %s", commitSHA)
-			if err := g.PostLabel("non-breaking", "00FF00", owner, repo, prNumber); err != nil {
-				return fmt.Errorf("couldn't post label: %v", err)
-			}
-			if err := g.DeleteLabel("breaking", owner, repo, prNumber); err != nil {
-				return fmt.Errorf("couldn't delete label: %v", err)
-			}
-		default:
-			majorVersionChangesComment = fmt.Sprintf("Major YANG version changes in commit %s:\n%s", commitSHA, majorVersionChanges)
-			if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
-				return fmt.Errorf("couldn't post label: %v", err)
-			}
-			if err := g.DeleteLabel("non-breaking", owner, repo, prNumber); err != nil {
-				return fmt.Errorf("couldn't delete label: %v", err)
-			}
-		}
-		if err := g.AddEditOrDeletePRComment("ajor YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
-			return fmt.Errorf("couldn't post major YANG version changes comment: %v", err)
+		if err := postBreakingChangeLabel(g, majorVersionChanges); err != nil {
+			return err
 		}
 	}
 
