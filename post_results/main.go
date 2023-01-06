@@ -756,17 +756,14 @@ func postBreakingChangeLabel(g *commonci.GithubRequestHandler, majorVersionChang
 		if err := g.PostLabel("non-breaking", "00FF00", owner, repo, prNumber); err != nil {
 			return fmt.Errorf("couldn't post label: %v", err)
 		}
-		if err := g.DeleteLabel("breaking", owner, repo, prNumber); err != nil {
-			return fmt.Errorf("couldn't delete label: %v", err)
-		}
+		// Don't error out on error since it's possible the label doesn't exist.
+		g.DeleteLabel("breaking", owner, repo, prNumber)
 	default:
 		majorVersionChangesComment = fmt.Sprintf("Major YANG version changes in commit %s:\n%s", commitSHA, majorVersionChanges)
 		if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
 			return fmt.Errorf("couldn't post label: %v", err)
 		}
-		if err := g.DeleteLabel("non-breaking", owner, repo, prNumber); err != nil {
-			return fmt.Errorf("couldn't delete label: %v", err)
-		}
+		g.DeleteLabel("non-breaking", owner, repo, prNumber)
 	}
 	if err := g.AddEditOrDeletePRComment("ajor YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
 		return fmt.Errorf("couldn't post major YANG version changes comment: %v", err)
