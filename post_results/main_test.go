@@ -457,21 +457,22 @@ Failed.
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 		wantCondensedOutSame: true,
 	}, {
-		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
-		inValidatorResultDir: "testdata/misc-checks-pass",
-		inValidatorId:        "misc-checks",
-		wantPass:             true,
+		name:                    "openconfig-version, revision version, and .spec.yml checks all pass",
+		inValidatorResultDir:    "testdata/misc-checks-pass",
+		inValidatorId:           "misc-checks",
+		wantPass:                true,
+		wantMajorVersionChanges: "openconfig-interface-submodule.yang: `0.5.0` -> `1.0.0`\nopenconfig-interface.yang: `1.1.3` -> `2.0.0`\n",
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
-7 file(s) correctly updated.
+9 file(s) correctly updated.
 </details>
 <details>
   <summary>&#x2705;&nbsp; .spec.yml build reachability check</summary>
-9 files reached by build rules.
+11 files reached by build rules.
 </details>
 <details>
   <summary>&#x2705;&nbsp; submodule versions must match the belonging module's version</summary>
-5 module/submodule file groups have matching versions</details>
+7 module/submodule file groups have matching versions</details>
 `,
 		wantCondensedOutSame: true,
 	}, {
@@ -513,8 +514,8 @@ Failed.
 				if gotPass != tt.wantPass {
 					t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
 				}
-				if majorVersionChanges != tt.wantMajorVersionChanges {
-					t.Errorf("gotMajorChanges %v, wantMajorChanges %v", majorVersionChanges, tt.wantMajorVersionChanges)
+				if diff := cmp.Diff(tt.wantMajorVersionChanges, majorVersionChanges); diff != "" {
+					t.Errorf("majorVersionChanges (-want, +got):\n%s", diff)
 				}
 				wantOut := tt.wantOut
 				if condensed && !tt.wantCondensedOutSame {

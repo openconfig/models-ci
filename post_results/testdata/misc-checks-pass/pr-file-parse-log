@@ -2,6 +2,8 @@ openconfig-mpls-static.yang: belonging-module:"openconfig-mpls-static" openconfi
 openconfig-acl.yang: belonging-module:"openconfig-acl" openconfig-version:"1.2.3" latest-revision-version:"1.2.3"
 openconfig-acl-submodule.yang: belonging-module:"openconfig-acl" openconfig-version:"1.2.3" latest-revision-version:"1.2.3"
 openconfig-packet-match.yang: belonging-module:"openconfig-packet-match" latest-revision-version:"1.2.0" openconfig-version:"1.2.0"
+openconfig-interface.yang: belonging-module:"openconfig-interface" openconfig-version:"2.0.0" latest-revision-version:"2.0.0"
+openconfig-interface-submodule.yang: belonging-module:"openconfig-interface-submodule" openconfig-version:"1.0.0" latest-revision-version:"1.0.0"
 openconfig-mpls-static.yang: belonging-module:"openconfig-mpls-static" openconfig-version:"1.0.0" latest-revision-version:"1.0.0" 
 
 changed-unreached-to-reached-noversion.yang: belonging-module:"changed-unreached-to-reached-noversion"

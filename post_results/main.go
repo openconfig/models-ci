@@ -854,8 +854,8 @@ func postResult(validatorId, version string) error {
 				return fmt.Errorf("couldn't delete label: %v", err)
 			}
 		}
-		if err := g.AddEditOrDeletePRComment("Major YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
-			return fmt.Errorf("couldn't post Major YANG version changes comment: %v", err)
+		if err := g.AddEditOrDeletePRComment("ajor YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post major YANG version changes comment: %v", err)
 		}
 	}
 

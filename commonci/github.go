@@ -251,6 +251,7 @@ func (g *GithubRequestHandler) AddPRComment(body *string, owner, repo string, pr
 
 // AddEditOrDeletePRComment posts or edits a comment to a PR.
 // If signature is empty, it's equivalent to AddPRComment.
+// Signature is a string that can be found in the comment in order to find and edit it.
 // Otherwise, all comments are searched first, and if any matches the
 // signature, then the comment is edited. If none matches, then a new comment
 // is posted.
