@@ -4,6 +4,8 @@ release/models/acl/deeper/openconfig-packet-match.yang
 release/models/bgp/openconfig-deleted.yang
 release/models/bgp/openconfig-deleted-2.yang
 release/models/bgp/openconfig-deleted-3.yang
+release/models/interfaces/openconfig-interface.yang
+release/models/interfaces/openconfig-interface-submodule.yang
 
 release/models/bgp/changed-unreached-to-reached-noversion.yang
 release/models/bgp/changed-unreached-to-version.yang
