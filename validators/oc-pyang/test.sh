@@ -33,7 +33,7 @@ setup() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
 
-  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
+  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO -b $_OC_PYANG_VERSION
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
   pip3 install --no-cache-dir -r $OCPYANG_REPO/requirements.txt
   pip3 install setuptools
