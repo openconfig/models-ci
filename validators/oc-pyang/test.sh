@@ -35,7 +35,7 @@ setup() {
 
   git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO -b $_OC_PYANG_VERSION
   cd $OCPYANG_REPO
-  echo -n "Running version " >> $OUTFILE
+  echo -n "Running at github.com/openconfig/oc-pyang branch " >> $OUTFILE
   git rev-parse --short HEAD >> $OUTFILE
   cd ..
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
