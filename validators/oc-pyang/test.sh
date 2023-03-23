@@ -34,6 +34,9 @@ setup() {
   source $VENVDIR/bin/activate
 
   git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO -b $_OC_PYANG_VERSION
+  cd $OCPYANG_REPO
+  git rev-parse --short HEAD > $RESULTSDIR/latest-version.txt
+  cd ..
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
   pip3 install --no-cache-dir -r $OCPYANG_REPO/requirements.txt
   pip3 install setuptools
