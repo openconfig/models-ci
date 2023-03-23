@@ -33,7 +33,11 @@ setup() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
 
-  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
+  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO -b $_OC_PYANG_VERSION
+  cd $OCPYANG_REPO
+  echo -n "Running at github.com/openconfig/oc-pyang branch " >> $OUTFILE
+  git rev-parse --short HEAD >> $OUTFILE
+  cd ..
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
   pip3 install --no-cache-dir -r $OCPYANG_REPO/requirements.txt
   pip3 install setuptools
@@ -61,7 +65,7 @@ if [ $? -ne 0 ]; then
   exit 0
 fi
 
-if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $OUTFILE 2> $FAILFILE; then
+if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang >> $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
