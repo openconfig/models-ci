@@ -218,7 +218,7 @@ func TestGetResult(t *testing.T) {
 		wantOut                 string
 		wantCondensedOut        string
 		wantCondensedOutSame    bool
-		wantMajorVersionChanges string
+		wantMajorVersionChanges majorVersionChangeSlice
 		wantErrSubstr           string
 	}{{
 		name:                 "basic pyang pass",
@@ -457,11 +457,21 @@ Failed.
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 		wantCondensedOutSame: true,
 	}, {
-		name:                    "openconfig-version, revision version, and .spec.yml checks all pass",
-		inValidatorResultDir:    "testdata/misc-checks-pass",
-		inValidatorId:           "misc-checks",
-		wantPass:                true,
-		wantMajorVersionChanges: "openconfig-interface-submodule.yang: `0.5.0` -> `1.0.0`\nopenconfig-interface.yang: `1.1.3` -> `2.0.0`\n",
+		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
+		inValidatorResultDir: "testdata/misc-checks-pass",
+		inValidatorId:        "misc-checks",
+		wantPass:             true,
+		wantMajorVersionChanges: majorVersionChangeSlice{{
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 0,
+			OldVersion:      "0.5.0",
+			NewVersion:      "1.0.0",
+		}, {
+			File:            "openconfig-interface.yang",
+			OldMajorVersion: 1,
+			OldVersion:      "1.1.3",
+			NewVersion:      "2.0.0",
+		}},
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
 9 file(s) correctly updated.
