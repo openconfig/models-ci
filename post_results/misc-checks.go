@@ -9,16 +9,17 @@ import (
 	"github.com/openconfig/models-ci/commonci"
 )
 
-type majorVersionChange struct {
+type versionRecord struct {
 	File            string
 	OldMajorVersion uint64
+	NewMajorVersion uint64
 	OldVersion      string
 	NewVersion      string
 }
 
-type majorVersionChangeSlice []majorVersionChange
+type versionRecordSlice []versionRecord
 
-func (s majorVersionChangeSlice) String() string {
+func (s versionRecordSlice) MajorVersionChanges() string {
 	if len(s) == 0 {
 		return fmt.Sprintf("No major YANG version changes in commit %s", commitSHA)
 	}
@@ -26,14 +27,16 @@ func (s majorVersionChangeSlice) String() string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Major YANG version changes in commit %s:\n", commitSHA))
 	for _, change := range s {
-		b.WriteString(fmt.Sprintf("%s: `%s` -> `%s`\n", change.File, change.OldVersion, change.NewVersion))
+		if change.OldMajorVersion != change.NewMajorVersion {
+			b.WriteString(fmt.Sprintf("%s: `%s` -> `%s`\n", change.File, change.OldVersion, change.NewVersion))
+		}
 	}
 	return b.String()
 }
 
-func (s majorVersionChangeSlice) hasBreaking() bool {
+func (s versionRecordSlice) hasBreaking() bool {
 	for _, change := range s {
-		if change.OldMajorVersion != 0 {
+		if change.OldMajorVersion != 0 && change.OldMajorVersion != change.NewMajorVersion {
 			return true
 		}
 	}
@@ -43,9 +46,8 @@ func (s majorVersionChangeSlice) hasBreaking() bool {
 // processMiscChecksOutput takes the raw result output from the misc-checks
 // results directory and returns its formatted report and pass/fail status.
 //
-// It also returns a newline-separated string of the list of all YANG files
-// that have their major versions updated.
-func processMiscChecksOutput(resultsDir string) (string, bool, majorVersionChangeSlice, error) {
+// It also returns a list of version changes for each file.
+func processMiscChecksOutput(resultsDir string) (string, bool, versionRecordSlice, error) {
 	fileProperties := map[string]map[string]string{}
 	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
 	if err != nil {
@@ -74,7 +76,7 @@ func processMiscChecksOutput(resultsDir string) (string, bool, majorVersionChang
 		return "", false, nil, err
 	}
 	moduleFileGroups := map[string][]fileAndVersion{}
-	var majorVersionChanges majorVersionChangeSlice
+	var versionRecords versionRecordSlice
 	for _, file := range allNonEmptyPRFiles {
 		properties, ok := fileProperties[file]
 
@@ -98,19 +100,16 @@ func processMiscChecksOutput(resultsDir string) (string, bool, majorVersionChang
 			oldver, newver, err := checkSemverIncrease(masterOcVersion, ocVersion, "openconfig-version")
 			if err != nil {
 				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
-			} else {
-				ocVersionChangedCount += 1
+				break
 			}
-			if oldver != nil && newver != nil {
-				if oldver.Major() != newver.Major() {
-					majorVersionChanges = append(majorVersionChanges, majorVersionChange{
-						File:            file,
-						OldMajorVersion: oldver.Major(),
-						OldVersion:      masterOcVersion,
-						NewVersion:      ocVersion,
-					})
-				}
-			}
+			ocVersionChangedCount += 1
+			versionRecords = append(versionRecords, versionRecord{
+				File:            file,
+				OldMajorVersion: oldver.Major(),
+				NewMajorVersion: newver.Major(),
+				OldVersion:      masterOcVersion,
+				NewVersion:      ocVersion,
+			})
 		case hadVersion && !hasVersion:
 			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
 		default: // If didn't have version before, any new version is accepted.
@@ -140,5 +139,5 @@ func processMiscChecksOutput(resultsDir string) (string, bool, majorVersionChang
 	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
 	appendViolationOut("submodule versions must match the belonging module's version", versionGroupViolationsHTML(moduleFileGroups), fmt.Sprintf("%d module/submodule file groups have matching versions", len(moduleFileGroups)))
 
-	return out.String(), pass, majorVersionChanges, nil
+	return out.String(), pass, versionRecords, nil
 }

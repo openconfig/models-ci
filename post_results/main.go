@@ -470,7 +470,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 // version changes.
 //
 // If condensed=true, then only errors are provided.
-func getResult(validatorId, resultsDir string, condensed bool) (string, bool, majorVersionChangeSlice, error) {
+func getResult(validatorId, resultsDir string, condensed bool) (string, bool, versionRecordSlice, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
 		return "", false, nil, fmt.Errorf("validator %q not found!", validatorId)
@@ -480,8 +480,8 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ma
 	var outString string
 	// pass is the overall validation result.
 	var pass bool
-	// majorVersionChanges contains all information regarding listing major YANG version changes.
-	var majorVersionChanges majorVersionChangeSlice
+	// versionRecords contains all information regarding YANG version changes.
+	var versionRecords versionRecordSlice
 
 	failFileBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
 	// existent fail file == failure.
@@ -500,7 +500,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ma
 		}
 		pass = false
 	case validator.IsPerModel && validatorId == "misc-checks":
-		outString, pass, majorVersionChanges, err = processMiscChecksOutput(resultsDir)
+		outString, pass, versionRecords, err = processMiscChecksOutput(resultsDir)
 	case validator.IsPerModel:
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir, condensed)
 		if pass && condensed {
@@ -511,7 +511,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ma
 		pass = true
 	}
 
-	return outString, pass, majorVersionChanges, err
+	return outString, pass, versionRecords, err
 }
 
 // WriteBadgeUploadCmdFile writes a bash script into resultsDir that posts a
@@ -650,21 +650,21 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 
 // postBreakingChangeLabel posts label and information on whether the PR
 // contains breaking changes that necessitate a repository version bump.
-func postBreakingChangeLabel(g *commonci.GithubRequestHandler, majorVersionChanges majorVersionChangeSlice) error {
-	if majorVersionChanges.hasBreaking() {
+func postBreakingChangeLabel(g *commonci.GithubRequestHandler, versionRecords versionRecordSlice) error {
+	if versionRecords.hasBreaking() {
+		if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post label: %v", err)
+		}
+		g.DeleteLabel("non-breaking", owner, repo, prNumber)
+	} else {
 		if err := g.PostLabel("non-breaking", "00FF00", owner, repo, prNumber); err != nil {
 			return fmt.Errorf("couldn't post label: %v", err)
 		}
 		// Don't error out on error since it's possible the label doesn't exist.
 		g.DeleteLabel("breaking", owner, repo, prNumber)
-	} else {
-		if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
-			return fmt.Errorf("couldn't post label: %v", err)
-		}
-		g.DeleteLabel("non-breaking", owner, repo, prNumber)
 	}
 	// NOTE: "ajor" is not a typo.
-	majorVersionChangesComment := majorVersionChanges.String()
+	majorVersionChangesComment := versionRecords.MajorVersionChanges()
 	if err := g.AddEditOrDeletePRComment("ajor YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
 		return fmt.Errorf("couldn't post major YANG version changes comment: %v", err)
 	}
@@ -713,7 +713,7 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	testResultString, pass, majorVersionChanges, err := getResult(validatorId, resultsDir, false)
+	testResultString, pass, versionRecords, err := getResult(validatorId, resultsDir, false)
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
@@ -767,7 +767,7 @@ func postResult(validatorId, version string) error {
 	}
 
 	if !pushToMaster && validatorId == "misc-checks" {
-		if err := postBreakingChangeLabel(g, majorVersionChanges); err != nil {
+		if err := postBreakingChangeLabel(g, versionRecords); err != nil {
 			return err
 		}
 	}
