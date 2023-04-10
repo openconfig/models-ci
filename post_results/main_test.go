@@ -207,19 +207,75 @@ func TestCheckSemverIncrease(t *testing.T) {
 	}
 }
 
+func TestVersionRecords(t *testing.T) {
+	tests := []struct {
+		desc             string
+		inVersionRecords versionRecordSlice
+		wantHasBreaking  bool
+	}{{
+		desc: "has breaking",
+		inVersionRecords: versionRecordSlice{{
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 0,
+			NewMajorVersion: 1,
+			OldVersion:      "0.5.0",
+			NewVersion:      "1.0.0",
+		}, {
+			File:            "openconfig-interface.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 2,
+			OldVersion:      "1.1.3",
+			NewVersion:      "2.0.0",
+		}},
+		wantHasBreaking: true,
+	}, {
+		desc: "non-breaking",
+		inVersionRecords: versionRecordSlice{{
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 0,
+			NewMajorVersion: 1,
+			OldVersion:      "0.5.0",
+			NewVersion:      "1.0.0",
+		}},
+		wantHasBreaking: false,
+	}, {
+		desc: "non-breaking",
+		inVersionRecords: versionRecordSlice{{
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.5.0",
+			NewVersion:      "1.6.0",
+		}},
+		wantHasBreaking: false,
+	}, {
+		desc:             "empty",
+		inVersionRecords: nil,
+		wantHasBreaking:  false,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			if gotHasBreaking, want := tt.inVersionRecords.hasBreaking(), tt.wantHasBreaking; gotHasBreaking != want {
+				t.Errorf("gotHasBreaking %v, want %v", gotHasBreaking, want)
+			}
+		})
+	}
+}
+
 func TestGetResult(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
 	tests := []struct {
-		name                    string
-		inValidatorResultDir    string
-		inValidatorId           string
-		wantPass                bool
-		wantOut                 string
-		wantCondensedOut        string
-		wantCondensedOutSame    bool
-		wantMajorVersionChanges string
-		wantErrSubstr           string
+		name                   string
+		inValidatorResultDir   string
+		inValidatorId          string
+		wantPass               bool
+		wantOut                string
+		wantCondensedOut       string
+		wantCondensedOutSame   bool
+		wantVersionRecordSlice versionRecordSlice
+		wantErrSubstr          string
 	}{{
 		name:                 "basic pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
@@ -457,11 +513,41 @@ Failed.
 		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
 		wantCondensedOutSame: true,
 	}, {
-		name:                    "openconfig-version, revision version, and .spec.yml checks all pass",
-		inValidatorResultDir:    "testdata/misc-checks-pass",
-		inValidatorId:           "misc-checks",
-		wantPass:                true,
-		wantMajorVersionChanges: "openconfig-interface-submodule.yang: `0.5.0` -> `1.0.0`\nopenconfig-interface.yang: `1.1.3` -> `2.0.0`\n",
+		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
+		inValidatorResultDir: "testdata/misc-checks-pass",
+		inValidatorId:        "misc-checks",
+		wantPass:             true,
+		wantVersionRecordSlice: versionRecordSlice{{
+			File:            "openconfig-acl-submodule.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.1.3",
+			NewVersion:      "1.2.3",
+		}, {
+			File:            "openconfig-acl.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.2.2",
+			NewVersion:      "1.2.3",
+		}, {
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 0,
+			NewMajorVersion: 1,
+			OldVersion:      "0.5.0",
+			NewVersion:      "1.0.0",
+		}, {
+			File:            "openconfig-interface.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 2,
+			OldVersion:      "1.1.3",
+			NewVersion:      "2.0.0",
+		}, {
+			File:            "openconfig-packet-match.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.1.2",
+			NewVersion:      "1.2.0",
+		}},
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
 9 file(s) correctly updated.
@@ -504,7 +590,7 @@ Failed.
 	for _, tt := range tests {
 		for _, condensed := range []bool{false, true} {
 			t.Run(fmt.Sprintf(tt.name+"@condensed=%v", condensed), func(t *testing.T) {
-				gotOut, gotPass, majorVersionChanges, err := getResult(tt.inValidatorId, tt.inValidatorResultDir, condensed)
+				gotOut, gotPass, versionRecords, err := getResult(tt.inValidatorId, tt.inValidatorResultDir, condensed)
 				if err != nil {
 					if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 						t.Fatalf("did not get expected error, %s", diff)
@@ -514,8 +600,8 @@ Failed.
 				if gotPass != tt.wantPass {
 					t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
 				}
-				if diff := cmp.Diff(tt.wantMajorVersionChanges, majorVersionChanges); diff != "" {
-					t.Errorf("majorVersionChanges (-want, +got):\n%s", diff)
+				if diff := cmp.Diff(tt.wantVersionRecordSlice, versionRecords); diff != "" {
+					t.Errorf("versionRecords (-want, +got):\n%s", diff)
 				}
 				wantOut := tt.wantOut
 				if condensed && !tt.wantCondensedOutSame {

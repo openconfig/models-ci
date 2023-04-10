@@ -226,104 +226,6 @@ func checkSemverIncrease(oldVersion, newVersion, versionStringName string) (*sem
 	}
 }
 
-// processMiscChecksOutput takes the raw result output from the misc-checks
-// results directory and returns its formatted report and pass/fail status.
-//
-// It also returns a newline-separated string of the list of all YANG files
-// that have their major versions updated.
-func processMiscChecksOutput(resultsDir string) (string, bool, string, error) {
-	fileProperties := map[string]map[string]string{}
-	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
-	if err != nil {
-		return "", false, "", err
-	}
-	for _, file := range changedFiles {
-		if _, ok := fileProperties[file]; !ok {
-			fileProperties[file] = map[string]string{}
-		}
-		fileProperties[file]["changed"] = "true"
-	}
-	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "pr-file-parse-log"), false, fileProperties); err != nil {
-		return "", false, "", err
-	}
-	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "master-file-parse-log"), true, fileProperties); err != nil {
-		return "", false, "", err
-	}
-
-	var ocVersionViolations []string
-	ocVersionChangedCount := 0
-	var reachabilityViolations []string
-	filesReachedCount := 0
-	// Only look at the PR's files as they might be different from the master's files.
-	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(resultsDir, "all-non-empty-files.txt"))
-	if err != nil {
-		return "", false, "", err
-	}
-	moduleFileGroups := map[string][]fileAndVersion{}
-	var majorVersionChanges strings.Builder
-	for _, file := range allNonEmptyPRFiles {
-		properties, ok := fileProperties[file]
-
-		// Reachability check
-		if !ok || properties["reachable"] != "true" {
-			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: file not used by any .spec.yml build.", file))
-			// If the file was not reached, then its other
-			// parameters would not have been parsed by goyang, so
-			// simply skip the rest of the checks.
-			continue
-		}
-		filesReachedCount += 1
-
-		// openconfig-version update check
-		ocVersion, hasVersion := properties["openconfig-version"]
-		masterOcVersion, hadVersion := properties["master-openconfig-version"]
-		switch {
-		case properties["changed"] != "true":
-			// We assume the versioning is correct without change.
-		case hadVersion && hasVersion:
-			oldver, newver, err := checkSemverIncrease(masterOcVersion, ocVersion, "openconfig-version")
-			if err != nil {
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
-			} else {
-				ocVersionChangedCount += 1
-			}
-			if oldver != nil && newver != nil {
-				if oldver.Major() != newver.Major() {
-					majorVersionChanges.WriteString(fmt.Sprintf("%s: `%s` -> `%s`\n", file, masterOcVersion, ocVersion))
-				}
-			}
-		case hadVersion && !hasVersion:
-			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
-		default: // If didn't have version before, any new version is accepted.
-			ocVersionChangedCount += 1
-		}
-
-		if mod, ok := properties["belonging-module"]; hasVersion && ok {
-			// Error checking is already done by the version update check.
-			if v, err := semver.StrictNewVersion(ocVersion); err == nil {
-				moduleFileGroups[mod] = append(moduleFileGroups[mod], fileAndVersion{name: file, version: v})
-			}
-		}
-	}
-
-	// Compute HTML string and pass/fail status.
-	var out strings.Builder
-	var pass = true
-	appendViolationOut := func(desc string, violations []string, passString string) {
-		if len(violations) == 0 {
-			out.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(true), desc, passString))
-		} else {
-			out.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(false), desc, strings.Join(violations, "")))
-			pass = false
-		}
-	}
-	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d file(s) correctly updated.\n", ocVersionChangedCount))
-	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
-	appendViolationOut("submodule versions must match the belonging module's version", versionGroupViolationsHTML(moduleFileGroups), fmt.Sprintf("%d module/submodule file groups have matching versions", len(moduleFileGroups)))
-
-	return out.String(), pass, majorVersionChanges.String(), nil
-}
-
 type fileAndVersion struct {
 	name    string
 	version *semver.Version
@@ -568,18 +470,18 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 // version changes.
 //
 // If condensed=true, then only errors are provided.
-func getResult(validatorId, resultsDir string, condensed bool) (string, bool, string, error) {
+func getResult(validatorId, resultsDir string, condensed bool) (string, bool, versionRecordSlice, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", false, "", fmt.Errorf("validator %q not found!", validatorId)
+		return "", false, nil, fmt.Errorf("validator %q not found!", validatorId)
 	}
 
 	// outString is parsed stdout.
 	var outString string
 	// pass is the overall validation result.
 	var pass bool
-	// majorVersionChanges is a GitHub-formatted string listing major YANG version changes.
-	var majorVersionChanges string
+	// versionRecords contains all information regarding YANG version changes.
+	var versionRecords versionRecordSlice
 
 	failFileBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
 	// existent fail file == failure.
@@ -598,7 +500,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, st
 		}
 		pass = false
 	case validator.IsPerModel && validatorId == "misc-checks":
-		outString, pass, majorVersionChanges, err = processMiscChecksOutput(resultsDir)
+		outString, pass, versionRecords, err = processMiscChecksOutput(resultsDir)
 	case validator.IsPerModel:
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir, condensed)
 		if pass && condensed {
@@ -609,7 +511,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, st
 		pass = true
 	}
 
-	return outString, pass, majorVersionChanges, err
+	return outString, pass, versionRecords, err
 }
 
 // WriteBadgeUploadCmdFile writes a bash script into resultsDir that posts a
@@ -748,23 +650,21 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 
 // postBreakingChangeLabel posts label and information on whether the PR
 // contains breaking changes that necessitate a repository version bump.
-func postBreakingChangeLabel(g *commonci.GithubRequestHandler, majorVersionChanges string) error {
-	var majorVersionChangesComment string
-	switch majorVersionChanges {
-	case "":
-		majorVersionChangesComment = fmt.Sprintf("No major YANG version changes in commit %s", commitSHA)
+func postBreakingChangeLabel(g *commonci.GithubRequestHandler, versionRecords versionRecordSlice) error {
+	if versionRecords.hasBreaking() {
+		if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post label: %v", err)
+		}
+		g.DeleteLabel("non-breaking", owner, repo, prNumber)
+	} else {
 		if err := g.PostLabel("non-breaking", "00FF00", owner, repo, prNumber); err != nil {
 			return fmt.Errorf("couldn't post label: %v", err)
 		}
 		// Don't error out on error since it's possible the label doesn't exist.
 		g.DeleteLabel("breaking", owner, repo, prNumber)
-	default:
-		majorVersionChangesComment = fmt.Sprintf("Major YANG version changes in commit %s:\n%s", commitSHA, majorVersionChanges)
-		if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
-			return fmt.Errorf("couldn't post label: %v", err)
-		}
-		g.DeleteLabel("non-breaking", owner, repo, prNumber)
 	}
+	// NOTE: "ajor" is not a typo.
+	majorVersionChangesComment := versionRecords.MajorVersionChanges()
 	if err := g.AddEditOrDeletePRComment("ajor YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
 		return fmt.Errorf("couldn't post major YANG version changes comment: %v", err)
 	}
@@ -813,7 +713,7 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	testResultString, pass, majorVersionChanges, err := getResult(validatorId, resultsDir, false)
+	testResultString, pass, versionRecords, err := getResult(validatorId, resultsDir, false)
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
@@ -867,7 +767,7 @@ func postResult(validatorId, version string) error {
 	}
 
 	if !pushToMaster && validatorId == "misc-checks" {
-		if err := postBreakingChangeLabel(g, majorVersionChanges); err != nil {
+		if err := postBreakingChangeLabel(g, versionRecords); err != nil {
 			return err
 		}
 	}
