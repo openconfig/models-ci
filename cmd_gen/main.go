@@ -465,7 +465,7 @@ func main() {
 	// If it's a push on master, just upload badge for normal validators as the only action.
 	if prNumber == 0 {
 		if branchName != "master" {
-			log.Fatalf("cmd_gen: There is no action to take for a non-master branch push, please re-examine your push triggers")
+			log.Fatalf("cmd_gen: pr-number not supplied as a flag to the build. Try re-running (by commenting \"/gcbrun\" on the GitHub PR) to see whether the $_PR_NUMBER substitution variable for Google Cloud Build gets passed into the build. If this branch is not associated with a PR, then it is inferred that this is a non-master branch push action, and thus there is no CI action that is expected, and in this case please re-examine your push triggers.")
 		}
 		pushToMaster = true
 	}
