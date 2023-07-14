@@ -34,7 +34,6 @@ setup() {
 
   git clone https://github.com/robshakir/pyangbind $PYANGBIND_REPO
   pip3 install --no-cache-dir -r $PYANGBIND_REPO/requirements.txt
-  pip3 install pyangbind
   pip3 install pyang
 }
 
@@ -48,8 +47,7 @@ setup
 pip3 list | grep pyangbind > $RESULTSDIR/latest-version.txt
 find $RESULTSDIR/latest-version.txt -size 0 -delete
 
-export PYANGBIND_PLUGIN_DIR=`/usr/bin/env python3 -c \
-  'import pyangbind; import os; print ("{}/plugin".format(os.path.dirname(pyangbind.__file__)))'`
+export PYANGBIND_PLUGIN_DIR="${PYANGBIND_REPO}/pyangbind/plugin"
 if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
