@@ -162,7 +162,12 @@ function run-dir() {
   local options=( --plugindir "$PYANGBIND_PLUGIN_DIR" -o "$1"."$2".binding.py "${options[@]}" )
   shift 2
   echo pyang "${cmd_display_options[@]}" "$@" > ${prefix}cmd
-  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+  status=0
+  $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
+  if [[ $status -eq "0" ]]; then
+    python "$1"."$2".binding.py || status=1
+  fi
+  if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }

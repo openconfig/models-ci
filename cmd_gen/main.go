@@ -196,7 +196,12 @@ function run-dir() {
   local options=( --plugindir "$PYANGBIND_PLUGIN_DIR" -o "$1"."$2".binding.py "${options[@]}" )
   shift 2
   echo pyang "${cmd_display_options[@]}" "$@" > ${prefix}cmd
-  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+  status=0
+  $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
+  if [[ $status -eq "0" ]]; then
+    python "$1"."$2".binding.py || status=1
+  fi
+  if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }
@@ -345,6 +350,7 @@ type labelPoster interface {
 //     will be run only on a single model as specified in the .spec.yml file.
 //  2. Thus, a validation command and result is provided for each model.
 //  3. A file indicating pass/fail is output for each model into the given result directory.
+//
 // Files names follow the "modelDir==model==status" format with no file extensions.
 // The local flag indicates to run this as a helper to generate the script,
 // rather than running it within GCB.
