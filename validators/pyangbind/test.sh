@@ -47,6 +47,7 @@ setup
 pip3 list | grep pyangbind > $RESULTSDIR/latest-version.txt
 find $RESULTSDIR/latest-version.txt -size 0 -delete
 
+export PYTHONPATH="${PYTHONPATH}:${PYANGBIND_REPO}"
 export PYANGBIND_PLUGIN_DIR="${PYANGBIND_REPO}/pyangbind/plugin"
 if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
