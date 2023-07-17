@@ -44,7 +44,8 @@ teardown() {
 
 setup
 ########################## PYANGBIND #############################
-pip3 list | grep pyangbind > $RESULTSDIR/latest-version.txt
+echo -n "pyangbind@" > $RESULTSDIR/latest-version.txt
+cd "${PYANGBIND_REPO}" && git rev-parse --short HEAD >> $RESULTSDIR/latest-version.txt && cd -
 find $RESULTSDIR/latest-version.txt -size 0 -delete
 
 export PYTHONPATH="${PYTHONPATH}:${PYANGBIND_REPO}"
