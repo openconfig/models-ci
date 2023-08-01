@@ -23,8 +23,10 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
+go install github.com/openconfig/ygot/generator@latest > "${OUTFILE}" 2> "${FAILFILE}"
+
 go list -m github.com/openconfig/ygot@latest > $RESULTSDIR/latest-version.txt
-if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
+if bash $RESULTSDIR/script.sh >> $OUTFILE 2>> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
