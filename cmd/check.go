@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/openconfig/models-ci/ocdiff"
 	"github.com/spf13/cobra"
@@ -41,7 +42,10 @@ to quickly create a Cobra application.`,
 		}
 
 		if viper.GetBool("disallowed-incompats") {
-			fmt.Printf(report.ReportDisallowedIncompats())
+			if out := report.ReportDisallowedIncompats(); out != "" {
+				fmt.Printf("Backward-incompatible changes not covered by version increments per semver.org:\n%s", out)
+				os.Exit(1)
+			}
 		} else {
 			fmt.Printf(report.ReportAll())
 		}
