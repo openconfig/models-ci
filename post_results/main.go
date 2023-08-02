@@ -20,14 +20,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"log"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/openconfig/models-ci/commonci"
 	"github.com/openconfig/models-ci/util"
 )
@@ -116,156 +114,6 @@ func readFile(path string) (string, error) {
 		return "", fmt.Errorf("failed to read file at path %q: %v\n", path, err)
 	}
 	return string(outBytes), nil
-}
-
-// readYangFilesList reads a file containing a list of YANG files, and returns
-// a slice of these files. An unrecognized line causes an error to be returned.
-// The error checking is not robust, but should be sufficient for our limited use.
-func readYangFilesList(path string) ([]string, error) {
-	filesStr, err := readFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	fileMap := map[string]bool{}
-	for _, line := range strings.Split(filesStr, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		fileSegments := strings.Split(line, "/")
-		yangFileName := strings.TrimSpace(fileSegments[len(fileSegments)-1])
-		if !strings.HasSuffix(yangFileName, ".yang") {
-			return nil, fmt.Errorf("while parsing %s: unrecognized line, expected a path ending in a YANG file: %s", path, line)
-		}
-		fileMap[yangFileName] = true
-	}
-
-	var files []string
-	for f := range fileMap {
-		files = append(files, f)
-	}
-	sort.Strings(files)
-	return files, nil
-}
-
-// readGoyangVersionsLog returns a map of YANG files to file attributes as parsed from the log.
-// The file should be a list of YANG file to space-separated attributes.
-// e.g.
-// foo.yang: openconfig-version:"1.2.3" revision-version:"2.3.4"
-func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map[string]map[string]string) error {
-	fileLog, err := readFile(logPath)
-	if err != nil {
-		return err
-	}
-	for _, line := range strings.Split(fileLog, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		fileSegments := strings.SplitN(line, ":", 2)
-		yangFileName := strings.TrimSpace(fileSegments[0])
-		if !strings.HasSuffix(yangFileName, ".yang") {
-			return fmt.Errorf("while parsing %s: unrecognized line heading %q, expected a \"<name>.yang:\" start to the line: %q", logPath, yangFileName, line)
-		}
-		propertyMap, ok := fileProperties[yangFileName]
-		if !ok {
-			propertyMap = map[string]string{}
-			fileProperties[yangFileName] = propertyMap
-		}
-
-		if !masterBranch {
-			propertyMap["reachable"] = "true"
-		}
-
-		for _, property := range strings.Fields(strings.TrimSpace(fileSegments[1])) {
-			segments := strings.SplitN(property, ":", 2)
-			if len(segments) != 2 {
-				return fmt.Errorf("while parsing %s: unrecognized property substring, expected \"<property name>:\"<property>\"\" separated by spaces: %q", logPath, property)
-			}
-			name, value := segments[0], segments[1]
-			if value[0] == '"' {
-				if len(value) == 1 || value[len(value)-1] != '"' {
-					return fmt.Errorf("while parsing %s: Got invalid property value format: %s -- if the property value starts with a quote, it is assumed to be an enclosing quote", logPath, property)
-				}
-				value = value[1 : len(value)-1] // Remove enclosing quotes.
-			}
-			switch name {
-			case "openconfig-version", "belonging-module", "latest-revision-version":
-				if masterBranch {
-					name = "master-" + name
-				}
-				propertyMap[name] = value
-			default:
-				log.Printf("skipped unrecognized YANG file property: %s", property)
-			}
-		}
-	}
-	return nil
-}
-
-// checkSemverIncrease checks that newVersion is greater than the oldVersion
-// according to semantic versioning rules.
-// Note that any increase is fine, including jumps, e.g. 1.0.0 -> 1.0.2.
-// If there isn't an increase, a descriptive error message is returned.
-func checkSemverIncrease(oldVersion, newVersion, versionStringName string) (*semver.Version, *semver.Version, error) {
-	newV, err := semver.StrictNewVersion(newVersion)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid version string: %q", newVersion)
-	}
-	oldV, err := semver.StrictNewVersion(oldVersion)
-	switch {
-	case err != nil:
-		return nil, nil, fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
-	case newV.Equal(oldV):
-		return nil, nil, fmt.Errorf("file updated but %s string not updated: %q", versionStringName, oldVersion)
-	case !newV.GreaterThan(oldV):
-		return nil, nil, fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
-	default:
-		return oldV, newV, nil
-	}
-}
-
-type fileAndVersion struct {
-	name    string
-	version *semver.Version
-}
-
-// versionGroupViolationsHTML returns the version violations where a group of
-// module/submodule files don't have matching versions.
-func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []string {
-	var violations []string
-
-	var modules []string
-	for m := range moduleFileGroups {
-		modules = append(modules, m)
-	}
-	sort.Strings(modules)
-	for _, moduleName := range modules {
-		latestVersion := semver.MustParse("0.0.0")
-		latestVersionModule := ""
-		for _, nameAndVersion := range moduleFileGroups[moduleName] {
-			if nameAndVersion.version.GreaterThan(latestVersion) {
-				latestVersion = nameAndVersion.version
-				latestVersionModule = nameAndVersion.name
-			}
-		}
-		latestVersionString := latestVersion.Original()
-
-		var violation strings.Builder
-		for _, nameAndVersion := range moduleFileGroups[moduleName] {
-			if version := nameAndVersion.version.Original(); version != latestVersionString {
-				if violation.Len() != 0 {
-					violation.WriteString(",")
-				}
-				violation.WriteString(fmt.Sprintf(" <b>%s</b> (%s)", nameAndVersion.name, version))
-			}
-		}
-		if violation.Len() != 0 {
-			violations = append(violations, sprintLineHTML("module set %s is at <b>%s</b> (%s), non-matching files:%s", moduleName, latestVersionString, latestVersionModule, violation.String()))
-		}
-	}
-	return violations
 }
 
 // processStandardOutput takes raw pyang/confd output and transforms it to an
