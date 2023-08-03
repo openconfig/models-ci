@@ -68,8 +68,8 @@ type DiffReport struct {
 	newNodes          []*yangNodeInfo
 	updatedNodes      []*yangNodeUpdateInfo
 	deletedNodes      []*yangNodeInfo
-	OldModuleVersions map[string]*semver.Version
-	NewModuleVersions map[string]*semver.Version
+	oldModuleVersions map[string]*semver.Version
+	newModuleVersions map[string]*semver.Version
 }
 
 // Option can be used to modify the report outputs.
@@ -139,7 +139,7 @@ func (r *DiffReport) Report(options ...Option) string {
 	if !opts.onlyReportDisallowedIncompats {
 		for _, added := range r.newNodes {
 			if added.schema.IsLeaf() || added.schema.IsLeafList() {
-				b.WriteString(fmt.Sprintf(fmtstr, "leaf", "added", fmtstr, added.path, added.versionChangeDesc))
+				b.WriteString(fmt.Sprintf(fmtstr, "leaf", "added", added.path, added.versionChangeDesc))
 			}
 		}
 	}
@@ -165,14 +165,14 @@ func definingModuleName(e *yang.Entry) string {
 		return ""
 	}
 	if definingModule := yang.RootNode(e.Node); definingModule != nil {
-		return definingModule.Name
+		return belongingModule(definingModule)
 	}
 	return ""
 }
 
 func (r *DiffReport) getModuleAndVersions(e *yang.Entry) (string, *semver.Version, *semver.Version) {
 	moduleName := definingModuleName(e)
-	return moduleName, r.OldModuleVersions[moduleName], r.NewModuleVersions[moduleName]
+	return moduleName, r.oldModuleVersions[moduleName], r.newModuleVersions[moduleName]
 }
 
 func incompatAllowed(oldVersion, newVersion *semver.Version) bool {
@@ -200,9 +200,11 @@ func (r *DiffReport) addPair(o *yang.Entry, n *yang.Entry) error {
 	switch {
 	case o == nil && n == nil:
 	case o == nil:
+		newModuleName, oldVersion, newVersion := r.getModuleAndVersions(n)
 		r.newNodes = append(r.newNodes, &yangNodeInfo{
-			schema: n,
-			path:   n.Path(),
+			schema:            n,
+			path:              n.Path(),
+			versionChangeDesc: fmt.Sprintf("%q: openconfig-version %v -> %v", newModuleName, oldVersion, newVersion),
 		})
 	case n == nil:
 		r.deletedNodes = append(r.deletedNodes, &yangNodeInfo{
@@ -298,14 +300,16 @@ func flattenedEntriesAux(entry *yang.Entry) []*yang.Entry {
 
 func diffMaps(oldEntries, newEntries map[string]*yang.Entry, oldModuleVersions, newModuleVersions map[string]*semver.Version) *DiffReport {
 	report := &DiffReport{
-		OldModuleVersions: oldModuleVersions,
-		NewModuleVersions: newModuleVersions,
+		oldModuleVersions: oldModuleVersions,
+		newModuleVersions: newModuleVersions,
 	}
 	for path, oldEntry := range oldEntries {
 		report.addPair(oldEntry, newEntries[path])
 	}
 	for path, newEntry := range newEntries {
-		report.addPair(oldEntries[path], newEntry)
+		if oldEntries[path] == nil {
+			report.addPair(oldEntries[path], newEntry)
+		}
 	}
 	return report
 }
