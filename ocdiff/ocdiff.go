@@ -72,45 +72,72 @@ type DiffReport struct {
 	NewModuleVersions map[string]*semver.Version
 }
 
-// ReportDisallowedIncompats reports any backward-incompatible changes disallowed by version increments.
-func (r *DiffReport) ReportDisallowedIncompats() string {
-	return r.report(reportOptions{onlyReportDisallowedIncompats: true})
+// Option can be used to modify the report outputs.
+type Option func(*reportOptions)
+
+// WithDisallowedIncompatsOnly indicates to report only backward-incompatible
+// changes disallowed by version increments.
+func WithDisallowedIncompatsOnly() Option {
+	return func(o *reportOptions) {
+		o.onlyReportDisallowedIncompats = true
+	}
 }
 
-// ReportAll reports all YANG changes.
-func (r *DiffReport) ReportAll() string {
-	return r.report(reportOptions{})
+// WithGithubCommentStyle indicates to report with GitHub comment styling.
+func WithGithubCommentStyle() Option {
+	return func(o *reportOptions) {
+		o.githubComment = true
+	}
+}
+
+// resolveOpts applies all the options and returns a struct containing the result.
+func resolveOpts(opts []Option) *reportOptions {
+	o := &reportOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
 }
 
 type reportOptions struct {
 	onlyReportDisallowedIncompats bool
+	githubComment                 bool
 }
 
-func (r *DiffReport) report(opts reportOptions) string {
+func (r *DiffReport) Report(options ...Option) string {
+	opts := resolveOpts(options)
 	r.Sort()
+	fmtstr := "%s %s: %s (%s)\n"
+	if opts.githubComment {
+		fmtstr = "%s %s: `%s`\n\t(%s)\n"
+	}
 	var b strings.Builder
 	for _, del := range r.deletedNodes {
 		if !opts.onlyReportDisallowedIncompats || !del.allowIncompat {
 			if del.schema.IsLeaf() || del.schema.IsLeafList() {
-				b.WriteString(fmt.Sprintf("leaf deleted: %s (%s)\n", del.schema.Path(), del.versionChangeDesc))
+				b.WriteString(fmt.Sprintf(fmtstr, "leaf", "deleted", del.path, del.versionChangeDesc))
 			}
 		}
 	}
 	for _, upd := range r.updatedNodes {
+		nodeTypeDesc := "non-leaf"
+		if upd.oldSchema.IsLeaf() || upd.oldSchema.IsLeafList() {
+			nodeTypeDesc = "leaf"
+		}
 		if len(upd.incompatComments) > 0 {
-			nodeTypeDesc := "non-leaf"
-			if upd.oldSchema.IsLeaf() || upd.oldSchema.IsLeafList() {
-				nodeTypeDesc = "leaf"
+			fmtstr := "%s updated: %s: %s (%s)\n"
+			if opts.githubComment {
+				fmtstr = "%s updated: `%s`\n\t%s\n\t(%s)\n"
 			}
-			b.WriteString(fmt.Sprintf("%s updated: %s: %s (%s)\n", nodeTypeDesc, upd.oldSchema.Path(), strings.Join(upd.incompatComments, "\n\t"), upd.versionChangeDesc))
+			b.WriteString(fmt.Sprintf(fmtstr, nodeTypeDesc, upd.path, strings.Join(upd.incompatComments, "\n\t"), upd.versionChangeDesc))
 		} else {
-			b.WriteString(fmt.Sprintf("node updated %s (%s)\n", upd.oldSchema.Path(), upd.versionChangeDesc))
+			b.WriteString(fmt.Sprintf(fmtstr, nodeTypeDesc, "updated", upd.path, upd.versionChangeDesc))
 		}
 	}
 	if !opts.onlyReportDisallowedIncompats {
 		for _, added := range r.newNodes {
 			if added.schema.IsLeaf() || added.schema.IsLeafList() {
-				b.WriteString(fmt.Sprintf("leaf added: %s (%s)\n", added.schema.Path(), added.versionChangeDesc))
+				b.WriteString(fmt.Sprintf(fmtstr, "leaf", "added", fmtstr, added.path, added.versionChangeDesc))
 			}
 		}
 	}
@@ -163,32 +190,9 @@ func incompatAllowed(oldVersion, newVersion *semver.Version) bool {
 	}
 }
 
-func (r *DiffReport) entryAllowsIncompat(e *yang.Entry) (bool, string) {
-	moduleName := definingModuleName(e)
-	//moduleName := belongingModule(yang.RootNode(e.Node))
-	oldVersion, newVersion := r.OldModuleVersions[moduleName], r.NewModuleVersions[moduleName]
-
-	versionChangeDesc := fmt.Sprintf("%q: openconfig-version change %v -> %v", moduleName, oldVersion, newVersion)
-
-	switch {
-	case oldVersion == nil, newVersion == nil:
-		// This can happen if the openconfig-version is not found (e.g. in IETF modules).
-		//
-		// In other cases, we will just be conservative and allow the
-		// incompatibility since we don't want to block the PR.
-		return true, versionChangeDesc
-	case oldVersion.Major() == 0:
-		return true, versionChangeDesc
-	case newVersion.Major() > oldVersion.Major():
-		return true, versionChangeDesc
-	default:
-		return false, versionChangeDesc
-	}
-}
-
 func (r *DiffReport) addPair(o *yang.Entry, n *yang.Entry) error {
 	moduleName, oldVersion, newVersion := r.getModuleAndVersions(o)
-	versionChangeDesc := fmt.Sprintf("%q: openconfig-version change %v -> %v", moduleName, oldVersion, newVersion)
+	versionChangeDesc := fmt.Sprintf("%q: openconfig-version %v -> %v", moduleName, oldVersion, newVersion)
 	allowIncompat := incompatAllowed(oldVersion, newVersion)
 
 	switch {

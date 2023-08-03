@@ -41,13 +41,19 @@ to quickly create a Cobra application.`,
 			return err
 		}
 
+		var opts []ocdiff.Option
+		if viper.GetBool("github-comment") {
+			opts = append(opts, ocdiff.WithGithubCommentStyle())
+		}
+
 		if viper.GetBool("disallowed-incompats") {
-			if out := report.ReportDisallowedIncompats(); out != "" {
+			opts = append(opts, ocdiff.WithDisallowedIncompatsOnly())
+			if out := report.Report(opts...); out != "" {
 				fmt.Printf("-----------Breaking changes that need a major version increment (note that this check is not exhaustive)-----------\n%s", out)
 				os.Exit(1)
 			}
 		} else {
-			fmt.Printf(report.ReportAll())
+			fmt.Printf(report.Report(opts...))
 		}
 		return nil
 	},
@@ -61,4 +67,5 @@ func init() {
 	checkCmd.Flags().StringSlice("oldfiles", []string{}, "comma-separated list of old YANG files")
 	checkCmd.Flags().StringSlice("newfiles", []string{}, "comma-separated list of new YANG files")
 	checkCmd.Flags().Bool("disallowed-incompats", false, "only show disallowed (per semver.org) backwards-incompatible changes. Note that the backwards-incompatible checks are not exhausive.")
+	checkCmd.Flags().Bool("github-comment", false, "Show output suitable for posting in a GitHub comment.")
 }
