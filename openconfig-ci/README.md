@@ -1,4 +1,4 @@
-```
+```bash
 go install github.com/openconfig/models-ci/openconfig-ci@latest
 
 git clone github.com/openconfig/models-ci
