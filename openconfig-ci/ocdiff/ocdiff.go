@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// ocdiff checks for backwards-compatibility between two sets of YANG
-// files.
+// ocdiff produces a report between two sets of OpenConfig YANG files.
 package ocdiff
 
 import (
@@ -104,6 +103,7 @@ type reportOptions struct {
 	githubComment                 bool
 }
 
+// Report outputs a report on the diff between the two sets of OpenConfig YANG files.
 func (r *DiffReport) Report(options ...Option) string {
 	opts := resolveOpts(options)
 	r.Sort()

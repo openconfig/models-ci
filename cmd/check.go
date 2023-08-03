@@ -18,7 +18,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/openconfig/models-ci/ocdiff"
+	"github.com/openconfig/models-ci/openconfig-ci/ocdiff"
+	"github.com/openconfig/models-ci/yangutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -36,7 +37,15 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
-		report, err := ocdiff.NewDiffReport(viper.GetStringSlice("oldp"), viper.GetStringSlice("newp"), viper.GetStringSlice("oldfiles"), viper.GetStringSlice("newfiles"))
+		oldfiles, err := yangutil.GetAllYANGFiles(viper.GetString("oldroot"))
+		if err != nil {
+			return fmt.Errorf("error while finding YANG files from the old root: %v", err)
+		}
+		newfiles, err := yangutil.GetAllYANGFiles(viper.GetString("newroot"))
+		if err != nil {
+			return fmt.Errorf("error while finding YANG files from the new root: %v", err)
+		}
+		report, err := ocdiff.NewDiffReport(viper.GetStringSlice("oldp"), viper.GetStringSlice("newp"), oldfiles, newfiles)
 		if err != nil {
 			return err
 		}
@@ -64,8 +73,8 @@ func init() {
 
 	checkCmd.Flags().StringSlice("oldp", []string{}, "search path for old set of YANG files")
 	checkCmd.Flags().StringSlice("newp", []string{}, "search path for new set of YANG files")
-	checkCmd.Flags().StringSlice("oldfiles", []string{}, "comma-separated list of old YANG files")
-	checkCmd.Flags().StringSlice("newfiles", []string{}, "comma-separated list of new YANG files")
-	checkCmd.Flags().Bool("disallowed-incompats", false, "only show disallowed (per semver.org) backwards-incompatible changes. Note that the backwards-incompatible checks are not exhausive.")
+	checkCmd.Flags().StringP("oldroot", "o", "", "Root directory of old OpenConfig YANG files")
+	checkCmd.Flags().StringP("newroot", "n", "", "Root directory of new OpenConfig YANG files")
+	checkCmd.Flags().Bool("disallowed-incompats", false, "only show disallowed (per semver.org) backward-incompatible changes. Note that the backward-incompatible checks are not exhausive.")
 	checkCmd.Flags().Bool("github-comment", false, "Show output suitable for posting in a GitHub comment.")
 }

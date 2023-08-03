@@ -17,28 +17,18 @@ package ocdiff
 import (
 	"flag"
 	"os"
-	"path/filepath"
 	"testing"
 
+	"github.com/openconfig/models-ci/yangutil"
 	"github.com/openconfig/ygot/testutil"
 )
 
 var updateGolden = flag.Bool("update_golden", false, "Update golden files")
 
-func getAllYANGFiles(t *testing.T, path string) []string {
+func getAllYANGFilesTest(t *testing.T, path string) []string {
 	t.Helper()
-	var files []string
-	if err := filepath.Walk(path,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if filepath.Ext(info.Name()) == ".yang" {
-				files = append(files, path)
-			}
-			return nil
-		},
-	); err != nil {
+	files, err := yangutil.GetAllYANGFiles(path)
+	if err != nil {
 		t.Fatal(err)
 	}
 	return files
@@ -75,7 +65,7 @@ func TestDiffReport(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			report, err := NewDiffReport([]string{"testdata/yang/incl"}, []string{"testdata/yang/incl"}, getAllYANGFiles(t, "testdata/yang/old"), getAllYANGFiles(t, "testdata/yang/new"))
+			report, err := NewDiffReport([]string{"testdata/yang/incl"}, []string{"testdata/yang/incl"}, getAllYANGFilesTest(t, "testdata/yang/old"), getAllYANGFilesTest(t, "testdata/yang/new"))
 			if err != nil {
 				t.Fatal(err)
 			}
