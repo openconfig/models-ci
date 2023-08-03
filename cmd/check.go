@@ -47,7 +47,6 @@ to quickly create a Cobra application.`,
 				os.Exit(1)
 			}
 		} else {
-			fmt.Printf("-----------List of all YANG node changes-----------\n")
 			fmt.Printf(report.ReportAll())
 		}
 		return nil
