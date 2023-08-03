@@ -36,7 +36,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
-		report, err := ocdiff.ReportDiff(viper.GetStringSlice("oldp"), viper.GetStringSlice("newp"), viper.GetStringSlice("oldfiles"), viper.GetStringSlice("newfiles"))
+		report, err := ocdiff.NewDiffReport(viper.GetStringSlice("oldp"), viper.GetStringSlice("newp"), viper.GetStringSlice("oldfiles"), viper.GetStringSlice("newfiles"))
 		if err != nil {
 			return err
 		}
