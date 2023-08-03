@@ -43,10 +43,11 @@ to quickly create a Cobra application.`,
 
 		if viper.GetBool("disallowed-incompats") {
 			if out := report.ReportDisallowedIncompats(); out != "" {
-				fmt.Printf("-----------Backward-incompatible changes not covered by version increments per semver.org-----------\n%s", out)
+				fmt.Printf("-----------Breaking changes that need a major version increment (note that this check is not exhaustive)-----------\n%s", out)
 				os.Exit(1)
 			}
 		} else {
+			fmt.Printf("-----------List of all YANG node changes-----------\n")
 			fmt.Printf(report.ReportAll())
 		}
 		return nil

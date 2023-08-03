@@ -9,7 +9,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/openconfig/gnmi v0.0.0-20200508230933-d19cebf5e7be
-	github.com/openconfig/goyang v1.3.1-0.20230802195157-66c4789eced9
+	github.com/openconfig/goyang v1.4.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
