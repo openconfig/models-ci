@@ -43,7 +43,7 @@ to quickly create a Cobra application.`,
 
 		if viper.GetBool("disallowed-incompats") {
 			if out := report.ReportDisallowedIncompats(); out != "" {
-				fmt.Printf("Backward-incompatible changes not covered by version increments per semver.org:\n%s", out)
+				fmt.Printf("-----------Backward-incompatible changes not covered by version increments per semver.org-----------\n%s", out)
 				os.Exit(1)
 			}
 		} else {
