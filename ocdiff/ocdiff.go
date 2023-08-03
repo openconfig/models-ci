@@ -109,7 +109,7 @@ func (r *DiffReport) Report(options ...Option) string {
 	r.Sort()
 	fmtstr := "%s %s: %s (%s)\n"
 	if opts.githubComment {
-		fmtstr = "%s %s: `%s`\n\t(%s)\n"
+		fmtstr = "%s %s: `%s`\n* (%s)\n\n"
 	}
 	var b strings.Builder
 	for _, del := range r.deletedNodes {
@@ -126,10 +126,12 @@ func (r *DiffReport) Report(options ...Option) string {
 		}
 		if len(upd.incompatComments) > 0 {
 			fmtstr := "%s updated: %s: %s (%s)\n"
+			comments := strings.Join(upd.incompatComments, "\n\t")
 			if opts.githubComment {
-				fmtstr = "%s updated: `%s`\n\t%s\n\t(%s)\n"
+				fmtstr = "%s updated: `%s`\n* %s\n* (%s)\n\n"
+				comments = strings.Join(upd.incompatComments, "\n* ")
 			}
-			b.WriteString(fmt.Sprintf(fmtstr, nodeTypeDesc, upd.path, strings.Join(upd.incompatComments, "\n\t"), upd.versionChangeDesc))
+			b.WriteString(fmt.Sprintf(fmtstr, nodeTypeDesc, upd.path, comments, upd.versionChangeDesc))
 		} else {
 			b.WriteString(fmt.Sprintf(fmtstr, nodeTypeDesc, "updated", upd.path, upd.versionChangeDesc))
 		}
