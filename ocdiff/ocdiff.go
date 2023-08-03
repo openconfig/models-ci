@@ -43,19 +43,21 @@ func ReportDiff(oldpaths, newpaths, oldfiles, newfiles []string) (*DiffReport, e
 }
 
 type YANGNode struct {
-	path          string
-	schema        *yang.Entry
-	allowIncompat bool
+	path                          string
+	schema                        *yang.Entry
+	allowIncompat                 bool
+	allowOrDisallowIncompatReason string
 }
 
 type YANGNodeUpdate struct {
-	path             string
-	oldSchema        *yang.Entry
-	newSchema        *yang.Entry
-	allowIncompat    bool
-	incompatComments []string
-	oldVersion       *semver.Version
-	NewVersion       *semver.Version
+	path                          string
+	oldSchema                     *yang.Entry
+	newSchema                     *yang.Entry
+	allowIncompat                 bool
+	allowOrDisallowIncompatReason string
+	incompatComments              []string
+	oldVersion                    *semver.Version
+	NewVersion                    *semver.Version
 }
 
 type DiffReport struct {
@@ -72,12 +74,12 @@ func (r *DiffReport) ReportDisallowedIncompats() string {
 	var b strings.Builder
 	for _, del := range r.DeletedNodes {
 		if !del.allowIncompat && (del.schema.IsLeaf() || del.schema.IsLeafList()) {
-			b.WriteString(fmt.Sprintf("leaf deleted: %s\n", del.schema.Path()))
+			b.WriteString(fmt.Sprintf("leaf deleted: %s (%s)\n", del.schema.Path(), del.allowOrDisallowIncompatReason))
 		}
 	}
 	for _, upd := range r.UpdatedNodes {
 		if !upd.allowIncompat && len(upd.incompatComments) > 0 {
-			b.WriteString(fmt.Sprintf("node updated %s: %s\n", upd.oldSchema.Path(), strings.Join(upd.incompatComments, "\n\t")))
+			b.WriteString(fmt.Sprintf("node updated %s (%s): %s\n", upd.oldSchema.Path(), upd.allowOrDisallowIncompatReason, strings.Join(upd.incompatComments, "\n\t")))
 		}
 	}
 	return b.String()
@@ -121,14 +123,32 @@ func getKind(e *yang.Entry) string {
 	}
 }
 
-func (r *DiffReport) entryAllowsIncompat(e *yang.Entry) bool {
-	moduleName := belongingModule(yang.RootNode(e.Node))
-	oldVersion, newVersion := r.OldModuleVersions[moduleName], r.NewModuleVersions[moduleName]
-	if oldVersion == nil || newVersion == nil {
-		// This happens if the openconfig-version is not found (e.g. in IETF modules).
-		return true
+func definingModuleName(e *yang.Entry) string {
+	if definingModule := yang.RootNode(e.Node); definingModule != nil {
+		return definingModule.Name
 	}
-	return oldVersion.Major() == 0 || oldVersion.Major() > newVersion.Major()
+	return ""
+}
+
+func (r *DiffReport) entryAllowsIncompat(e *yang.Entry) (bool, string) {
+	moduleName := definingModuleName(e)
+	//moduleName := belongingModule(yang.RootNode(e.Node))
+	oldVersion, newVersion := r.OldModuleVersions[moduleName], r.NewModuleVersions[moduleName]
+
+	switch {
+	case oldVersion == nil, newVersion == nil:
+		// This can happen if the openconfig-version is not found (e.g. in IETF modules).
+		//
+		// In other cases, we will just be conservative and allow the
+		// incompatibility since we don't want to block the PR.
+		return true, fmt.Sprintf("%q: oldVersion (%v) or newVersion (%v) is nil", moduleName, oldVersion, newVersion)
+	case oldVersion.Major() == 0:
+		return true, fmt.Sprintf("%q: oldVersion is at version 0 (%v)", moduleName, oldVersion)
+	case newVersion.Major() > oldVersion.Major():
+		return true, fmt.Sprintf("%q: newVersion incremented major version (%v -> %v)", moduleName, oldVersion, newVersion)
+	default:
+		return false, fmt.Sprintf("%q: oldVersion (%v) -> newVersion (%v) does not allow for backwards-incompatible changes", moduleName, oldVersion, newVersion)
+	}
 }
 
 func (r *DiffReport) addPair(o *yang.Entry, n *yang.Entry) error {
@@ -140,17 +160,21 @@ func (r *DiffReport) addPair(o *yang.Entry, n *yang.Entry) error {
 			path:   n.Path(),
 		})
 	case n == nil:
+		allowIncompat, allowOrDisallowIncompatReason := r.entryAllowsIncompat(o)
 		r.DeletedNodes = append(r.DeletedNodes, &YANGNode{
-			schema:        o,
-			path:          o.Path(),
-			allowIncompat: r.entryAllowsIncompat(o),
+			schema:                        o,
+			path:                          o.Path(),
+			allowIncompat:                 allowIncompat,
+			allowOrDisallowIncompatReason: allowOrDisallowIncompatReason,
 		})
 	default:
+		allowIncompat, allowOrDisallowIncompatReason := r.entryAllowsIncompat(o)
 		upd := &YANGNodeUpdate{
-			oldSchema:     o,
-			newSchema:     n,
-			path:          o.Path(),
-			allowIncompat: r.entryAllowsIncompat(o),
+			oldSchema:                     o,
+			newSchema:                     n,
+			path:                          o.Path(),
+			allowIncompat:                 allowIncompat,
+			allowOrDisallowIncompatReason: allowOrDisallowIncompatReason,
 		}
 		updated := false
 		if oldKind, newKind := getKind(o), getKind(n); oldKind != newKind {
