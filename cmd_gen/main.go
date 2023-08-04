@@ -122,7 +122,7 @@ var (
 	// GCB script, which together create the running environment for the
 	// generated validator script.
 	scriptTemplates = map[string]*scriptSpec{
-		"pyang": &scriptSpec{
+		"pyang": {
 			headerTemplate: mustTemplate("pyang-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -138,7 +138,7 @@ script_options=(
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo pyang "${options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
@@ -147,25 +147,27 @@ function run-dir() {
 			perModelTemplate: mustTemplate("pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"oc-pyang": &scriptSpec{
+		"oc-pyang": {
 			headerTemplate: mustTemplate("oc-pyang-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
 `+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
-  -p {{ .ModelRoot }}
-  -p {{ .RepoRoot }}/third_party/ietf
   --openconfig
   --ignore-error=OC_RELATIVE_PATH
+  -p {{ .ModelRoot }}
+  -p {{ .RepoRoot }}/third_party/ietf
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
+  local cmd_display_options=( --plugindir '$OCPYANG_PLUGIN_DIR' "${options[@]}" )
+  local options=( --plugindir "$OCPYANG_PLUGIN_DIR" "${options[@]}" )
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  echo pyang "${cmd_display_options[@]}" "$@" > ${prefix}cmd
   if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
@@ -174,26 +176,33 @@ function run-dir() {
 			perModelTemplate: mustTemplate("oc-pyang", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"pyangbind": &scriptSpec{
+		"pyangbind": {
 			headerTemplate: mustTemplate("pyangbind-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
 `+"{{`"+util.PYANG_MSG_TEMPLATE_STRING+"`}}"+`
 cmd="$@"
 options=(
+  -f pybind
   -p {{ .ModelRoot }}
   -p {{ .RepoRoot }}/third_party/ietf
-  -f pybind
 )
 script_options=(
   --msg-template "$PYANG_MSG_TEMPLATE"
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  local options=( -o "$1"."$2".binding.py "${options[@]}" )
+  local output_file="$1"."$2".binding.py
+  local cmd_display_options=( --plugindir '$PYANGBIND_PLUGIN_DIR' -o "${output_file}" "${options[@]}" )
+  local options=( --plugindir "$PYANGBIND_PLUGIN_DIR" -o "${output_file}" "${options[@]}" )
   shift 2
-  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
-  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+  echo pyang "${cmd_display_options[@]}" "$@" > ${prefix}cmd
+  status=0
+  $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
+  if [[ $status -eq "0" ]]; then
+    python "${output_file}" &>> ${prefix}pass || status=1
+  fi
+  if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }
@@ -201,7 +210,7 @@ function run-dir() {
 			perModelTemplate: mustTemplate("pyangbind", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"goyang-ygot": &scriptSpec{
+		"goyang-ygot": {
 			headerTemplate: mustTemplate("goyang-ygot-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -226,8 +235,9 @@ function run-dir() {
   status=0
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
   cd "$outdir"
-  go get &>> ${prefix}pass || status=1
   if [[ $status -eq "0" ]]; then
+    go mod init &>> ${prefix}pass || status=1
+    go mod tidy &>> ${prefix}pass || status=1
     go build &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
@@ -238,7 +248,7 @@ function run-dir() {
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"yanglint": &scriptSpec{
+		"yanglint": {
 			headerTemplate: mustTemplate("yanglint-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -261,7 +271,7 @@ function run-dir() {
 			perModelTemplate: mustTemplate("yanglint", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
-		"confd": &scriptSpec{
+		"confd": {
 			headerTemplate: mustTemplate("confd-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -275,7 +285,7 @@ if [[ $status -eq "1" ]]; then
 fi
 `),
 		},
-		"misc-checks": &scriptSpec{
+		"misc-checks": {
 			headerTemplate: mustTemplate("misc-checks-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
@@ -341,6 +351,7 @@ type labelPoster interface {
 //     will be run only on a single model as specified in the .spec.yml file.
 //  2. Thus, a validation command and result is provided for each model.
 //  3. A file indicating pass/fail is output for each model into the given result directory.
+//
 // Files names follow the "modelDir==model==status" format with no file extensions.
 // The local flag indicates to run this as a helper to generate the script,
 // rather than running it within GCB.
@@ -461,7 +472,7 @@ func main() {
 	// If it's a push on master, just upload badge for normal validators as the only action.
 	if prNumber == 0 {
 		if branchName != "master" {
-			log.Fatalf("cmd_gen: There is no action to take for a non-master branch push, please re-examine your push triggers")
+			log.Fatalf("cmd_gen: pr-number not supplied as a flag to the build. Try re-running (by commenting \"/gcbrun\" on the GitHub PR) to see whether the $_PR_NUMBER substitution variable for Google Cloud Build gets passed into the build. If this branch is not associated with a PR, then it is inferred that this is a non-master branch push action, and thus there is no CI action that is expected, and in this case please re-examine your push triggers.")
 		}
 		pushToMaster = true
 	}

@@ -1,4 +1,18 @@
 #!/bin/bash
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 
 ########################## SETUP #############################
 ROOT_DIR=/workspace
@@ -19,10 +33,13 @@ setup() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
 
-  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO
+  git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO -b $_OC_PYANG_VERSION
+  cd $OCPYANG_REPO
+  echo -n "Running at github.com/openconfig/oc-pyang branch " >> $OUTFILE
+  git rev-parse --short HEAD >> $OUTFILE
+  cd ..
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
-  pip3 install enum34
-  pip3 install jinja2
+  pip3 install --no-cache-dir -r $OCPYANG_REPO/requirements.txt
   pip3 install setuptools
   pip3 install pyang
 }
@@ -48,7 +65,7 @@ if [ $? -ne 0 ]; then
   exit 0
 fi
 
-if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang --plugindir $OCPYANG_PLUGIN_DIR > $OUTFILE 2> $FAILFILE; then
+if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang >> $OUTFILE 2> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi

@@ -1,3 +1,5 @@
-openconfig-mpls.yang: openconfig-version:"2.2.5" latest-revision-version:"2.2.5"
-openconfig-acl.yang: openconfig-version:"1.2.2" latest-revision-version:"1.2.2"
+openconfig-mpls.yang: belonging-module:"openconfig-mpls" openconfig-version:"2.2.5" latest-revision-version:"2.2.5"
+openconfig-mpls-submodule.yang: belonging-module:"openconfig-mpls" openconfig-version:"2.3.4" latest-revision-version:"2.3.4"
+openconfig-mpls-submodule2.yang: belonging-module:"openconfig-mpls" openconfig-version:"2.3.2" latest-revision-version:"2.3.2"
+openconfig-acl.yang: belonging-module:"openconfig-acl" openconfig-version:"1.2.2" latest-revision-version:"1.2.2"
 changed-version-to-noversion.yang:

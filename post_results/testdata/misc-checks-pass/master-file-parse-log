@@ -1,9 +1,12 @@
-openconfig-acl.yang: openconfig-version:"1.2.2"
-openconfig-packet-match.yang: latest-revision-version:"1.1.2" openconfig-version:"1.1.2"
-openconfig-mpls-static.yang: openconfig-version:"1.0.0"
-openconfig-deleted.yang: openconfig-version:"1.0.0"
-openconfig-deleted-2.yang:
+openconfig-acl.yang: openconfig-version:"1.2.2" belonging-module:"openconfig-acl"
+openconfig-acl-submodule.yang: openconfig-version:"1.1.3" belonging-module:"openconfig-acl"
+openconfig-packet-match.yang: latest-revision-version:"1.1.2" openconfig-version:"1.1.2" belonging-module:"openconfig-packet-match"
+openconfig-interface.yang: belonging-module:"openconfig-interface" openconfig-version:"1.1.3" latest-revision-version:"1.1.3"
+openconfig-interface-submodule.yang: belonging-module:"openconfig-interface-submodule" openconfig-version:"0.5.0" latest-revision-version:"0.5.0"
+openconfig-mpls-static.yang: openconfig-version:"1.0.0" belonging-module:"openconfig-mpls-static"
+openconfig-deleted.yang: openconfig-version:"1.0.0" belonging-module:"openconfig-deleted"
+openconfig-deleted-2.yang: belonging-module:"openconfig-deleted-2"
 
-changed-noversion-to-noversion.yang:
-changed-noversion-to-version.yang:
-unchanged-noversion.yang:
+changed-noversion-to-noversion.yang: belonging-module:"changed-noversion-to-noversion.yang"
+changed-noversion-to-version.yang: belonging-module:"changed-noversion-to-version"
+unchanged-noversion.yang: belonging-module:"unchanged-noversion"

@@ -3,11 +3,13 @@ module openconfig-single-extension {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/telemetry-types";
+  namespace "http://openconfig.net/yang/single-extension";
 
-  prefix "oc-telemetry-types";
+  prefix "oc-single-extension";
 
   import openconfig-extensions { prefix oc-ext; }
+
+  include openconfig-single-extension-submodule;
 
   oc-ext:openconfig-version "0.4.2";
 

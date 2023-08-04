@@ -41,6 +41,8 @@ const (
 	IgnorePyangWarnings = true
 	// IgnoreConfdWarnings ignores all warnings from ConfD.
 	IgnoreConfdWarnings = false
+	// bucketName is the Google storage bucket name.
+	bucketName = "openconfig"
 )
 
 var (
@@ -59,7 +61,7 @@ var (
 	prNumber int
 
 	// badgeCmdTemplate is the badge creation and upload command generated for pushes to the master branch.
-	badgeCmdTemplate = mustTemplate("badgeCmd", `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/{{ .RepoPrefix }}:
+	badgeCmdTemplate = mustTemplate("badgeCmd", fmt.Sprintf(`REMOTE_PATH_PFX=gs://%s/compatibility-badges/{{ .RepoPrefix }}:
 RESULTSDIR={{ .ResultsDir }}
 upload-public-file() {
 	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
@@ -69,7 +71,7 @@ upload-public-file() {
 badge "{{ .Status }}" "{{ .ValidatorDesc }}" :{{ .Colour }} > $RESULTSDIR/{{ .ValidatorAndVersion }}.svg
 upload-public-file {{ .ValidatorAndVersion }}.svg
 upload-public-file {{ .ValidatorAndVersion }}.html
-`)
+`, bucketName))
 )
 
 // mustTemplate generates a template.Template for a particular named source template
@@ -193,9 +195,7 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 				value = value[1 : len(value)-1] // Remove enclosing quotes.
 			}
 			switch name {
-			case "openconfig-version":
-				fallthrough
-			case "latest-revision-version":
+			case "openconfig-version", "belonging-module", "latest-revision-version":
 				if masterBranch {
 					name = "master-" + name
 				}
@@ -212,101 +212,64 @@ func readGoyangVersionsLog(logPath string, masterBranch bool, fileProperties map
 // according to semantic versioning rules.
 // Note that any increase is fine, including jumps, e.g. 1.0.0 -> 1.0.2.
 // If there isn't an increase, a descriptive error message is returned.
-func checkSemverIncrease(oldVersion, newVersion string) error {
+func checkSemverIncrease(oldVersion, newVersion, versionStringName string) (*semver.Version, *semver.Version, error) {
 	newV, err := semver.StrictNewVersion(newVersion)
 	if err != nil {
-		return fmt.Errorf("invalid version string: %q", newVersion)
+		return nil, nil, fmt.Errorf("invalid version string: %q", newVersion)
 	}
 	oldV, err := semver.StrictNewVersion(oldVersion)
 	switch {
 	case err != nil:
-		return fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
+		return nil, nil, fmt.Errorf("unexpected error, base branch version string unparseable: %q", oldVersion)
 	case newV.Equal(oldV):
-		return fmt.Errorf("file updated but PR version not updated: %q", oldVersion)
+		return nil, nil, fmt.Errorf("file updated but %s string not updated: %q", versionStringName, oldVersion)
 	case !newV.GreaterThan(oldV):
-		return fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
+		return nil, nil, fmt.Errorf("new semantic version not valid, old version: %q, new version: %q", oldVersion, newVersion)
 	default:
-		return nil
+		return oldV, newV, nil
 	}
 }
 
-// processMiscChecksOutput takes the raw result output from the misc-checks
-// results directory and returns its formatted report and pass/fail status.
-func processMiscChecksOutput(resultsDir string) (string, bool, error) {
-	fileProperties := map[string]map[string]string{}
-	changedFiles, err := readYangFilesList(filepath.Join(resultsDir, "changed-files.txt"))
-	if err != nil {
-		return "", false, err
-	}
-	for _, file := range changedFiles {
-		if _, ok := fileProperties[file]; !ok {
-			fileProperties[file] = map[string]string{}
-		}
-		fileProperties[file]["changed"] = "true"
-	}
-	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "pr-file-parse-log"), false, fileProperties); err != nil {
-		return "", false, err
-	}
-	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "master-file-parse-log"), true, fileProperties); err != nil {
-		return "", false, err
-	}
+type fileAndVersion struct {
+	name    string
+	version *semver.Version
+}
 
-	var ocVersionViolations []string
-	ocVersionChangedCount := 0
-	var reachabilityViolations []string
-	filesReachedCount := 0
-	// Only look at the PR's files as they might be different from the master's files.
-	allNonEmptyPRFiles, err := readYangFilesList(filepath.Join(resultsDir, "all-non-empty-files.txt"))
-	if err != nil {
-		return "", false, err
+// versionGroupViolationsHTML returns the version violations where a group of
+// module/submodule files don't have matching versions.
+func versionGroupViolationsHTML(moduleFileGroups map[string][]fileAndVersion) []string {
+	var violations []string
+
+	var modules []string
+	for m := range moduleFileGroups {
+		modules = append(modules, m)
 	}
-	for _, file := range allNonEmptyPRFiles {
-		properties, ok := fileProperties[file]
-
-		// Reachability check
-		if !ok || properties["reachable"] != "true" {
-			reachabilityViolations = append(reachabilityViolations, sprintLineHTML("%s: file not used by any .spec.yml build.", file))
-			// If the file was not reached, then its other
-			// parameters would not have been parsed by goyang, so
-			// simply skip the rest of the checks.
-			continue
-		}
-		filesReachedCount += 1
-
-		// openconfig-version update check
-		ocVersion, hasVersion := properties["openconfig-version"]
-		masterOcVersion, hadVersion := properties["master-openconfig-version"]
-		switch {
-		case properties["changed"] != "true":
-			// We assume the versioning is correct without change.
-		case hadVersion && hasVersion:
-			if err := checkSemverIncrease(masterOcVersion, ocVersion); err != nil {
-				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
-			} else {
-				ocVersionChangedCount += 1
+	sort.Strings(modules)
+	for _, moduleName := range modules {
+		latestVersion := semver.MustParse("0.0.0")
+		latestVersionModule := ""
+		for _, nameAndVersion := range moduleFileGroups[moduleName] {
+			if nameAndVersion.version.GreaterThan(latestVersion) {
+				latestVersion = nameAndVersion.version
+				latestVersionModule = nameAndVersion.name
 			}
-		case hadVersion && !hasVersion:
-			ocVersionViolations = append(ocVersionViolations, sprintLineHTML("%s: openconfig-version was removed", file))
-		default: // If didn't have version before, any new version is accepted.
-			ocVersionChangedCount += 1
+		}
+		latestVersionString := latestVersion.Original()
+
+		var violation strings.Builder
+		for _, nameAndVersion := range moduleFileGroups[moduleName] {
+			if version := nameAndVersion.version.Original(); version != latestVersionString {
+				if violation.Len() != 0 {
+					violation.WriteString(",")
+				}
+				violation.WriteString(fmt.Sprintf(" <b>%s</b> (%s)", nameAndVersion.name, version))
+			}
+		}
+		if violation.Len() != 0 {
+			violations = append(violations, sprintLineHTML("module set %s is at <b>%s</b> (%s), non-matching files:%s", moduleName, latestVersionString, latestVersionModule, violation.String()))
 		}
 	}
-
-	// Compute HTML string and pass/fail status.
-	var out strings.Builder
-	var pass = true
-	appendViolationOut := func(desc string, violations []string, passString string) {
-		if len(violations) == 0 {
-			out.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(true), desc, passString))
-		} else {
-			out.WriteString(sprintSummaryHTML(commonci.BoolStatusToString(false), desc, strings.Join(violations, "")))
-			pass = false
-		}
-	}
-	appendViolationOut("openconfig-version update check", ocVersionViolations, fmt.Sprintf("%d file(s) correctly updated.\n", ocVersionChangedCount))
-	appendViolationOut(".spec.yml build reachability check", reachabilityViolations, fmt.Sprintf("%d files reached by build rules.\n", filesReachedCount))
-
-	return out.String(), pass, nil
+	return violations
 }
 
 // processStandardOutput takes raw pyang/confd output and transforms it to an
@@ -391,6 +354,12 @@ func processPyangOutput(rawOut string, pass, noWarnings bool) (string, error) {
 	return out.String(), nil
 }
 
+// userfyBashCommand changes the bash command displayed to the user to be
+// something that's easier to use.
+func userfyBashCommand(cmd string) string {
+	return strings.NewReplacer("/workspace/", "$OC_WORKSPACE/", "$OCPYANG_PLUGIN_DIR", "$GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins", "$PYANGBIND_PLUGIN_DIR", "$GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin").Replace(cmd)
+}
+
 // parseModelResultsHTML transforms the output files of the validator script into HTML
 // to be displayed on GitHub.
 // If condensed=true, then only errors are provided.
@@ -442,7 +411,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 				// order, ${prefix}cmd should be walked first,
 				// such that ${prefix}pass or ${prefix}fail
 				// will have it ready to display to the user.
-				bashCommand = outString
+				bashCommand = userfyBashCommand(outString)
 				bashCommandModelDirName = modelDirName
 				bashCommandModelName = modelName
 				return nil
@@ -478,7 +447,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 				// Display bash command that produced the validator result if it exists.
 				var bashCommandSummary string
 				if bashCommand != "" && bashCommandModelDirName == modelDirName && bashCommandModelName == modelName {
-					bashCommandSummary = sprintSummaryHTML("cmd", "bash command", "<pre>%s</pre>", bashCommand)
+					bashCommandSummary = fmt.Sprintf("%s&nbsp; %s\n<pre>%s</pre>\n", commonci.Emoji("cmd"), "bash command", bashCommand)
 				}
 				// Also display the error string.
 				modelHTML.WriteString(sprintSummaryHTML(status, modelName, bashCommandSummary+outString))
@@ -500,17 +469,24 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 // getResult parses the results for the given validator and its results
 // directory, and returns the string to be put in a GitHub gist comment as well
 // as the status (i.e. pass or fail).
+//
+// It also returns a newline-separated string of the list of all YANG files
+// that have their major versions updated, which is empty if there are no major
+// version changes.
+//
 // If condensed=true, then only errors are provided.
-func getResult(validatorId, resultsDir string, condensed bool) (string, bool, error) {
+func getResult(validatorId, resultsDir string, condensed bool) (string, bool, versionRecordSlice, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", false, fmt.Errorf("validator %q not found!", validatorId)
+		return "", false, nil, fmt.Errorf("validator %q not found!", validatorId)
 	}
 
 	// outString is parsed stdout.
 	var outString string
 	// pass is the overall validation result.
 	var pass bool
+	// versionRecords contains all information regarding YANG version changes.
+	var versionRecords versionRecordSlice
 
 	failFileBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
 	// existent fail file == failure.
@@ -529,7 +505,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, er
 		}
 		pass = false
 	case validator.IsPerModel && validatorId == "misc-checks":
-		outString, pass, err = processMiscChecksOutput(resultsDir)
+		outString, pass, versionRecords, err = processMiscChecksOutput(resultsDir)
 	case validator.IsPerModel:
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir, condensed)
 		if pass && condensed {
@@ -540,7 +516,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, er
 		pass = true
 	}
 
-	return outString, pass, err
+	return outString, pass, versionRecords, err
 }
 
 // WriteBadgeUploadCmdFile writes a bash script into resultsDir that posts a
@@ -657,7 +633,7 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		resultsDir := commonci.ValidatorResultsDir(vv.ValidatorId, vv.Version)
 
 		// Post parsed test results as a gist comment.
-		testResultString, pass, err := getResult(vv.ValidatorId, resultsDir, false)
+		testResultString, pass, _, err := getResult(vv.ValidatorId, resultsDir, false)
 		if err != nil {
 			return fmt.Errorf("postResult: couldn't parse results for <%s>@<%s> in resultsDir %q: %v", vv.ValidatorId, vv.Version, resultsDir, err)
 		}
@@ -665,14 +641,37 @@ func postCompatibilityReport(validatorAndVersions []commonci.ValidatorAndVersion
 		gistTitle := fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i])
 		id, err := g.AddGistComment(gistID, gistTitle, testResultString)
 		if err != nil {
-			fmt.Errorf("postResult: could not add gist comment: %v", err)
+			return fmt.Errorf("postResult: could not add gist comment: %v", err)
 		}
 
 		commentBuilder.WriteString(fmt.Sprintf("%s [%s](%s#gistcomment-%d)\n", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDescs[i], gistURL, id))
 	}
 	comment := commentBuilder.String()
-	if err := g.AddOrEditPRComment("Compatibility Report for commit", &comment, owner, repo, prNumber); err != nil {
+	if err := g.AddEditOrDeletePRComment("Compatibility Report for commit", &comment, owner, repo, prNumber); err != nil {
 		return fmt.Errorf("postCompatibilityReport: couldn't post comment: %v", err)
+	}
+	return nil
+}
+
+// postBreakingChangeLabel posts label and information on whether the PR
+// contains breaking changes that necessitate a repository version bump.
+func postBreakingChangeLabel(g *commonci.GithubRequestHandler, versionRecords versionRecordSlice) error {
+	if versionRecords.hasBreaking() {
+		if err := g.PostLabel("breaking", "FF0000", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post label: %v", err)
+		}
+		g.DeleteLabel("non-breaking", owner, repo, prNumber)
+	} else {
+		if err := g.PostLabel("non-breaking", "00FF00", owner, repo, prNumber); err != nil {
+			return fmt.Errorf("couldn't post label: %v", err)
+		}
+		// Don't error out on error since it's possible the label doesn't exist.
+		g.DeleteLabel("breaking", owner, repo, prNumber)
+	}
+	// NOTE: "ajor" is not a typo.
+	majorVersionChangesComment := versionRecords.MajorVersionChanges()
+	if err := g.AddEditOrDeletePRComment("ajor YANG version changes in commit", &majorVersionChangesComment, owner, repo, prNumber); err != nil {
+		return fmt.Errorf("couldn't post major YANG version changes comment: %v", err)
 	}
 	return nil
 }
@@ -719,7 +718,7 @@ func postResult(validatorId, version string) error {
 	if err != nil {
 		return fmt.Errorf("postResult: %v", err)
 	}
-	testResultString, pass, err := getResult(validatorId, resultsDir, false)
+	testResultString, pass, versionRecords, err := getResult(validatorId, resultsDir, false)
 	if err != nil {
 		return fmt.Errorf("postResult: couldn't parse results: %v", err)
 	}
@@ -772,9 +771,15 @@ func postResult(validatorId, version string) error {
 		return fmt.Errorf("postResult: couldn't create gist: %v", err)
 	}
 
+	if !pushToMaster && validatorId == "misc-checks" {
+		if err := postBreakingChangeLabel(g, versionRecords); err != nil {
+			return err
+		}
+	}
+
 	// Post parsed test results as a gist comment.
 	if _, err := g.AddGistComment(gistID, fmt.Sprintf("%s %s", commonci.Emoji(commonci.BoolStatusToString(pass)), validatorDesc), testResultString); err != nil {
-		fmt.Errorf("postResult: could not add gist comment: %v", err)
+		return fmt.Errorf("postResult: could not add gist comment: %v", err)
 	}
 
 	prUpdate := &commonci.GithubPRUpdate{

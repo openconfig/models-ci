@@ -1,0 +1,11 @@
+submodule openconfig-single-extension-submodule {
+
+  yang-version "1";
+
+  belongs-to openconfig-single-extension { prefix oc-single-extension; }
+
+  import openconfig-extensions { prefix oc-ext; }
+
+  oc-ext:openconfig-version "0.4.3";
+
+}

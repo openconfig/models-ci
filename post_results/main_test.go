@@ -171,7 +171,7 @@ func TestCheckSemverIncrease(t *testing.T) {
 		desc:          "no change",
 		inOldVersion:  "1.0.1",
 		inNewVersion:  "1.0.1",
-		wantErrSubstr: "file updated but PR version not updated",
+		wantErrSubstr: "file updated but test-version string not updated",
 	}, {
 		desc:          "decrease",
 		inOldVersion:  "1.0.1",
@@ -191,9 +191,73 @@ func TestCheckSemverIncrease(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion)
+			oldver, newver, err := checkSemverIncrease(tt.inOldVersion, tt.inNewVersion, "test-version")
 			if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 				t.Fatalf("did not get expected error, %s", diff)
+			}
+			if err == nil {
+				if got, want := oldver.String(), tt.inOldVersion; got != want {
+					t.Fatalf("old version: got %s, want %s", got, want)
+				}
+				if got, want := newver.String(), tt.inNewVersion; got != want {
+					t.Fatalf("old version: got %s, want %s", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestVersionRecords(t *testing.T) {
+	tests := []struct {
+		desc             string
+		inVersionRecords versionRecordSlice
+		wantHasBreaking  bool
+	}{{
+		desc: "has breaking",
+		inVersionRecords: versionRecordSlice{{
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 0,
+			NewMajorVersion: 1,
+			OldVersion:      "0.5.0",
+			NewVersion:      "1.0.0",
+		}, {
+			File:            "openconfig-interface.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 2,
+			OldVersion:      "1.1.3",
+			NewVersion:      "2.0.0",
+		}},
+		wantHasBreaking: true,
+	}, {
+		desc: "non-breaking",
+		inVersionRecords: versionRecordSlice{{
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 0,
+			NewMajorVersion: 1,
+			OldVersion:      "0.5.0",
+			NewVersion:      "1.0.0",
+		}},
+		wantHasBreaking: false,
+	}, {
+		desc: "non-breaking",
+		inVersionRecords: versionRecordSlice{{
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.5.0",
+			NewVersion:      "1.6.0",
+		}},
+		wantHasBreaking: false,
+	}, {
+		desc:             "empty",
+		inVersionRecords: nil,
+		wantHasBreaking:  false,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			if gotHasBreaking, want := tt.inVersionRecords.hasBreaking(), tt.wantHasBreaking; gotHasBreaking != want {
+				t.Errorf("gotHasBreaking %v, want %v", gotHasBreaking, want)
 			}
 		})
 	}
@@ -203,14 +267,15 @@ func TestGetResult(t *testing.T) {
 	modelRoot = "/workspace/release/yang"
 
 	tests := []struct {
-		name                 string
-		inValidatorResultDir string
-		inValidatorId        string
-		wantPass             bool
-		wantOut              string
-		wantCondensedOut     string
-		wantCondensedOutSame bool
-		wantErrSubstr        string
+		name                   string
+		inValidatorResultDir   string
+		inValidatorId          string
+		wantPass               bool
+		wantOut                string
+		wantCondensedOut       string
+		wantCondensedOutSame   bool
+		wantVersionRecordSlice versionRecordSlice
+		wantErrSubstr          string
 	}{{
 		name:                 "basic pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
@@ -220,10 +285,12 @@ func TestGetResult(t *testing.T) {
   <summary>&#x2705;&nbsp; acl</summary>
 <details>
   <summary>&#x2705;&nbsp; openconfig-acl</summary>
-<details>
-  <summary>&#x1F4B2;&nbsp; bash command</summary>
+&#x1F4B2;&nbsp; bash command
 <pre>foo command
-</pre></details>
+$OC_WORKSPACE/foo/bar
+$GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins
+$GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin
+</pre>
 Passed.
 </details>
 </details>
@@ -263,10 +330,12 @@ Test failed with no stderr output.
   <summary>&#x2705;&nbsp; acl</summary>
 <details>
   <summary>&#x2705;&nbsp; openconfig-acl</summary>
-<details>
-  <summary>&#x1F4B2;&nbsp; bash command</summary>
+&#x1F4B2;&nbsp; bash command
 <pre>foo command
-</pre></details>
+$OC_WORKSPACE/foo/bar
+$GOPATH/src/github.com/openconfig/oc-pyang/openconfig_pyang/plugins
+$GOPATH/src/github.com/robshakir/pyangbind/pyangbind/plugin
+</pre>
 Passed.
 </details>
 </details>
@@ -450,14 +519,48 @@ Failed.
 		inValidatorResultDir: "testdata/misc-checks-pass",
 		inValidatorId:        "misc-checks",
 		wantPass:             true,
+		wantVersionRecordSlice: versionRecordSlice{{
+			File:            "openconfig-acl-submodule.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.1.3",
+			NewVersion:      "1.2.3",
+		}, {
+			File:            "openconfig-acl.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.2.2",
+			NewVersion:      "1.2.3",
+		}, {
+			File:            "openconfig-interface-submodule.yang",
+			OldMajorVersion: 0,
+			NewMajorVersion: 1,
+			OldVersion:      "0.5.0",
+			NewVersion:      "1.0.0",
+		}, {
+			File:            "openconfig-interface.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 2,
+			OldVersion:      "1.1.3",
+			NewVersion:      "2.0.0",
+		}, {
+			File:            "openconfig-packet-match.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 1,
+			OldVersion:      "1.1.2",
+			NewVersion:      "1.2.0",
+		}},
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
-6 file(s) correctly updated.
+9 file(s) correctly updated.
 </details>
 <details>
   <summary>&#x2705;&nbsp; .spec.yml build reachability check</summary>
-8 files reached by build rules.
+11 files reached by build rules.
 </details>
+<details>
+  <summary>&#x2705;&nbsp; submodule versions must match the belonging module's version</summary>
+7 module/submodule file groups have matching versions</details>
 `,
 		wantCondensedOutSame: true,
 	}, {
@@ -468,7 +571,7 @@ Failed.
 		wantOut: `<details>
   <summary>&#x26D4;&nbsp; openconfig-version update check</summary>
   <li>changed-version-to-noversion.yang: openconfig-version was removed</li>
-  <li>openconfig-acl.yang: file updated but PR version not updated: "1.2.2"</li>
+  <li>openconfig-acl.yang: file updated but openconfig-version string not updated: "1.2.2"</li>
   <li>openconfig-mpls.yang: new semantic version not valid, old version: "2.3.4", new version: "2.2.5"</li>
 </details>
 <details>
@@ -478,6 +581,10 @@ Failed.
   <li>changed-version-to-unreached.yang: file not used by any .spec.yml build.</li>
   <li>unchanged-unreached.yang: file not used by any .spec.yml build.</li>
 </details>
+<details>
+  <summary>&#x26D4;&nbsp; submodule versions must match the belonging module's version</summary>
+  <li>module set openconfig-mpls is at <b>2.3.4</b> (openconfig-mpls-submodule.yang), non-matching files: <b>openconfig-mpls-submodule2.yang</b> (2.3.2), <b>openconfig-mpls.yang</b> (2.2.5)</li>
+</details>
 `,
 		wantCondensedOutSame: true,
 	}}
@@ -485,7 +592,7 @@ Failed.
 	for _, tt := range tests {
 		for _, condensed := range []bool{false, true} {
 			t.Run(fmt.Sprintf(tt.name+"@condensed=%v", condensed), func(t *testing.T) {
-				gotOut, gotPass, err := getResult(tt.inValidatorId, tt.inValidatorResultDir, condensed)
+				gotOut, gotPass, versionRecords, err := getResult(tt.inValidatorId, tt.inValidatorResultDir, condensed)
 				if err != nil {
 					if diff := errdiff.Substring(err, tt.wantErrSubstr); diff != "" {
 						t.Fatalf("did not get expected error, %s", diff)
@@ -494,6 +601,9 @@ Failed.
 				}
 				if gotPass != tt.wantPass {
 					t.Errorf("gotPass %v, want %v", gotPass, tt.wantPass)
+				}
+				if diff := cmp.Diff(tt.wantVersionRecordSlice, versionRecords); diff != "" {
+					t.Errorf("versionRecords (-want, +got):\n%s", diff)
 				}
 				wantOut := tt.wantOut
 				if condensed && !tt.wantCondensedOutSame {
@@ -581,7 +691,7 @@ func TestWriteBadgeUploadCmdFile(t *testing.T) {
 		inValidatorUniqueStr: "pyang@latest",
 		inPass:               true,
 		inResultsDir:         "results-dir",
-		wantFileContent: `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/openconfig-repo:
+		wantFileContent: `REMOTE_PATH_PFX=gs://openconfig/compatibility-badges/openconfig-repo:
 RESULTSDIR=results-dir
 upload-public-file() {
 	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
@@ -598,7 +708,7 @@ upload-public-file pyang@latest.html
 		inValidatorUniqueStr: "pyang",
 		inPass:               false,
 		inResultsDir:         "results-directory",
-		wantFileContent: `REMOTE_PATH_PFX=gs://artifacts.disco-idea-817.appspot.com/compatibility-badges/openconfig-repo:
+		wantFileContent: `REMOTE_PATH_PFX=gs://openconfig/compatibility-badges/openconfig-repo:
 RESULTSDIR=results-directory
 upload-public-file() {
 	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1

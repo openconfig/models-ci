@@ -29,18 +29,25 @@ func TestOcVersionsList(t *testing.T) {
 		want    string
 		wantErr bool
 	}{{
-		desc:    "single extension",
-		inPath:  []string{"testdata"},
-		inFiles: []string{"testdata/openconfig-single-extension.yang"},
-		want: `openconfig-extensions.yang:
-openconfig-single-extension.yang: openconfig-version:"0.4.2"
+		desc:   "module and submodule",
+		inPath: []string{"testdata"},
+		inFiles: []string{
+			"testdata/openconfig-extensions.yang",
+			"testdata/openconfig-extensions-submodule.yang",
+			"testdata/openconfig-single-extension.yang",
+			"testdata/openconfig-single-extension-submodule.yang",
+		},
+		want: `openconfig-extensions.yang: belonging-module:"openconfig-extensions"
+openconfig-extensions-submodule.yang: belonging-module:"openconfig-extensions" openconfig-version:"0.5.0"
+openconfig-single-extension.yang: belonging-module:"openconfig-single-extension" openconfig-version:"0.4.2"
+openconfig-single-extension-submodule.yang: belonging-module:"openconfig-single-extension" openconfig-version:"0.4.3"
 `,
 	}, {
 		desc:    "multiple extensions",
 		inPath:  []string{"testdata"},
 		inFiles: []string{"testdata/openconfig-telemetry-types.yang"},
-		want: `openconfig-extensions.yang:
-openconfig-telemetry-types.yang: openconfig-version:"0.4.2"
+		want: `openconfig-extensions.yang: belonging-module:"openconfig-extensions"
+openconfig-telemetry-types.yang: belonging-module:"openconfig-telemetry-types" openconfig-version:"0.4.2"
 `,
 	}, {
 		desc:    "invalid file",
@@ -51,9 +58,9 @@ openconfig-telemetry-types.yang: openconfig-version:"0.4.2"
 		desc:    "other-extensions module used for openconfig-extension value",
 		inPath:  []string{"testdata"},
 		inFiles: []string{"testdata/openconfig-use-other-extension.yang"},
-		want: `openconfig-extensions.yang:
-openconfig-use-other-extension.yang:
-other-extensions.yang:
+		want: `openconfig-extensions.yang: belonging-module:"openconfig-extensions"
+openconfig-use-other-extension.yang: belonging-module:"openconfig-use-other-extension"
+other-extensions.yang: belonging-module:"other-extensions"
 `,
 	}}
 

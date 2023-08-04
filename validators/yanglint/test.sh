@@ -1,7 +1,22 @@
 #!/bin/bash
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 
 ROOT_DIR=/workspace
-DEB_FILE=$ROOT_DIR/libyang.deb
+DEB_FILE1=$ROOT_DIR/libyang.deb
+DEB_FILE2=$ROOT_DIR/yanglint.deb
 RESULTSDIR=$ROOT_DIR/results/yanglint
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
@@ -10,7 +25,8 @@ if ! stat $RESULTSDIR; then
   exit 0
 fi
 
-apt install $DEB_FILE
+apt install $DEB_FILE1
+apt install $DEB_FILE2
 
 yanglint -v > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh > $OUTFILE 2> $FAILFILE; then
