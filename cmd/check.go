@@ -24,17 +24,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-// checkCmd represents the check command
-// FIXME(wenbli): Update comments.
-var checkCmd = &cobra.Command{
+// diffCmd represents the diff command, which diffs two sets of OpenConfig YANG
+// files.
+var diffCmd = &cobra.Command{
 	Use:   "diff",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Diff between two sets of OpenConfig YANG files",
+	Long: `Use this command to find what's different between two commits of openconfig/public:
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+openconfig-ci diff --oldp public_old/third_party --newp public_new/third_party --oldroot public_old/release --newroot public_new/release
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 		oldfiles, err := yangutil.GetAllYANGFiles(viper.GetString("oldroot"))
@@ -69,12 +67,12 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	rootCmd.AddCommand(checkCmd)
+	rootCmd.AddCommand(diffCmd)
 
-	checkCmd.Flags().StringSlice("oldp", []string{}, "search path for old set of YANG files")
-	checkCmd.Flags().StringSlice("newp", []string{}, "search path for new set of YANG files")
-	checkCmd.Flags().StringP("oldroot", "o", "", "Root directory of old OpenConfig YANG files")
-	checkCmd.Flags().StringP("newroot", "n", "", "Root directory of new OpenConfig YANG files")
-	checkCmd.Flags().Bool("disallowed-incompats", false, "only show disallowed (per semver.org) backward-incompatible changes. Note that the backward-incompatible checks are not exhausive.")
-	checkCmd.Flags().Bool("github-comment", false, "Show output suitable for posting in a GitHub comment.")
+	diffCmd.Flags().StringSlice("oldp", []string{}, "search path for old set of YANG files")
+	diffCmd.Flags().StringSlice("newp", []string{}, "search path for new set of YANG files")
+	diffCmd.Flags().StringP("oldroot", "o", "", "Root directory of old OpenConfig YANG files")
+	diffCmd.Flags().StringP("newroot", "n", "", "Root directory of new OpenConfig YANG files")
+	diffCmd.Flags().Bool("disallowed-incompats", false, "only show disallowed (per semver.org) backward-incompatible changes. Note that the backward-incompatible checks are not exhausive.")
+	diffCmd.Flags().Bool("github-comment", false, "Show output suitable for posting in a GitHub comment.")
 }
