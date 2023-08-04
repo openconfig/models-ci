@@ -317,7 +317,9 @@ Passed.
 		inValidatorId:        "oc-pyang",
 		wantPass:             false,
 		wantOut: `Validator script failed -- infra bug?
-Test failed with no stderr output.`,
+` + "```" + `
+Test failed with no stderr output.
+` + "```",
 		wantCondensedOutSame: true,
 	}, {
 		name:                 "basic non-pyang pass",
@@ -510,7 +512,7 @@ Failed.
 		inValidatorResultDir: "testdata/oc-pyang-script-fail",
 		inValidatorId:        "oc-pyang",
 		wantPass:             false,
-		wantOut:              "Validator script failed -- infra bug?\nI failed\n",
+		wantOut:              "Validator script failed -- infra bug?\n```\nI failed\n\n```",
 		wantCondensedOutSame: true,
 	}, {
 		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",

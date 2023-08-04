@@ -166,7 +166,7 @@ function run-dir() {
   status=0
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
   if [[ $status -eq "0" ]]; then
-    python "${output_file}" &> ${prefix}pass || status=1
+    python "${output_file}" &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
@@ -206,9 +206,9 @@ function run-dir() {
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
   cd "$outdir"
   if [[ $status -eq "0" ]]; then
-    go mod init &> ${prefix}pass || status=1
-    go mod tidy &> ${prefix}pass || status=1
-    go build &> ${prefix}pass || status=1
+    go mod init &>> ${prefix}pass || status=1
+    go mod tidy &>> ${prefix}pass || status=1
+    go build &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail

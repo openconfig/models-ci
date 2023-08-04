@@ -99,6 +99,10 @@ func init() {
 	flag.StringVar(&version, "version", "", "(optional) specific version of the validator tool.")
 }
 
+func blockQuote(s string) string {
+	return "```\n" + s + "\n```"
+}
+
 // sprintLineHTML prints a single list item to be put under a top-level summary item.
 func sprintLineHTML(format string, a ...interface{}) string {
 	return fmt.Sprintf("  <li>"+format+"</li>\n", a...)
@@ -440,11 +444,12 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 			}
 
 			if !condensed || !modelPass {
-				// Display bash command that produced the validator result.
+				// Display bash command that produced the validator result if it exists.
 				var bashCommandSummary string
 				if bashCommand != "" && bashCommandModelDirName == modelDirName && bashCommandModelName == modelName {
 					bashCommandSummary = fmt.Sprintf("%s&nbsp; %s\n<pre>%s</pre>\n", commonci.Emoji("cmd"), "bash command", bashCommand)
 				}
+				// Also display the error string.
 				modelHTML.WriteString(sprintSummaryHTML(status, modelName, bashCommandSummary+outString))
 			}
 		}
@@ -496,7 +501,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ve
 		}
 		// For per-model validators, an execution failure suggests a CI infra failure.
 		if validator.IsPerModel {
-			outString = "Validator script failed -- infra bug?\n" + outString
+			outString = fmt.Sprintf("Validator script failed -- infra bug?\n%s", blockQuote(outString))
 		}
 		pass = false
 	case validator.IsPerModel && validatorId == "misc-checks":
