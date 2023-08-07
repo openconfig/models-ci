@@ -30,9 +30,6 @@ import (
 // GithubRequestHandler carries information relating to the GitHub session that
 // is being used for the continuous integration.
 type GithubRequestHandler struct {
-	// hashSecret is the GitHub secret that is specified with the hook, it is
-	// used to validate whether the response that is received is from GitHub.
-	hashSecret string
 	// Client is the connection to GitHub that should be utilised.
 	client *github.Client
 	// accessToken is the OAuth token that should be used for interactions with
@@ -323,7 +320,7 @@ func NewGitHubRequestHandler() (*GithubRequestHandler, error) {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: strings.TrimSpace(accesstk)},
 	)
-	tc := oauth2.NewClient(oauth2.NoContext, ts)
+	tc := oauth2.NewClient(context.Background(), ts)
 
 	// Set the timeout for the oauth client such that we do not hang around
 	// waiting for the client to complete.

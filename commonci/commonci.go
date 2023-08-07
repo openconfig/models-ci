@@ -246,16 +246,16 @@ func ParseOCModels(modelRoot string) (OpenConfigModelMap, error) {
 	modelInfoMap := map[string][]ModelInfo{}
 	err := filepath.Walk(modelRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+			return fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", path, err)
 		}
 		if !info.IsDir() && info.Name() == ".spec.yml" {
 			file, err := os.Open(path)
 			if err != nil {
-				return fmt.Errorf("failed to open spec file at path %q: %v\n", path, err)
+				return fmt.Errorf("failed to open spec file at path %q: %v", path, err)
 			}
 			m := []ModelInfo{}
 			if err := yaml.NewDecoder(file).Decode(&m); err != nil {
-				return fmt.Errorf("error while unmarshalling spec file at path %q: %v\n", path, err)
+				return fmt.Errorf("error while unmarshalling spec file at path %q: %v", path, err)
 			}
 
 			// Change the build paths to the absolute correct paths.
@@ -267,7 +267,7 @@ func ParseOCModels(modelRoot string) (OpenConfigModelMap, error) {
 
 			relPath, err := filepath.Rel(modelRoot, filepath.Dir(path))
 			if err != nil {
-				return fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q): %v\n", path, modelRoot, err)
+				return fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q): %v", path, modelRoot, err)
 			}
 			// Allow nested model directories to be used later on as a partial file name.
 			relPath = strings.ReplaceAll(relPath, "/", ":")

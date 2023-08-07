@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -202,7 +203,7 @@ func newGitHubRequestHandler() (*githubRequestHandler, error) {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: accesstk},
 	)
-	tc := oauth2.NewClient(oauth2.NoContext, ts)
+	tc := oauth2.NewClient(context.Background(), ts)
 
 	// Set the timeout for the oauth client such that we do not hang around
 	// waiting for the client to complete.
