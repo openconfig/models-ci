@@ -24,8 +24,11 @@ message PyangOutput {
   repeated PyangMessage messages = 1;
 }
 
-// PyangMessage represents an output line from pyang parsed using the option
-// --msg-template='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
+// PyangMessage represents a parsed output from pyang
+//
+//   This is parsed using the option
+//   --msg-template='messages:{{path:"{file}" line:{line} code:"{code}" type:"{type}" level:{level} message:'"'{msg}'}}"
+//
 // Reference: https://github.com/mbj4668/pyang/blob/master/bin/pyang
 message PyangMessage {
   string path = 1;

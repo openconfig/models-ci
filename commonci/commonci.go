@@ -133,42 +133,42 @@ var (
 	// Validators contains the set of supported validators to be run under CI.
 	// The key is a unique identifier that's safe to use as a directory name.
 	Validators = map[string]*Validator{
-		"pyang": &Validator{
+		"pyang": {
 			Name:             "pyang",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 			SupportedVersion: "2.2",
 		},
-		"oc-pyang": &Validator{
+		"oc-pyang": {
 			Name:             "OpenConfig Linter",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"pyangbind": &Validator{
+		"pyangbind": {
 			Name:             "pyangbind",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"goyang-ygot": &Validator{
+		"goyang-ygot": {
 			Name:             "goyang/ygot",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"yanglint": &Validator{
+		"yanglint": {
 			Name:             "yanglint",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"confd": &Validator{
+		"confd": {
 			Name:             "ConfD Basic",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"regexp": &Validator{
+		"regexp": {
 			Name:       "regexp tests",
 			IsPerModel: false,
 		},
-		"misc-checks": &Validator{
+		"misc-checks": {
 			Name:        "Miscellaneous Checks",
 			IsPerModel:  true,
 			IgnoreRunCi: true,
@@ -176,7 +176,7 @@ var (
 		// This is a report-only entry for all validators configured to
 		// report as a compatibility check instead of as a standalone
 		// PR status.
-		"compat-report": &Validator{
+		"compat-report": {
 			Name:       "Compatibility Report",
 			IsPerModel: false,
 			ReportOnly: true,
