@@ -1,0 +1,27 @@
+leaf deleted: `/openconfig-platform/components/component/linecard/state/slot-id`
+* ("openconfig-platform-linecard": openconfig-version 1.1.0 -> 1.2.0)
+
+leaf updated: `/openconfig-platform/components/component/chassis/utilization/resources/resource/state/used`
+* type changed from uint64 to uint32
+* ("openconfig-platform": openconfig-version 0.23.0 -> 0.24.0)
+
+leaf updated: `/openconfig-platform/components/component/integrated-circuit/utilization/resources/resource/state/used`
+* type changed from uint64 to uint32
+* ("openconfig-platform": openconfig-version 0.23.0 -> 0.24.0)
+
+leaf updated: `/openconfig-platform/components/component/linecard/state/colour`
+* type changed from string to binary
+* ("openconfig-platform-linecard": openconfig-version 1.1.0 -> 1.2.0)
+
+leaf updated: `/openconfig-platform/components/component/linecard/utilization/resources/resource/state/used`
+* type changed from uint64 to uint32
+* ("openconfig-platform": openconfig-version 0.23.0 -> 0.24.0)
+
+leaf updated: `/openconfig-platform/components/component/port/breakout-mode/groups/group/config/num-physical-channels`
+* type changed from uint8 to uint16
+* ("openconfig-platform-port": openconfig-version 1.0.1 -> 2.0.0)
+
+leaf updated: `/openconfig-platform/components/component/port/breakout-mode/groups/group/state/num-physical-channels`
+* type changed from uint8 to uint16
+* ("openconfig-platform-port": openconfig-version 1.0.1 -> 2.0.0)
+
