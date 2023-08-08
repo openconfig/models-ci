@@ -60,7 +60,7 @@ openconfig-ci diff --oldp public_old/third_party --newp public_new/third_party -
 				os.Exit(1)
 			}
 		} else {
-			fmt.Printf(report.Report(opts...))
+			fmt.Print(report.Report(opts...))
 		}
 		return nil
 	},
