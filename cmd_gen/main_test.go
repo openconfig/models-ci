@@ -184,7 +184,7 @@ wait
 		wantCmd: `#!/bin/bash
 workdir=/workspace/results/goyang-ygot
 mkdir -p "$workdir"
-cmd="/go/bin/generator"
+cmd="generator"
 options=(
   -path=testdata,/workspace/third_party/ietf
   -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true
