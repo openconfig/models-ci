@@ -214,7 +214,7 @@ function run-dir() {
 			headerTemplate: mustTemplate("goyang-ygot-header", `#!/bin/bash
 workdir={{ .ResultsDir }}
 mkdir -p "$workdir"
-cmd="/go/bin/generator"
+cmd="generator"
 options=(
   -path={{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf
   -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true
