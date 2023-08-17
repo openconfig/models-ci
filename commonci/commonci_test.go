@@ -24,7 +24,7 @@ var (
 	basicModelMap = OpenConfigModelMap{
 		ModelRoot: "testdata",
 		ModelInfoMap: map[string][]ModelInfo{
-			"acl": []ModelInfo{{
+			"acl": {{
 				Name: "openconfig-acl",
 				DocFiles: []string{
 					"yang/acl/openconfig-packet-match-types.yang",
@@ -36,7 +36,7 @@ var (
 				},
 				RunCi: true,
 			}},
-			"optical-transport": []ModelInfo{{
+			"optical-transport": {{
 				Name: "openconfig-terminal-device",
 				DocFiles: []string{
 					"yang/optical-transport/openconfig-transport-types.yang",
@@ -135,27 +135,27 @@ func TestGetValidatorAndVersionsFromString(t *testing.T) {
 		desc:       "single no version",
 		inStr:      "pyang",
 		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang"}},
-		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"": true}},
+		wantVVMap:  map[string]map[string]bool{"pyang": {"": true}},
 	}, {
 		desc:       "ending comma",
 		inStr:      "pyang,",
 		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang"}},
-		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"": true}},
+		wantVVMap:  map[string]map[string]bool{"pyang": {"": true}},
 	}, {
 		desc:       "ending comma with spaces around before",
 		inStr:      "   pyang,   ",
 		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang"}},
-		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"": true}},
+		wantVVMap:  map[string]map[string]bool{"pyang": {"": true}},
 	}, {
 		desc:       "single with version",
 		inStr:      "pyang@1.7.2",
 		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang", Version: "1.7.2"}},
-		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"1.7.2": true}},
+		wantVVMap:  map[string]map[string]bool{"pyang": {"1.7.2": true}},
 	}, {
 		desc:       "single with version and comma",
 		inStr:      "pyang@1.7.2,",
 		wantVVList: []ValidatorAndVersion{{ValidatorId: "pyang", Version: "1.7.2"}},
-		wantVVMap:  map[string]map[string]bool{"pyang": map[string]bool{"1.7.2": true}},
+		wantVVMap:  map[string]map[string]bool{"pyang": {"1.7.2": true}},
 	}, {
 		desc:  "more than one version with an extraneous comma",
 		inStr: "pyang@1.7.2,,pyang,oc-pyang,pyang@head",
@@ -166,12 +166,12 @@ func TestGetValidatorAndVersionsFromString(t *testing.T) {
 			{ValidatorId: "pyang", Version: "head"},
 		},
 		wantVVMap: map[string]map[string]bool{
-			"pyang": map[string]bool{
+			"pyang": {
 				"":      true,
 				"head":  true,
 				"1.7.2": true,
 			},
-			"oc-pyang": map[string]bool{
+			"oc-pyang": {
 				"": true,
 			},
 		},
@@ -185,12 +185,12 @@ func TestGetValidatorAndVersionsFromString(t *testing.T) {
 			{ValidatorId: "pyang", Version: "head"},
 		},
 		wantVVMap: map[string]map[string]bool{
-			"pyang": map[string]bool{
+			"pyang": {
 				"":      true,
 				"head":  true,
 				"1.7.2": true,
 			},
-			"oc-pyang": map[string]bool{
+			"oc-pyang": {
 				"": true,
 			},
 		},

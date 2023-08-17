@@ -133,42 +133,42 @@ var (
 	// Validators contains the set of supported validators to be run under CI.
 	// The key is a unique identifier that's safe to use as a directory name.
 	Validators = map[string]*Validator{
-		"pyang": &Validator{
+		"pyang": {
 			Name:             "pyang",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 			SupportedVersion: "2.2",
 		},
-		"oc-pyang": &Validator{
+		"oc-pyang": {
 			Name:             "OpenConfig Linter",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"pyangbind": &Validator{
+		"pyangbind": {
 			Name:             "pyangbind",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"goyang-ygot": &Validator{
+		"goyang-ygot": {
 			Name:             "goyang/ygot",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"yanglint": &Validator{
+		"yanglint": {
 			Name:             "yanglint",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"confd": &Validator{
+		"confd": {
 			Name:             "ConfD Basic",
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
-		"regexp": &Validator{
+		"regexp": {
 			Name:       "regexp tests",
 			IsPerModel: false,
 		},
-		"misc-checks": &Validator{
+		"misc-checks": {
 			Name:        "Miscellaneous Checks",
 			IsPerModel:  true,
 			IgnoreRunCi: true,
@@ -176,7 +176,7 @@ var (
 		// This is a report-only entry for all validators configured to
 		// report as a compatibility check instead of as a standalone
 		// PR status.
-		"compat-report": &Validator{
+		"compat-report": {
 			Name:       "Compatibility Report",
 			IsPerModel: false,
 			ReportOnly: true,
@@ -246,16 +246,16 @@ func ParseOCModels(modelRoot string) (OpenConfigModelMap, error) {
 	modelInfoMap := map[string][]ModelInfo{}
 	err := filepath.Walk(modelRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+			return fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", path, err)
 		}
 		if !info.IsDir() && info.Name() == ".spec.yml" {
 			file, err := os.Open(path)
 			if err != nil {
-				return fmt.Errorf("failed to open spec file at path %q: %v\n", path, err)
+				return fmt.Errorf("failed to open spec file at path %q: %v", path, err)
 			}
 			m := []ModelInfo{}
 			if err := yaml.NewDecoder(file).Decode(&m); err != nil {
-				return fmt.Errorf("error while unmarshalling spec file at path %q: %v\n", path, err)
+				return fmt.Errorf("error while unmarshalling spec file at path %q: %v", path, err)
 			}
 
 			// Change the build paths to the absolute correct paths.
@@ -267,7 +267,7 @@ func ParseOCModels(modelRoot string) (OpenConfigModelMap, error) {
 
 			relPath, err := filepath.Rel(modelRoot, filepath.Dir(path))
 			if err != nil {
-				return fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q): %v\n", path, modelRoot, err)
+				return fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q): %v", path, modelRoot, err)
 			}
 			// Allow nested model directories to be used later on as a partial file name.
 			relPath = strings.ReplaceAll(relPath, "/", ":")

@@ -115,7 +115,7 @@ func sprintSummaryHTML(status, title, format string, a ...interface{}) string {
 func readFile(path string) (string, error) {
 	outBytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("failed to read file at path %q: %v\n", path, err)
+		return "", fmt.Errorf("failed to read file at path %q: %v", path, err)
 	}
 	return string(outBytes), nil
 }
@@ -131,7 +131,7 @@ func processStandardOutput(rawOut string, pass, noWarnings bool) (string, error)
 		// Convert file path to relative path.
 		var err error
 		if errLine.Path, err = filepath.Rel(modelRoot, errLine.Path); err != nil {
-			return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from error message: %v\n", errLine.Path, modelRoot, err)
+			return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from error message: %v", errLine.Path, modelRoot, err)
 		}
 
 		processedLine := fmt.Sprintf("%s (%d): %s: <pre>%s</pre>", errLine.Path, errLine.LineNo, errLine.Status, errLine.Message)
@@ -174,7 +174,7 @@ func processPyangOutput(rawOut string, pass, noWarnings bool) (string, error) {
 			// Convert file path to relative path.
 			var err error
 			if msgLine.Path, err = filepath.Rel(modelRoot, msgLine.Path); err != nil {
-				return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from error message: %v\n", msgLine.Path, modelRoot, err)
+				return "", fmt.Errorf("failed to calculate relpath at path %q (modelRoot %q) parsed from error message: %v", msgLine.Path, modelRoot, err)
 			}
 
 			processedLine := fmt.Sprintf("%s (%d): %s: <pre>%s</pre>", msgLine.Path, msgLine.Line, msgLine.Type, msgLine.Message)
@@ -227,7 +227,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 	// (Note that each modelDir has multiple models. Each model corresponds to a result file).
 	if err := filepath.Walk(validatorResultDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("handle failure accessing a path %q: %v\n", path, err)
+			return fmt.Errorf("handle failure accessing a path %q: %v", path, err)
 		}
 
 		components := strings.Split(info.Name(), "==")
@@ -248,7 +248,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 			// Get output string.
 			outString, err := readFile(path)
 			if err != nil {
-				return fmt.Errorf("failed to read file at path %q: %v\n", path, err)
+				return fmt.Errorf("failed to read file at path %q: %v", path, err)
 			}
 
 			modelPass := true
@@ -326,7 +326,7 @@ func parseModelResultsHTML(validatorId, validatorResultDir string, condensed boo
 func getResult(validatorId, resultsDir string, condensed bool) (string, bool, versionRecordSlice, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", false, nil, fmt.Errorf("validator %q not found!", validatorId)
+		return "", false, nil, fmt.Errorf("validator %q not found", validatorId)
 	}
 
 	// outString is parsed stdout.
@@ -400,7 +400,7 @@ func WriteBadgeUploadCmdFile(validatorDesc, validatorUniqueStr string, pass bool
 func getGistHeading(validatorId, version, resultsDir string) (string, string, error) {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return "", "", fmt.Errorf("getGistHeading: validator %q not found!", validatorId)
+		return "", "", fmt.Errorf("getGistHeading: validator %q not found", validatorId)
 	}
 
 	validatorDesc := validator.StatusName(version)
@@ -529,7 +529,7 @@ func postBreakingChangeLabel(g *commonci.GithubRequestHandler, versionRecords ve
 func postResult(validatorId, version string) error {
 	validator, ok := commonci.Validators[validatorId]
 	if !ok {
-		return fmt.Errorf("postResult: validator %q not found!", validatorId)
+		return fmt.Errorf("postResult: validator %q not found", validatorId)
 	}
 	resultsDir := commonci.ValidatorResultsDir(validatorId, version)
 

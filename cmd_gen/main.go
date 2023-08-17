@@ -454,7 +454,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf(cmdStr)
+		fmt.Print(cmdStr)
 		return
 	} else if localModelDirName != "" || localValidatorId != "" {
 		log.Fatalf("modelDirName and validator can only be specified for local cmd generation")
