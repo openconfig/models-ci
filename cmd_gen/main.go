@@ -138,8 +138,8 @@ script_options=(
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
   shift 2
-  echo pyang "${options[@]}" "$@" > ${prefix}cmd
-  if ! $($cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
+  echo pyang -W error "${options[@]}" "$@" > ${prefix}cmd
+  if ! $($cmd -W error "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass); then
     mv ${prefix}pass ${prefix}fail
   fi
 }
