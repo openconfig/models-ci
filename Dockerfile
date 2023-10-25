@@ -33,7 +33,7 @@ RUN apt install python3-wheel && \
         pip3 install --no-cache-dir --break-system-packages -r /workspace/pyangbind-repo/requirements.txt
 
 RUN apt install -y npm
-RUN npm install -g npm
+#RUN npm install -g npm
 RUN npm install -g badge-maker
 
 # Downloading gcloud package
