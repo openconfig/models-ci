@@ -39,8 +39,10 @@ RUN npm install -g badge-maker
 # Downloading gcloud package
 RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
 
+ENV CLOUDSDK_PYTHON /usr/bin/python3
+
 # Installing the package
-RUN export CLOUDSDK_PYTHON=/usr/bin/python3 && mkdir -p /usr/local/gcloud \
+RUN mkdir -p /usr/local/gcloud \
   && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
   && /usr/local/gcloud/google-cloud-sdk/install.sh
 
