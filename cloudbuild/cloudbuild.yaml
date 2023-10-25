@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'us-west1-docker.pkg.dev/$PROJECT_ID/models-ci/models-ci-image', '-f', 'Dockerfile', '.' ]
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-west1-docker.pkg.dev/$PROJECT_ID/models-ci/models-ci-image']
+images:
+  - us-west1-docker.pkg.dev/$PROJECT_ID/models-ci/models-ci-image
