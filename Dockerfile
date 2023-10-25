@@ -21,20 +21,20 @@ RUN git clone https://github.com/robshakir/pyangbind /workspace/pyangbind-repo
 
 RUN apt-get update
 RUN apt install -y python3-pip
-RUN pip3 install virtualenv
+RUN apt install -y virtualenv
 #RUN virtualenv /workspace/pyangvenv
 
 # Install packages for latest pyang venv.
-RUN pip3 install wheel && \
-        pip3 install pyaml && \
-        pip3 install enum34 && \
-        pip3 install jinja2 && \
-        pip3 install setuptools && \
-        pip3 install --no-cache-dir -r /workspace/oc-pyang-repo/requirements.txt && \
-        pip3 install --no-cache-dir -r /workspace/pyangbind-repo/requirements.txt
-#        pip3 install pyangbind
+RUN apt install python3-wheel && \
+        pip3 install pyaml enum34 --break-system-packages && \
+        apt install -y python3-jinja2 && \
+        apt install -y python3-setuptools && \
+        pip3 install --no-cache-dir --break-system-packages -r /workspace/oc-pyang-repo/requirements.txt && \
+        pip3 install --no-cache-dir --break-system-packages -r /workspace/pyangbind-repo/requirements.txt
 
-RUN apt install -y npm && npm install -g npm && npm install -g badge-maker
+RUN apt install -y npm
+RUN npm install -g npm
+RUN npm install -g badge-maker
 
 # Downloading gcloud package
 RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
