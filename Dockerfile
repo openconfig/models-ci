@@ -15,13 +15,16 @@
 FROM golang
 SHELL ["/bin/bash", "-c"]
 
-#RUN git clone https://github.com/mbj4668/pyang.git /workspace/results/pyang@head/pyang
 RUN git clone https://github.com/openconfig/oc-pyang /workspace/oc-pyang-repo
 RUN git clone https://github.com/robshakir/pyangbind /workspace/pyangbind-repo
 
 RUN apt-get update
 RUN apt install -y python3-pip
 RUN apt install -y virtualenv
+# Not using virtualenv since some validators (e.g. pyang) already uses
+# virtualenv, and we can't nest virtualenvs.
+# TODO(wenovus): Move these into a requirement file for each validator so
+# installing python packages here is not necessary.
 #RUN virtualenv /workspace/pyangvenv
 
 # Install packages for latest pyang venv.
