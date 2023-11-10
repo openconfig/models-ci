@@ -302,7 +302,7 @@ fi
 // runInParallel determines whether a particular validator and version should be run in parallel.
 func runInParallel(validatorId, version string) bool {
 	switch {
-	case validatorId == "goyang-ygot", validatorId == "pyang" && version == "head":
+	case validatorId == "pyang" && version == "head":
 		return false
 	default:
 		return true
