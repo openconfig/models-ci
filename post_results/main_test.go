@@ -549,6 +549,12 @@ Failed.
 			NewMajorVersion: 1,
 			OldVersion:      "1.1.2",
 			NewVersion:      "1.2.0",
+		}, {
+			File:            "openconfig-deleted.yang",
+			OldMajorVersion: 1,
+			NewMajorVersion: 0,
+			OldVersion:      "1.0.0",
+			NewVersion:      "",
 		}},
 		wantOut: `<details>
   <summary>&#x2705;&nbsp; openconfig-version update check</summary>
