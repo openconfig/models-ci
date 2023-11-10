@@ -244,6 +244,7 @@ function run-dir() {
     mv ${prefix}pass ${prefix}fail
   fi
 }
+go install golang.org/x/tools/cmd/goimports@latest
 `),
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
