@@ -244,7 +244,7 @@ function run-dir() {
     mv ${prefix}pass ${prefix}fail
   fi
 }
-go install golang.org/x/tools/cmd/goimports@latest
+go install golang.org/x/tools/cmd/goimports@latesn
 `),
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
@@ -302,7 +302,7 @@ fi
 // runInParallel determines whether a particular validator and version should be run in parallel.
 func runInParallel(validatorId, version string) bool {
 	switch {
-	case validatorId == "goyang-ygot", validatorId == "pyang" && version == "head":
+	case validatorId == "pyang" && version == "head":
 		return false
 	default:
 		return true
