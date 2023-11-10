@@ -237,7 +237,7 @@ function run-dir() {
   if [[ $status -eq "0" ]]; then
     go mod init &>> ${prefix}pass || status=1
     go mod tidy &>> ${prefix}pass || status=1
-    goimports -w . &>> ${prefix}pass || status=1
+    goimports -w *.go &>> ${prefix}pass || status=1
     go build &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
