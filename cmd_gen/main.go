@@ -233,8 +233,8 @@ function run-dir() {
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   status=0
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
-  cd "$outdir/oc"
   if [[ $status -eq "0" ]]; then
+    cd "$outdir/oc"
     go mod init &>> ${prefix}pass || status=1
     go mod tidy &>> ${prefix}pass || status=1
     goimports -w *.go &>> ${prefix}pass || status=1
