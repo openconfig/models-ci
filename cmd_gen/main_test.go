@@ -184,14 +184,13 @@ wait
 		wantCmd: `#!/bin/bash
 workdir=/workspace/results/goyang-ygot
 mkdir -p "$workdir"
-cmd="generator"
+cmd="ygnmi generator"
 options=(
-  -path=testdata,/workspace/third_party/ietf
-  -package_name=exampleoc -generate_fakeroot -fakeroot_name=device -compress_paths=true
-  -shorten_enum_leaf_names -trim_enum_openconfig_prefix -typedef_enum_with_defmod -enum_suffix_for_simple_union_enums
-  -exclude_modules=ietf-interfaces -generate_rename -generate_append -generate_getters
-  -generate_leaf_getters -generate_delete -annotations -generate_simple_unions
-  -list_builder_key_threshold=3
+  --trim_module_prefix=openconfig
+  --exclude_modules=ietf-interfaces
+  --split_package_paths="/network-instances/network-instance/protocols/protocol/isis=netinstisis,/network-instances/network-instance/protocols/protocol/bgp=netinstbgp"
+  --paths=testdata,/workspace/third_party/ietf
+  --annotations
 )
 script_options=(
 )
@@ -199,7 +198,7 @@ function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
   outdir=$GOPATH/src/"$1"."$2"/
   mkdir "$outdir"
-  local options=( -output_file="$outdir"/oc.go "${options[@]}" )
+  local options=( --output_dir="${outdir}"/oc --base_package_path="$1"."$2"/oc "${options[@]}" )
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
   status=0
@@ -208,7 +207,7 @@ function run-dir() {
   if [[ $status -eq "0" ]]; then
     go mod init &>> ${prefix}pass || status=1
     go mod tidy &>> ${prefix}pass || status=1
-    go build &>> ${prefix}pass || status=1
+    go build ./... &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail

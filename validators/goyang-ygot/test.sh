@@ -24,11 +24,11 @@ if ! stat $RESULTSDIR; then
 fi
 
 # module download logs go to stderr, so only fail if command failed.
-if ! go install github.com/openconfig/ygot/generator@latest &> "${OUTFILE}"; then
-  echo "failed: go install github.com/openconfig/ygot/generator@latest" > "${FAILFILE}"
+if ! go install github.com/openconfig/ygnmi/app/ygnmi@latest &> "${OUTFILE}"; then
+  echo "failed: go install github.com/openconfig/ygnmi/app/ygnmi@latest" > "${FAILFILE}"
 fi
 
-go list -m github.com/openconfig/ygot@latest > $RESULTSDIR/latest-version.txt
+go list -m github.com/openconfig/ygnmi@latest > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh >> $OUTFILE 2>> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
