@@ -6,3 +6,4 @@ openconfig-acl.yang: belonging-module:"openconfig-acl" openconfig-version:"1.2.2
 changed-noversion-to-unreached.yang: belonging-module:"changed-noversion-to-unreached"
 changed-version-to-unreached.yang: belonging-module:"changed-version-to-unreached" openconfig-version:"1.0.0"
 changed-version-to-noversion.yang: belonging-module:"changed-version-to-noversion" openconfig-version:"1.0.0"
+changed-version-to-deleted.yang: belonging-module:"changed-version-to-noversion" openconfig-version:"1.0.0"

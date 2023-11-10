@@ -43,7 +43,7 @@ func (s versionRecordSlice) MajorVersionChanges() string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Major YANG version changes in commit %s:\n", commitSHA))
 	for _, change := range s {
-		if change.OldMajorVersion != change.NewMajorVersion {
+		if change.OldMajorVersion != change.NewMajorVersion || change.NewVersion == "" {
 			b.WriteString(fmt.Sprintf("%s: `%s` -> `%s`\n", change.File, change.OldVersion, change.NewVersion))
 		}
 	}
@@ -53,6 +53,10 @@ func (s versionRecordSlice) MajorVersionChanges() string {
 func (s versionRecordSlice) hasBreaking() bool {
 	for _, change := range s {
 		if change.OldMajorVersion != 0 && change.OldMajorVersion != change.NewMajorVersion {
+			return true
+		}
+		if change.OldVersion != "" && change.NewVersion == "" {
+			// Deleted file
 			return true
 		}
 	}
@@ -69,11 +73,13 @@ func processMiscChecksOutput(resultsDir string) (string, bool, versionRecordSlic
 	if err != nil {
 		return "", false, nil, err
 	}
+	changedFileSet := map[string]struct{}{}
 	for _, file := range changedFiles {
 		if _, ok := fileProperties[file]; !ok {
 			fileProperties[file] = map[string]string{}
 		}
 		fileProperties[file]["changed"] = "true"
+		changedFileSet[file] = struct{}{}
 	}
 	if err := readGoyangVersionsLog(filepath.Join(resultsDir, "pr-file-parse-log"), false, fileProperties); err != nil {
 		return "", false, nil, err
@@ -91,9 +97,11 @@ func processMiscChecksOutput(resultsDir string) (string, bool, versionRecordSlic
 	if err != nil {
 		return "", false, nil, err
 	}
+	allNonEmptyPRFileSet := map[string]struct{}{}
 	moduleFileGroups := map[string][]fileAndVersion{}
 	var versionRecords versionRecordSlice
 	for _, file := range allNonEmptyPRFiles {
+		allNonEmptyPRFileSet[file] = struct{}{}
 		properties, ok := fileProperties[file]
 
 		// Reachability check
@@ -137,6 +145,33 @@ func processMiscChecksOutput(resultsDir string) (string, bool, versionRecordSlic
 			if v, err := semver.StrictNewVersion(ocVersion); err == nil {
 				moduleFileGroups[mod] = append(moduleFileGroups[mod], fileAndVersion{name: file, version: v})
 			}
+		}
+	}
+	for file := range changedFileSet {
+		if _, ok := allNonEmptyPRFileSet[file]; !ok {
+			properties, ok := fileProperties[file]
+			if !ok {
+				// If the file was not reached, then it did not
+				// have a version, so simply skip the rest of
+				// the checks.
+				continue
+			}
+			masterOcVersion, hadVersion := properties["master-openconfig-version"]
+			if !hadVersion {
+				continue
+			}
+			oldver, err := semver.StrictNewVersion(masterOcVersion)
+			if err != nil {
+				ocVersionViolations = append(ocVersionViolations, sprintLineHTML(file+": "+err.Error()))
+				continue
+			}
+			versionRecords = append(versionRecords, versionRecord{
+				File:            file,
+				OldMajorVersion: oldver.Major(),
+				NewMajorVersion: 0,
+				OldVersion:      masterOcVersion,
+				NewVersion:      "",
+			})
 		}
 	}
 
