@@ -219,14 +219,14 @@ options=(
   --trim_module_prefix=openconfig
   --exclude_modules=ietf-interfaces
   --split_package_paths="/network-instances/network-instance/protocols/protocol/isis=netinstisis,/network-instances/network-instance/protocols/protocol/bgp=netinstbgp"
-  --paths={{ .ModelRoot }},{{ .RepoRoot }}/third_party/ietf
+  --paths={{ .ModelRoot }}/...,{{ .RepoRoot }}/third_party/ietf/...
   --annotations
 )
 script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  outdir=$GOPATH/src/"$1"."$2"/
+  outdir=$GOPATH/src/"$1"."$2"
   mkdir "$outdir"
   local options=( --output_dir="${outdir}"/oc --base_package_path="$1"."$2"/oc "${options[@]}" )
   shift 2
@@ -237,6 +237,7 @@ function run-dir() {
   if [[ $status -eq "0" ]]; then
     go mod init &>> ${prefix}pass || status=1
     go mod tidy &>> ${prefix}pass || status=1
+    goimports -w . &>> ${prefix}pass || status=1
     go build ./... &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
