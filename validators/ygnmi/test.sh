@@ -15,7 +15,7 @@
 
 
 ROOT_DIR=/workspace
-RESULTSDIR=$ROOT_DIR/results/goyang-ygot
+RESULTSDIR=$ROOT_DIR/results/ygnmi
 OUTFILE=$RESULTSDIR/out
 FAILFILE=$RESULTSDIR/fail
 
@@ -24,16 +24,16 @@ if ! stat $RESULTSDIR; then
 fi
 
 # module download logs go to stderr, so only fail if command failed.
-if ! go install github.com/openconfig/ygot/generator@latest &> "${OUTFILE}"; then
-  echo "failed: go install github.com/openconfig/ygot/generator@latest" > "${FAILFILE}"
+if ! go install github.com/openconfig/ygnmi/app/ygnmi@latest &> "${OUTFILE}"; then
+  echo "failed: go install github.com/openconfig/ygnmi/app/ygnmi@latest" > "${FAILFILE}"
 fi
 
-go list -m github.com/openconfig/ygot@latest > $RESULTSDIR/latest-version.txt
+go list -m github.com/openconfig/ygnmi@latest > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh >> $OUTFILE 2>> $FAILFILE; then
   # Delete fail file if it's empty and the script passed.
   find $FAILFILE -size 0 -delete
 fi
-$GOPATH/bin/post_results -validator=goyang-ygot -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
+$GOPATH/bin/post_results -validator=ygnmi -modelRoot=$_MODEL_ROOT -repo-slug=$_REPO_SLUG -pr-number=$_PR_NUMBER -commit-sha=$COMMIT_SHA -branch=$BRANCH_NAME
 BADGEFILE=$RESULTSDIR/upload-badge.sh
 if stat $BADGEFILE; then
   bash $BADGEFILE

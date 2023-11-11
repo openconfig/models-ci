@@ -154,6 +154,11 @@ var (
 			IsPerModel:       true,
 			IsWidelyUsedTool: true,
 		},
+		"ygnmi": {
+			Name:             "ygnmi",
+			IsPerModel:       true,
+			IsWidelyUsedTool: true,
+		},
 		"yanglint": {
 			Name:             "yanglint",
 			IsPerModel:       true,
