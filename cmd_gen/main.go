@@ -228,7 +228,7 @@ script_options=(
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
   outdir=$GOPATH/src/ygot/"$1"."$2"/
-  mkdir "$outdir"
+  mkdir -p "$outdir"
   local options=( -output_file="$outdir"/oc.go "${options[@]}" )
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
@@ -265,7 +265,7 @@ script_options=(
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
   outdir=$GOPATH/src/ygnmi/"$1"."$2"
-  mkdir "$outdir"
+  mkdir -p "$outdir"
   local options=( --output_dir="${outdir}"/oc --base_package_path="$1"."$2"/oc "${options[@]}" )
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
