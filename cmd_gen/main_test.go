@@ -247,12 +247,17 @@ function run-dir() {
   $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
   if [[ $status -eq "0" ]]; then
     cd "$outdir/oc"
+    go mod init &> /dev/null || status=1
+    go mod tidy &> /dev/null || status=1
+    goimports -w . &> /dev/null || status=1
+    go build ./... &> /dev/null || status=1
+  fi
+  if [[ $status -eq "1" ]]; then
+    # Only output if there is an error: otherwise the gist comment is too long.
     go mod init &>> ${prefix}pass || status=1
     go mod tidy &>> ${prefix}pass || status=1
     goimports -w *.go &>> ${prefix}pass || status=1
     go build ./... &>> ${prefix}pass || status=1
-  fi
-  if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
   fi
 }
