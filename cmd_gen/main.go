@@ -275,7 +275,7 @@ function run-dir() {
     cd "$outdir/oc"
     go mod init &> /dev/null || status=1
     go mod tidy &> /dev/null || status=1
-    goimports -w . &> /dev/null || status=1
+    goimports -w *.go &> /dev/null || status=1
     go build ./... &> /dev/null || status=1
   fi
   if [[ $status -eq "1" ]]; then
