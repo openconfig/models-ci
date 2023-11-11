@@ -227,7 +227,7 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  outdir=$GOPATH/src/"$1"."$2"/
+  outdir=$GOPATH/src/ygot/"$1"."$2"/
   mkdir "$outdir"
   local options=( -output_file="$outdir"/oc.go "${options[@]}" )
   shift 2
@@ -264,7 +264,7 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  outdir=$GOPATH/src/"$1"."$2"
+  outdir=$GOPATH/src/ygnmi/"$1"."$2"
   mkdir "$outdir"
   local options=( --output_dir="${outdir}"/oc --base_package_path="$1"."$2"/oc "${options[@]}" )
   shift 2
@@ -276,7 +276,7 @@ function run-dir() {
     go mod init &>> ${prefix}pass || status=1
     go mod tidy &>> ${prefix}pass || status=1
     goimports -w *.go &>> ${prefix}pass || status=1
-    go build &>> ${prefix}pass || status=1
+    go build ./... &>> ${prefix}pass || status=1
   fi
   if [[ $status -eq "1" ]]; then
     mv ${prefix}pass ${prefix}fail
