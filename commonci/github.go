@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -101,6 +102,10 @@ func (g *GithubRequestHandler) AddGistComment(gistID, title, output string) (int
 	defer cancel() // cancel context if the function returns before the timeout
 
 	gistComment := fmt.Sprintf("# %s\n%s", title, output)
+	if bs := []byte(gistComment); len(bs) > math.MaxUint16 {
+		log.Printf("Truncating gist comment from %d bytes to %d bytes", len(bs), math.MaxUint16)
+		gistComment = string(bs[:math.MaxUint16])
+	}
 
 	var id int64
 	if err := Retry(5, "gist comment creation", func() error {
