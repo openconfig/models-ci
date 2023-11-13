@@ -227,8 +227,8 @@ script_options=(
 )
 function run-dir() {
   declare prefix="$workdir"/"$1"=="$2"==
-  outdir=$GOPATH/src/"$1"."$2"/
-  mkdir "$outdir"
+  outdir=$GOPATH/src/ygot/"$1"."$2"/
+  mkdir -p "$outdir"
   local options=( -output_file="$outdir"/oc.go "${options[@]}" )
   shift 2
   echo $cmd "${options[@]}" "$@" > ${prefix}cmd
@@ -246,6 +246,47 @@ function run-dir() {
 }
 `),
 			perModelTemplate: mustTemplate("goyang-ygot", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
+`),
+		},
+		"ygnmi": {
+			headerTemplate: mustTemplate("ygnmi-header", `#!/bin/bash
+workdir={{ .ResultsDir }}
+mkdir -p "$workdir"
+cmd="ygnmi generator"
+options=(
+  --trim_module_prefix=openconfig
+  --exclude_modules=ietf-interfaces
+  --split_package_paths="/network-instances/network-instance/protocols/protocol/isis=netinstisis,/network-instances/network-instance/protocols/protocol/bgp=netinstbgp"
+  --paths={{ .ModelRoot }}/...,{{ .RepoRoot }}/third_party/ietf/...
+  --annotations
+)
+script_options=(
+)
+function run-dir() {
+  declare prefix="$workdir"/"$1"=="$2"==
+  outdir=$GOPATH/src/ygnmi/"$1"."$2"
+  mkdir -p "$outdir"
+  local options=( --output_dir="${outdir}"/oc --base_package_path=ygnmi/"$1"."$2"/oc "${options[@]}" )
+  shift 2
+  echo $cmd "${options[@]}" "$@" > ${prefix}cmd
+  status=0
+  $cmd "${options[@]}" "${script_options[@]}" "$@" &> ${prefix}pass || status=1
+  if [[ $status -eq "0" ]]; then
+    cd "$outdir/oc"
+    go mod init &> /dev/null || status=1
+    go mod tidy &> /dev/null || status=1
+    goimports -w *.go &> /dev/null || status=1
+    go build &> /dev/null || status=1
+  fi
+  if [[ $status -eq "1" ]]; then
+    # Only output if there is an error: otherwise the gist comment is too long.
+    go build &>> ${prefix}pass || status=1
+    mv ${prefix}pass ${prefix}fail
+  fi
+}
+go install golang.org/x/tools/cmd/goimports@latest &>> ${prefix}pass || status=1
+`),
+			perModelTemplate: mustTemplate("ygnmi", `run-dir "{{ .ModelDirName }}" "{{ .ModelName }}" {{- range $i, $buildFile := .BuildFiles }} {{ $buildFile }} {{- end }} {{- if .Parallel }} & {{- end }}
 `),
 		},
 		"yanglint": {
@@ -301,7 +342,7 @@ fi
 // runInParallel determines whether a particular validator and version should be run in parallel.
 func runInParallel(validatorId, version string) bool {
 	switch {
-	case validatorId == "goyang-ygot", validatorId == "pyang" && version == "head":
+	case validatorId == "pyang" && version == "head":
 		return false
 	default:
 		return true
