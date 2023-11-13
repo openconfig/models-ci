@@ -254,7 +254,7 @@ function run-dir() {
   fi
   if [[ $status -eq "1" ]]; then
     # Only output if there is an error: otherwise the gist comment is too long.
-    go build ./... &>> ${prefix}pass || status=1
+    go build &>> ${prefix}pass || status=1
     mv ${prefix}pass ${prefix}fail
   fi
 }
