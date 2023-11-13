@@ -250,7 +250,7 @@ function run-dir() {
     go mod init &> /dev/null || status=1
     go mod tidy &> /dev/null || status=1
     goimports -w *.go &> /dev/null || status=1
-    go build ./... &> /dev/null || status=1
+    go build &> /dev/null || status=1
   fi
   if [[ $status -eq "1" ]]; then
     # Only output if there is an error: otherwise the gist comment is too long.
