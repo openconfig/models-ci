@@ -46,7 +46,7 @@ func NewDiffReport(oldpaths, newpaths, oldfiles, newfiles []string) (*DiffReport
 type yangNodeInfo struct {
 	path              string
 	schema            *yang.Entry
-	allowIncompat     bool
+	incompatAllowed   bool
 	versionChangeDesc string
 }
 
@@ -56,7 +56,7 @@ type yangNodeUpdateInfo struct {
 	path              string
 	oldSchema         *yang.Entry
 	newSchema         *yang.Entry
-	allowIncompat     bool
+	incompatAllowed   bool
 	versionChangeDesc string
 	incompatComments  []string
 }
@@ -113,13 +113,19 @@ func (r *DiffReport) Report(options ...Option) string {
 	}
 	var b strings.Builder
 	for _, del := range r.deletedNodes {
-		if !opts.onlyReportDisallowedIncompats || !del.allowIncompat {
-			if del.schema.IsLeaf() || del.schema.IsLeafList() {
-				b.WriteString(fmt.Sprintf(fmtstr, "leaf", "deleted", del.path, del.versionChangeDesc))
-			}
+		// All deletions are breaking changes.
+		if opts.onlyReportDisallowedIncompats && del.incompatAllowed {
+			continue
+		}
+		if del.schema.IsLeaf() || del.schema.IsLeafList() {
+			b.WriteString(fmt.Sprintf(fmtstr, "leaf", "deleted", del.path, del.versionChangeDesc))
 		}
 	}
 	for _, upd := range r.updatedNodes {
+		// All type updates are breaking changes.
+		if opts.onlyReportDisallowedIncompats && upd.incompatAllowed {
+			continue
+		}
 		nodeTypeDesc := "non-leaf"
 		if upd.oldSchema.IsLeaf() || upd.oldSchema.IsLeafList() {
 			nodeTypeDesc = "leaf"
@@ -175,7 +181,7 @@ func (r *DiffReport) getModuleAndVersions(e *yang.Entry) (string, *semver.Versio
 	return moduleName, r.oldModuleVersions[moduleName], r.newModuleVersions[moduleName]
 }
 
-func incompatAllowed(oldVersion, newVersion *semver.Version) bool {
+func isIncompatAllowed(oldVersion, newVersion *semver.Version) bool {
 	switch {
 	case oldVersion == nil, newVersion == nil:
 		// This can happen if the openconfig-version is not found (e.g. in IETF modules).
@@ -195,7 +201,7 @@ func incompatAllowed(oldVersion, newVersion *semver.Version) bool {
 func (r *DiffReport) addPair(o *yang.Entry, n *yang.Entry) error {
 	moduleName, oldVersion, newVersion := r.getModuleAndVersions(o)
 	versionChangeDesc := fmt.Sprintf("%q: openconfig-version %v -> %v", moduleName, oldVersion, newVersion)
-	allowIncompat := incompatAllowed(oldVersion, newVersion)
+	incompatAllowed := isIncompatAllowed(oldVersion, newVersion)
 
 	switch {
 	case o == nil && n == nil:
@@ -210,7 +216,7 @@ func (r *DiffReport) addPair(o *yang.Entry, n *yang.Entry) error {
 		r.deletedNodes = append(r.deletedNodes, &yangNodeInfo{
 			schema:            o,
 			path:              o.Path(),
-			allowIncompat:     allowIncompat,
+			incompatAllowed:   incompatAllowed,
 			versionChangeDesc: versionChangeDesc,
 		})
 	default:
@@ -218,7 +224,7 @@ func (r *DiffReport) addPair(o *yang.Entry, n *yang.Entry) error {
 			oldSchema:         o,
 			newSchema:         n,
 			path:              o.Path(),
-			allowIncompat:     allowIncompat,
+			incompatAllowed:   incompatAllowed,
 			versionChangeDesc: versionChangeDesc,
 		}
 		updated := false
