@@ -79,7 +79,11 @@ func TestHasBreaking(t *testing.T) {
 }
 
 func TestMajorVersionChanges(t *testing.T) {
+	prevCommitSHA := commitSHA
 	commitSHA = "a0"
+	defer func() {
+		commitSHA = prevCommitSHA
+	}()
 	tests := []struct {
 		desc                    string
 		inVersions              versionRecordSlice
