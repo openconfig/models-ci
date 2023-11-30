@@ -36,18 +36,16 @@ type versionRecord struct {
 type versionRecordSlice []versionRecord
 
 func (s versionRecordSlice) MajorVersionChanges() string {
-	if len(s) == 0 {
-		return fmt.Sprintf("No major YANG version changes in commit %s", commitSHA)
-	}
-
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Major YANG version changes in commit %s:\n", commitSHA))
 	for _, change := range s {
 		if change.OldMajorVersion != change.NewMajorVersion || change.NewVersion == "" {
 			b.WriteString(fmt.Sprintf("%s: `%s` -> `%s`\n", change.File, change.OldVersion, change.NewVersion))
 		}
 	}
-	return b.String()
+	if b.Len() == 0 {
+		return fmt.Sprintf("No major YANG version changes in commit %s", commitSHA)
+	}
+	return fmt.Sprintf("Major YANG version changes in commit %s:\n%s", commitSHA, b.String())
 }
 
 func (s versionRecordSlice) hasBreaking() bool {
