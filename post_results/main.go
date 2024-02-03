@@ -336,22 +336,12 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ve
 	// versionRecords contains all information regarding YANG version changes.
 	var versionRecords versionRecordSlice
 
-	failFileBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
+	failFileBytes, err := os.ReadFile(filepath.Join(resultsDir, commonci.FailFileName))
 	// existent fail file == failure.
 	executionFailed := err == nil
 	err = nil
 
 	switch {
-	case executionFailed:
-		outString = string(failFileBytes)
-		if outString == "" {
-			outString = "Test failed with no stderr output."
-		}
-		// For per-model validators, an execution failure suggests a CI infra failure.
-		if validator.IsPerModel {
-			outString = fmt.Sprintf("Validator script failed -- infra bug?\n%s", blockQuote(outString))
-		}
-		pass = false
 	case validator.IsPerModel && validatorId == "misc-checks":
 		outString, pass, versionRecords, err = processMiscChecksOutput(resultsDir)
 	case validator.IsPerModel:
@@ -359,9 +349,31 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ve
 		if pass && condensed {
 			outString = "All passed.\n" + outString
 		}
-	default:
+	case !executionFailed:
 		outString = "Test passed."
 		pass = true
+	}
+
+	if executionFailed {
+		failString := string(failFileBytes)
+		if failString == "" {
+			failString = "Test failed with no stderr output."
+		}
+		// For per-model validators, an execution failure suggests a CI infra failure.
+		if validator.IsPerModel {
+			failString = fmt.Sprintf("Validator script failed -- infra bug?\n%s", blockQuote(failString))
+		}
+		pass = false
+
+		// The processing error could be due to the validator script
+		// failing, so catch it and don't fail the result posting
+		// process.
+		if err != nil {
+			failString += "\n" + fmt.Sprint(err)
+			err = nil
+		}
+
+		outString = failString + "\n\n" + outString
 	}
 
 	return outString, pass, versionRecords, err
@@ -406,7 +418,7 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 	validatorDesc := validator.StatusName(version)
 	// If version is latest, then get the concrete version output by the tool if it exists.
 	if version == "" {
-		if outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName)); err != nil {
+		if outBytes, err := os.ReadFile(filepath.Join(resultsDir, commonci.LatestVersionFileName)); err != nil {
 			log.Printf("INFO: did not read latest version for %s: %v", validatorId, err)
 		} else {
 			// Get the first line of the version output as the tool's display title.
@@ -419,7 +431,7 @@ func getGistHeading(validatorId, version, resultsDir string) (string, string, er
 		}
 	}
 
-	outBytes, err := ioutil.ReadFile(filepath.Join(resultsDir, commonci.OutFileName))
+	outBytes, err := os.ReadFile(filepath.Join(resultsDir, commonci.OutFileName))
 	if err != nil {
 		return "", "", err
 	}
