@@ -347,7 +347,7 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ve
 	case validator.IsPerModel:
 		outString, pass, err = parseModelResultsHTML(validatorId, resultsDir, condensed)
 		if pass && condensed {
-			outString = "All passed.\n" + outString
+			outString = "All models passed.\n" + outString
 		}
 	case !executionFailed:
 		outString = "Test passed."
@@ -373,7 +373,11 @@ func getResult(validatorId, resultsDir string, condensed bool) (string, bool, ve
 			err = nil
 		}
 
-		outString = failString + "\n\n" + outString
+		if outString != "" {
+			outString = failString + "\n" + outString
+		} else {
+			outString = failString
+		}
 	}
 
 	return outString, pass, versionRecords, err
