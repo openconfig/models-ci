@@ -309,7 +309,7 @@ Passed.
 </details>
 </details>
 `,
-		wantCondensedOut: `All passed.
+		wantCondensedOut: `All models passed.
 `,
 	}, {
 		name:                 "pyang with an empty fail file",
@@ -319,8 +319,35 @@ Passed.
 		wantOut: `Validator script failed -- infra bug?
 ` + "```" + `
 Test failed with no stderr output.
-` + "```",
-		wantCondensedOutSame: true,
+` + "```" + `
+<details>
+  <summary>&#x2705;&nbsp; acl</summary>
+<details>
+  <summary>&#x2705;&nbsp; openconfig-acl</summary>
+Passed.
+</details>
+</details>
+<details>
+  <summary>&#x2705;&nbsp; optical-transport</summary>
+<details>
+  <summary>&#x2705;&nbsp; openconfig-optical-amplifier</summary>
+Passed.
+</details>
+<details>
+  <summary>&#x2705;&nbsp; openconfig-transport-line-protection</summary>
+Passed.
+<ul>
+  <pre>warning foo</pre>
+</ul>
+</details>
+</details>
+`,
+		wantCondensedOut: `Validator script failed -- infra bug?
+` + "```" + `
+Test failed with no stderr output.
+` + "```" + `
+All models passed.
+`,
 	}, {
 		name:                 "basic non-pyang pass",
 		inValidatorResultDir: "testdata/oc-pyang",
@@ -352,7 +379,7 @@ warning foo<br>
 </details>
 </details>
 `,
-		wantCondensedOut: `All passed.
+		wantCondensedOut: `All models passed.
 `,
 	}, {
 		name:                 "pyang with pass and fails",
@@ -512,8 +539,32 @@ Failed.
 		inValidatorResultDir: "testdata/oc-pyang-script-fail",
 		inValidatorId:        "oc-pyang",
 		wantPass:             false,
-		wantOut:              "Validator script failed -- infra bug?\n```\nI failed\n\n```",
-		wantCondensedOutSame: true,
+		wantOut: "Validator script failed -- infra bug?\n```\nI failed\n\n```" + `
+<details>
+  <summary>&#x2705;&nbsp; acl</summary>
+<details>
+  <summary>&#x2705;&nbsp; openconfig-acl</summary>
+Passed.
+</details>
+</details>
+<details>
+  <summary>&#x2705;&nbsp; optical-transport</summary>
+<details>
+  <summary>&#x2705;&nbsp; openconfig-optical-amplifier</summary>
+Passed.
+</details>
+<details>
+  <summary>&#x2705;&nbsp; openconfig-transport-line-protection</summary>
+Passed.
+<ul>
+  <pre>warning foo</pre>
+</ul>
+</details>
+</details>
+`,
+		wantCondensedOut: "Validator script failed -- infra bug?\n```\nI failed\n\n```" + `
+All models passed.
+`,
 	}, {
 		name:                 "openconfig-version, revision version, and .spec.yml checks all pass",
 		inValidatorResultDir: "testdata/misc-checks-pass",
