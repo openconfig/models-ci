@@ -2,6 +2,8 @@
 
 Continuous integration for OpenConfig models.
 
+[Guidance on how to address a CI failure](docs/addressing_ci_failures.md)
+
 ## Usage Notes and Versioning
 
 In order to avoid backwards-incompatible new changes from affecting and breaking
@@ -168,6 +170,9 @@ in a hierarchical format to the user.
 This script is aware of the results format for each validator. It parses each
 result uniquely for each validator, and posts the information as a gist on the
 GitHub PR.
+
+The logs for this step resides in the same step as the "Validator Script
+Execution" step.
 
 ## How Each Validator is Installed
 
