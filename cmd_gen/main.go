@@ -17,7 +17,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -552,7 +551,7 @@ func main() {
 		if headOwner != owner || headRepo != repo {
 			remoteBranch := headOwner + "/" + headRepo
 			// If this is a fork, let later CI steps know the fork repo slug.
-			if err := ioutil.WriteFile(commonci.ForkSlugFile, []byte(remoteBranch), 0444); err != nil {
+			if err := os.WriteFile(commonci.ForkSlugFile, []byte(remoteBranch), 0444); err != nil {
 				log.Fatalf("error while writing fork slug file %q: %v", commonci.ForkSlugFile, err)
 			}
 			log.Printf("fork detected for remote repo %q", remoteBranch)
@@ -561,7 +560,7 @@ func main() {
 
 	compatReports = commonci.ValidatorAndVersionsDiff(compatReports, skippedValidators)
 	// Notify later CI steps of the validators that should be reported as a compatibility report.
-	if err := ioutil.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
+	if err := os.WriteFile(commonci.CompatReportValidatorsFile, []byte(compatReports), 0444); err != nil {
 		log.Fatalf("error while writing compatibility report validators file %q: %v", commonci.CompatReportValidatorsFile, err)
 	}
 
@@ -601,7 +600,7 @@ func main() {
 				}
 			}
 			extraVersionFile := filepath.Join(commonci.UserConfigDir, fmt.Sprintf("extra-%s-versions.txt", validatorId))
-			if err := ioutil.WriteFile(extraVersionFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
+			if err := os.WriteFile(extraVersionFile, []byte(strings.Join(extraVersions, " ")), 0444); err != nil {
 				log.Fatalf("error while writing extra versions file %q: %v", extraVersionFile, err)
 			}
 		}
@@ -649,7 +648,7 @@ func main() {
 				log.Fatalf("error while generating validator script: %v", err)
 			}
 			scriptPath := filepath.Join(validatorResultsDir, commonci.ScriptFileName)
-			if err := ioutil.WriteFile(scriptPath, []byte(scriptStr), 0744); err != nil {
+			if err := os.WriteFile(scriptPath, []byte(scriptStr), 0744); err != nil {
 				log.Fatalf("error while writing script to path %q: %v", scriptPath, err)
 			}
 		}

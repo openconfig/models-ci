@@ -17,7 +17,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -113,7 +112,7 @@ func sprintSummaryHTML(status, title, format string, a ...interface{}) string {
 
 // readFile reads the entire file into a string and returns it along with an error if any.
 func readFile(path string) (string, error) {
-	outBytes, err := ioutil.ReadFile(path)
+	outBytes, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file at path %q: %v", path, err)
 	}
@@ -599,7 +598,7 @@ func postResult(validatorId, version string) error {
 			return fmt.Errorf("postResult: couldn't upload badge command for <%s>@<%s> in resultsDir %q: %v", validatorId, version, resultsDir, err)
 		}
 		badgeUploadFile := filepath.Join(resultsDir, commonci.BadgeUploadCmdFile)
-		if err := ioutil.WriteFile(badgeUploadFile, []byte(uploadCmdFileContent), 0444); err != nil {
+		if err := os.WriteFile(badgeUploadFile, []byte(uploadCmdFileContent), 0444); err != nil {
 			log.Fatalf("error while writing validator pass file %q: %v", badgeUploadFile, err)
 			return err
 		}
@@ -607,7 +606,7 @@ func postResult(validatorId, version string) error {
 		// Put output into a file to be uploaded and linked by the badges.
 		outputHTML := fmt.Sprintf("<p>%s</p><span style=\"white-space: pre-line\"><p>Execution output:\n%s</p></span>", testResultString, runOutput)
 		outputFile := filepath.Join(resultsDir, validatorUniqueStr+".html")
-		if err := ioutil.WriteFile(outputFile, []byte(outputHTML), 0666); err != nil {
+		if err := os.WriteFile(outputFile, []byte(outputHTML), 0666); err != nil {
 			log.Fatalf("error while writing output file %q: %v", outputFile, err)
 			return err
 		}
