@@ -751,9 +751,9 @@ func TestWriteBadgeUploadCmdFile(t *testing.T) {
 		wantFileContent: `REMOTE_PATH_PFX=gs://openconfig/compatibility-badges/openconfig-repo:
 RESULTSDIR=results-dir
 upload-public-file() {
-	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
-	gsutil acl ch -u AllUsers:R "$REMOTE_PATH_PFX"$1
-	gsutil setmeta -h "Cache-Control:no-cache" "$REMOTE_PATH_PFX"$1
+	gcloud storage cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
+	gcloud storage objects update --add-acl-grant=allUsers:R "$REMOTE_PATH_PFX"$1
+	gcloud storage objects update --cache-control="no-cache" "$REMOTE_PATH_PFX"$1
 }
 badge "pass" "pyang@1.2.3" :brightgreen > $RESULTSDIR/pyang@latest.svg
 upload-public-file pyang@latest.svg
@@ -768,9 +768,9 @@ upload-public-file pyang@latest.html
 		wantFileContent: `REMOTE_PATH_PFX=gs://openconfig/compatibility-badges/openconfig-repo:
 RESULTSDIR=results-directory
 upload-public-file() {
-	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
-	gsutil acl ch -u AllUsers:R "$REMOTE_PATH_PFX"$1
-	gsutil setmeta -h "Cache-Control:no-cache" "$REMOTE_PATH_PFX"$1
+	gcloud storage cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
+	gcloud storage objects update --add-acl-grant=allUsers:R "$REMOTE_PATH_PFX"$1
+	gcloud storage objects update --cache-control="no-cache" "$REMOTE_PATH_PFX"$1
 }
 badge "fail" "pyang@2.3.4" :red > $RESULTSDIR/pyang.svg
 upload-public-file pyang.svg
