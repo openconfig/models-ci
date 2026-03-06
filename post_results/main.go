@@ -61,9 +61,9 @@ var (
 	badgeCmdTemplate = mustTemplate("badgeCmd", fmt.Sprintf(`REMOTE_PATH_PFX=gs://%s/compatibility-badges/{{ .RepoPrefix }}:
 RESULTSDIR={{ .ResultsDir }}
 upload-public-file() {
-	gsutil cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
-	gsutil acl ch -u AllUsers:R "$REMOTE_PATH_PFX"$1
-	gsutil setmeta -h "Cache-Control:no-cache" "$REMOTE_PATH_PFX"$1
+	gcloud storage cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
+	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --add-acl-grant=allUsers=READER
+	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --cache-control="no-cache"
 }
 badge "{{ .Status }}" "{{ .ValidatorDesc }}" :{{ .Colour }} > $RESULTSDIR/{{ .ValidatorAndVersion }}.svg
 upload-public-file {{ .ValidatorAndVersion }}.svg
