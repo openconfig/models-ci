@@ -23,7 +23,7 @@ permissions: {}
 
 jobs:
   go:
-    uses: openconfig/common-ci/.github/workflows/basic_go.yml@2dd20d500dc65de2927c44877398fdd141ee09ba
+    uses: openconfig/common-ci/.github/workflows/basic_go.yml@49fc521890a243722b1fd43d70d170e46602a787
     permissions:
       contents: read
       packages: read
