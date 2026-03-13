@@ -1,8 +1,8 @@
 module github.com/openconfig/models-ci
 
-go 1.24.0
+go 1.25.0
 
-toolchain go1.25.1
+toolchain go1.26.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
@@ -12,11 +12,11 @@ require (
 	github.com/openconfig/gnmi v0.14.1
 	github.com/openconfig/goyang v1.6.3
 	github.com/openconfig/ygot v0.34.0
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	golang.org/x/exp v0.0.0-20250911091902-df9299821621
-	golang.org/x/oauth2 v0.31.0
-	google.golang.org/protobuf v1.36.9
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
+	golang.org/x/oauth2 v0.36.0
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 )
 
