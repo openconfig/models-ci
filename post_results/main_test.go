@@ -752,8 +752,8 @@ func TestWriteBadgeUploadCmdFile(t *testing.T) {
 RESULTSDIR=results-dir
 upload-public-file() {
 	gcloud storage cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
-	gcloud storage objects update --add-acl-grant=allUsers:R "$REMOTE_PATH_PFX"$1
-	gcloud storage objects update --cache-control="no-cache" "$REMOTE_PATH_PFX"$1
+	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --add-acl-grant=entity=allUsers,role=READER
+	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --cache-control="no-cache"
 }
 badge "pass" "pyang@1.2.3" :brightgreen > $RESULTSDIR/pyang@latest.svg
 upload-public-file pyang@latest.svg
@@ -769,8 +769,8 @@ upload-public-file pyang@latest.html
 RESULTSDIR=results-directory
 upload-public-file() {
 	gcloud storage cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
-	gcloud storage objects update --add-acl-grant=allUsers:R "$REMOTE_PATH_PFX"$1
-	gcloud storage objects update --cache-control="no-cache" "$REMOTE_PATH_PFX"$1
+	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --add-acl-grant=entity=allUsers,role=READER
+	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --cache-control="no-cache"
 }
 badge "fail" "pyang@2.3.4" :red > $RESULTSDIR/pyang.svg
 upload-public-file pyang.svg

@@ -62,7 +62,7 @@ var (
 RESULTSDIR={{ .ResultsDir }}
 upload-public-file() {
 	gcloud storage cp $RESULTSDIR/$1 "$REMOTE_PATH_PFX"$1
-	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --add-acl-grant=allUsers=READER
+	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --add-acl-grant=entity=allUsers,role=READER
 	gcloud storage objects update "$REMOTE_PATH_PFX"$1 --cache-control="no-cache"
 }
 badge "{{ .Status }}" "{{ .ValidatorDesc }}" :{{ .Colour }} > $RESULTSDIR/{{ .ValidatorAndVersion }}.svg
