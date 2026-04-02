@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang
+FROM golang:1.25
 SHELL ["/bin/bash", "-c"]
 
 RUN git clone https://github.com/openconfig/oc-pyang /workspace/oc-pyang-repo
@@ -21,6 +21,7 @@ RUN git clone https://github.com/robshakir/pyangbind /workspace/pyangbind-repo
 RUN apt-get update
 RUN apt install -y python3-pip
 RUN apt install -y virtualenv
+RUN apt install -y python3-lxml
 # Not using virtualenv since some validators (e.g. pyang) already uses
 # virtualenv, and we can't nest virtualenvs.
 # TODO(wenovus): Move these into a requirement file for each validator so
@@ -32,6 +33,8 @@ RUN apt install python3-wheel && \
         pip3 install pyaml enum34 --break-system-packages && \
         apt install -y python3-jinja2 && \
         apt install -y python3-setuptools && \
+        sed -i -e '/lxml/d' -e '/[Jj]inja2/d' /workspace/oc-pyang-repo/requirements.txt && \
+        sed -i -e '/lxml/d' -e '/[Jj]inja2/d' /workspace/pyangbind-repo/requirements.txt && \
         pip3 install --no-cache-dir --break-system-packages -r /workspace/oc-pyang-repo/requirements.txt && \
         pip3 install --no-cache-dir --break-system-packages -r /workspace/pyangbind-repo/requirements.txt
 
