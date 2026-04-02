@@ -22,6 +22,7 @@ RUN apt-get update
 RUN apt install -y python3-pip
 RUN apt install -y virtualenv
 RUN apt install -y python3-lxml
+RUN go install golang.org/x/tools/cmd/goimports@latest
 # Not using virtualenv since some validators (e.g. pyang) already uses
 # virtualenv, and we can't nest virtualenvs.
 # TODO(wenovus): Move these into a requirement file for each validator so
