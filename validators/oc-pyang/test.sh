@@ -41,7 +41,7 @@ setup() {
   cd ..
   pip3 install --no-cache-dir -r $OCPYANG_DIR/requirements.txt
   pip3 install --no-cache-dir -r $OCPYANG_REPO/requirements.txt
-  pip3 install setuptools
+  pip3 install 'setuptools<82'
   pip3 install pyang
 }
 
