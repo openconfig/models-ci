@@ -23,6 +23,7 @@ RESULTSDIR=$ROOT_DIR/results/pyang
 OUTFILE_NAME=out
 FAILFILE_NAME=fail
 EXTRA_VERSIONS_FILE=$ROOT_DIR/user-config/extra-pyang-versions.txt
+PYANG_DIR=$GOPATH/src/github.com/openconfig/models-ci/validators/pyang
 
 ########################## PYANG #############################
 # For running older versions of pyang
@@ -36,6 +37,7 @@ run-pyang-version() {
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
   pip3 install pyang==$1
+  pip3 install -r $PYANG_DIR/requirements.txt
   if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
@@ -62,6 +64,7 @@ run-pyang-head() {
   echo "THIS IS PYTHONPATH: $PYTHONPATH" # debug
   source ./env.sh
   pip3 install --no-cache-dir -r $REPODIR/requirements.txt
+  pip3 install -r $PYANG_DIR/requirements.txt
   if bash $RESULTSDIR/script.sh pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.
     find $RESULTSDIR/$FAILFILE_NAME -size 0 -delete
@@ -81,6 +84,7 @@ fi
 virtualenv $VENVDIR
 source $VENVDIR/bin/activate
 pip3 install pyang
+pip3 install -r $PYANG_DIR/requirements.txt
 pyang --version > $RESULTSDIR/latest-version.txt
 if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
   # Delete fail file if it's empty and the script passed.
