@@ -3,6 +3,6 @@ MarkupSafe
 cython
 wheel
 pyaml
-setuptools
+setuptools<82
 pyang
 six
