@@ -21,7 +21,7 @@ RUN git clone https://github.com/robshakir/pyangbind /workspace/pyangbind-repo
 RUN apt-get update
 RUN apt install -y python3-pip
 RUN apt install -y virtualenv
-RUN apt install -y python3-lxml
+RUN apt install -y python3-lxml libxml2-dev libxslt-dev
 RUN go install golang.org/x/tools/cmd/goimports@latest
 # Not using virtualenv since some validators (e.g. pyang) already uses
 # virtualenv, and we can't nest virtualenvs.

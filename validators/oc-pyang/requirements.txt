@@ -5,3 +5,4 @@ wheel
 pyaml
 setuptools
 pyang
+six
