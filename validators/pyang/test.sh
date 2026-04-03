@@ -35,6 +35,7 @@ run-pyang-version() {
   local VENVDIR=$TESTDIR/pyangvenv@$1
   virtualenv $VENVDIR
   source $VENVDIR/bin/activate
+  pip3 install 'setuptools<70'
   pip3 install pyang==$1
   if bash $RESULTSDIR/script.sh $VENVDIR/bin/pyang > $RESULTSDIR/$OUTFILE_NAME 2> $RESULTSDIR/$FAILFILE_NAME; then
     # Delete fail file if it's empty and the script passed.

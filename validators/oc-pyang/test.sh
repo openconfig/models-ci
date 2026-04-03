@@ -34,6 +34,7 @@ setup() {
   source $VENVDIR/bin/activate
 
   git clone https://github.com/openconfig/oc-pyang $OCPYANG_REPO -b $_OC_PYANG_VERSION
+  sed -i 's/lxml==.*/lxml/' $OCPYANG_REPO/requirements.txt
   cd $OCPYANG_REPO
   echo -n "Running at github.com/openconfig/oc-pyang branch " >> $OUTFILE
   git rev-parse --short HEAD >> $OUTFILE
