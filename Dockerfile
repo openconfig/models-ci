@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang
+FROM golang:1.25
 SHELL ["/bin/bash", "-c"]
 
 RUN git clone https://github.com/openconfig/oc-pyang /workspace/oc-pyang-repo
