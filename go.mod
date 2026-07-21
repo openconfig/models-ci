@@ -11,10 +11,10 @@ require (
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/openconfig/gnmi v0.14.1
 	github.com/openconfig/goyang v1.6.3
-	github.com/openconfig/ygot v0.34.0
+	github.com/openconfig/ygot v0.35.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597
+	golang.org/x/exp v0.0.0-20260718201538-764159d718ef
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
